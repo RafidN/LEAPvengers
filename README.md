@@ -11,6 +11,6 @@ We have chosen to use `trunk-based development`
 ### Team Members:
 - [x] Rafid Nasery 
 - [ ] Bryan Nguyen
-- [ ] Samuel Onwukeme
+- [x] Samuel Onwukeme
 - [x] Mark Bounheuangvilay
 - [x] Paula Agyeman
