@@ -12,5 +12,5 @@ We have chosen to use `trunk-based development`
 - [x] Rafid Nasery 
 - [ ] Bryan Nguyen
 - [ ] Samuel Onwukeme
-- [ ] Paula Agyeman
+- [x] Paula Agyeman
 - [ ] Mark Bounheuangvilay
