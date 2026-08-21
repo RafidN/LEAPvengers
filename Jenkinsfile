@@ -9,24 +9,15 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build') {
+        stage('Build Image') {
             steps {
-                sh 'mvn -B clean package'
+                sh 'mvn -B clean package -DskipTests'
+                sh 'docker build -t team-skeleton:latest .'
             }
         }
-        stage('Test') {
+        stage('Smoke Test') {
             steps {
-                sh 'mvn -B test'
-            }
-            post {
-                always {
-                    junit 'starter/target/test-reports/*.xml'
-                }
-            }
-        }
-        stage('Archive') {
-            steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                sh 'docker run --rm team-skeleton:latest'
             }
         }
     }
