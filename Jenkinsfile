@@ -12,7 +12,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 sh 'mvn -B clean package -DskipTests'
-                sh 'docker build -t team-skeleton:latest .'
+                sh 'docker build -t sprint1-demo-app:latest .'
             }
         }
         stage('Smoke Test') {
