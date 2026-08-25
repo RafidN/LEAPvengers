@@ -17,7 +17,7 @@ pipeline {
         }
         stage('Smoke Test') {
             steps {
-                sh 'docker run --rm team-skeleton:latest'
+                sh 'docker run --rm sprint1-demo-app:latest'
             }
         }
     }
