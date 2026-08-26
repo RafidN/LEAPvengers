@@ -11,13 +11,17 @@ pipeline {
         }
         stage('Build Image') {
             steps {
-                sh 'mvn -B clean package -DskipTests'
-                sh 'docker build -t sprint1-demo-app:latest .'
+                sh "docker build -t team-skeleton:${BUILD_NUMBER} ."
             }
         }
-        stage('Smoke Test') {
+        stage('Test') {
             steps {
-                sh 'docker run --rm sprint1-demo-app:latest'
+                sh 'mvn -B test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
             }
         }
     }
