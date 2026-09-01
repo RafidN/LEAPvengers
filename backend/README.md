@@ -25,14 +25,12 @@ backend/
 ## Getting Started
 
 ### Build
-\\Bash
-mvn clean install
-\\
+
+    mvn clean install
 
 ### Run
-\\Bash
-mvn spring-boot:run
-\\
+
+    mvn spring-boot:run
 
 Application runs on http://localhost:8081/api
 
