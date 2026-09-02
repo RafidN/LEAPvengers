@@ -1,3 +1,4 @@
+--Drops tables and materialized views if they exist before recreating the schema
 DROP MATERIALIZED VIEW IF EXISTS account_valuations;
 DROP MATERIALIZED VIEW IF EXISTS latest_price_quotes;
 DROP TABLE IF EXISTS price_quotes;
@@ -7,28 +8,22 @@ DROP TABLE IF EXISTS holdings;
 DROP TABLE IF EXISTS accounts;
 DROP TABLE IF EXISTS clients;
 DROP TABLE IF EXISTS instruments;
-
+--Clients have basic personal information and a unique email address
 CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
     first_name            TEXT NOT NULL,
     last_name             TEXT NOT NULL,
-    email                 TEXT NOT NULL UNIQUE,
-    phone                 TEXT,
-    date_of_birth         DATE NOT NULL,
-    country_of_residence  TEXT NOT NULL,
-    kyc_status            TEXT NOT NULL DEFAULT 'Pending' CHECK (kyc_status IN ('Pending', 'Verified', 'Rejected')),
-    account_status        TEXT NOT NULL DEFAULT 'Active' CHECK (account_status IN ('Active', 'Suspended', 'Closed')),
-    joined_date           DATE NOT NULL
+    email                 TEXT NOT NULL UNIQUE
 );
-
+-- Instruments are the financial products that can be traded, such as stocks, bonds, funds, and cash equivalents. This table will store their basic details.
 CREATE TABLE instruments (
     instrument_id  SERIAL PRIMARY KEY,
     ticker         TEXT NOT NULL UNIQUE,
-    name           TEXT NOT NULL,
+    instrument_name           TEXT NOT NULL,
     asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash')),
     currency       TEXT NOT NULL
 );
-
+-- Accounts represent the different trading accounts held by clients. Each account has a currency and a cash balance.
 CREATE TABLE accounts (
     account_id    SERIAL PRIMARY KEY,
     client_id     INTEGER NOT NULL REFERENCES clients(client_id),
@@ -36,21 +31,23 @@ CREATE TABLE accounts (
     currency      TEXT NOT NULL,
     balance       NUMERIC(14,4) NOT NULL DEFAULT 0 -- cash balance available to trade/withdraw
 );
-
+-- Index to quickly look up accounts by client_id for faster queries on client accounts
 CREATE INDEX accounts_client_id_idx ON accounts (client_id);
-
+-- Holdings represent the quantity of each instrument held in an account at a specific point in time. This table helps track the portfolio composition of each account.
 CREATE TABLE holdings (
     holding_id     SERIAL PRIMARY KEY,
     account_id     INTEGER NOT NULL REFERENCES accounts(account_id),
     instrument_id  INTEGER NOT NULL REFERENCES instruments(instrument_id),
     quantity       NUMERIC(14,4) NOT NULL,
     as_of_date     DATE NOT NULL,
-    UNIQUE (account_id, instrument_id) -- one running position per instrument per account
+    UNIQUE (account_id, instrument_id) -- one running position per instrument per account at any given time, updated whenever a new order is filled
 );
 
+-- Indexes to quickly look up holdings by account_id and instrument_id for faster queries on positions
 CREATE INDEX holdings_account_id_idx ON holdings (account_id);
 CREATE INDEX holdings_instrument_id_idx ON holdings (instrument_id);
-
+-- Orders represent the buy/sell instructions placed by clients for specific instruments. Each order has a type, quantity, price, and status.
+-- This table can be used to audit the history of orders placed by clients, including their status changes and execution details.
 CREATE TABLE orders (
     order_id         SERIAL PRIMARY KEY,
     account_id       INTEGER NOT NULL REFERENCES accounts(account_id),
@@ -59,18 +56,24 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL,
     price            NUMERIC(14,4) NOT NULL,
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'PartiallyFilled', 'Filled', 'Cancelled', 'Rejected')),
+    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Cancelled', 'Rejected')),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
-    executed_at      TIMESTAMP, -- set once order_status reaches Filled/PartiallyFilled
-    idempotency_key  TEXT NOT NULL UNIQUE -- client-supplied key; rejects duplicate submissions (e.g. retries)
+    executed_at      TIMESTAMP -- set once order_status reaches Filled
 );
-
+-- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
 CREATE INDEX orders_instrument_id_idx ON orders (instrument_id);
+-- Index for audit queries that filter/sort by submission time across all accounts
+CREATE INDEX orders_submitted_at_idx ON orders (submitted_at);
+
+-- Blocks duplicate submissions (e.g. accidental double-click/retry) by rejecting an identical
+-- order for the same account+instrument+type+quantity+price within the same second.
+CREATE UNIQUE INDEX orders_dedup_idx ON orders (
+    account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
+);
 
 -- Keeps holdings in sync when an order is filled, instead of relying on the app to remember to
--- update both tables. Only whole fills adjust holdings: PartiallyFilled isn't reconciled here since
--- the schema doesn't track a separate filled_quantity per order.
+-- update both tables. Only whole fills adjust holdings
 CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
 DECLARE
     signed_quantity NUMERIC(14,4);
@@ -88,11 +91,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- When an order is made the database will automatically update the holdings if the order is filled, ensuring consistency between orders and holdings
 CREATE TRIGGER orders_sync_holdings
     AFTER INSERT OR UPDATE OF order_status ON orders
     FOR EACH ROW
     EXECUTE FUNCTION sync_holdings_on_order_fill();
-
+-- This table records all cash transactions for each account, including deposits, withdrawals, and dividends. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
     account_id           INTEGER NOT NULL REFERENCES accounts(account_id),
@@ -101,7 +105,7 @@ CREATE TABLE cash_transactions (
     amount               NUMERIC(14,4) NOT NULL,
     txn_date             DATE NOT NULL
 );
-
+-- Index to quickly look up cash transactions by account_id for faster queries on account cash flow
 CREATE INDEX cash_transactions_account_id_idx ON cash_transactions (account_id);
 
 -- Live market data, populated by an external feed (e.g. Alpha Vantage),
