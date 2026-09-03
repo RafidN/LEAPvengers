@@ -21,14 +21,12 @@ CREATE TABLE instruments (
     ticker         TEXT NOT NULL UNIQUE,
     instrument_name           TEXT NOT NULL,
     asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash')),
-    currency       TEXT NOT NULL
 );
--- Accounts represent the different trading accounts held by clients. Each account has a currency and a cash balance.
+-- Accounts represent the different trading accounts held by clients. Each account has a cash balance.
 CREATE TABLE accounts (
     account_id    SERIAL PRIMARY KEY,
     client_id     INTEGER NOT NULL REFERENCES clients(client_id),
     opened_date   DATE NOT NULL,
-    currency      TEXT NOT NULL,
     balance       NUMERIC(14,4) NOT NULL DEFAULT 0 -- cash balance available to trade/withdraw
 );
 -- Index to quickly look up accounts by client_id for faster queries on client accounts
@@ -100,8 +98,7 @@ CREATE TRIGGER orders_sync_holdings
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
     account_id           INTEGER NOT NULL REFERENCES accounts(account_id),
-    instrument_id        INTEGER REFERENCES instruments(instrument_id), -- set for DIVIDEND, null for DEPOSIT/WITHDRAWAL
-    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL', 'DIVIDEND')),
+    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL')),
     amount               NUMERIC(14,4) NOT NULL,
     txn_date             DATE NOT NULL
 );
