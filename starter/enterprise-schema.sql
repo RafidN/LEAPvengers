@@ -20,7 +20,7 @@ CREATE TABLE instruments (
     instrument_id  SERIAL PRIMARY KEY,
     ticker         TEXT NOT NULL UNIQUE,
     instrument_name           TEXT NOT NULL,
-    asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash')),
+    asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash'))
 );
 -- Accounts represent the different trading accounts held by clients. Each account has a cash balance.
 CREATE TABLE accounts (
