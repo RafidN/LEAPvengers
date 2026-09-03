@@ -8,7 +8,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'docker build -t "jenkins-test" .'
+                sh 'docker build -t "jenkins-test" -f starter/Dockerfile starter'
             }
         }
         stage('Test') {
