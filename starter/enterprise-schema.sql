@@ -56,7 +56,7 @@ CREATE TABLE orders (
     order_date       DATE NOT NULL,
     order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Cancelled', 'Rejected')),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
-    executed_at      TIMESTAMP -- set once order_status reaches Filled
+    executed_at      TIMESTAMP -- set by application/business logic when the order is executed
 );
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
