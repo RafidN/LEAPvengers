@@ -54,7 +54,7 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Cancelled', 'Rejected')),
+    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Canceled', 'Rejected')),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
 );
