@@ -117,7 +117,7 @@ CREATE TABLE price_quotes (
     UNIQUE (instrument_id, quote_timestamp)
 );
 
-CREATE INDEX price_quotes_instrument_id_idx ON price_quotes (instrument_id);
+-- NOTE: Redundant with the UNIQUE (instrument_id, quote_timestamp) index; omit to reduce write overhead.
 
 -- Latest known price per instrument, used to value holdings.
 -- Materialized (not a plain view) since this is read frequently; refresh on a schedule/after
