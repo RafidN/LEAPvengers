@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 public class PriceQuotes {
     private int price_quote_id;
     private int instrument_id;
-    private float price;
+    private double price;
     private BigInteger volume;
     private LocalDateTime quote_timestamp;
     private LocalDateTime fetched_at_timestamp;
@@ -18,7 +18,7 @@ public class PriceQuotes {
         fetched_at_timestamp = new LocalDateTime();
     }
 
-    public PriceQuotes(int price_quote_id, int instrument_id, float price, BigInteger volume, 
+    public PriceQuotes(int price_quote_id, int instrument_id, double price, BigInteger volume, 
         LocalDateTime quote_timestamp, LocalDateTime fetched_at_timestamp
     )
     {
