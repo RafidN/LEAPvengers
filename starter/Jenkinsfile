@@ -1,0 +1,21 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'docker build -t "jenkins-test" -f starter/Dockerfile starter'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'docker run --rm jenkins-test'
+            }
+
+        }
+    }
+}
