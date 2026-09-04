@@ -94,7 +94,7 @@ CREATE TRIGGER orders_sync_holdings
     AFTER INSERT OR UPDATE OF order_status ON orders
     FOR EACH ROW
     EXECUTE FUNCTION sync_holdings_on_order_fill();
--- This table records all cash transactions for each account, including deposits, withdrawals, and dividends. It helps track the cash flow and balance of each account.
+-- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
     account_id           INTEGER NOT NULL REFERENCES accounts(account_id),
