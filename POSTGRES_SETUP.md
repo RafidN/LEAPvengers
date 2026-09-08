@@ -63,7 +63,7 @@ Defines the PostgreSQL service with:
 - **Port mapping**: Exposes port 5432 to your machine
 - **Volumes**: 
   - `postgres_data`: Persists database files between container restarts
-  - `init.sql`: Initialization script that runs on first startup
+  - `enterprise-schema.sql`: Initialization script that runs on first startup
 - **Health checks**: Automatically verifies PostgreSQL is responsive
 - **Environment variables**: Loaded from `.env` file for configuration
 
@@ -76,7 +76,7 @@ Configuration file containing:
 
 **Important:** In production, add `.env` to `.gitignore` and use strong passwords.
 
-### `init.sql`
+### `enterprise-schema.sql`
 Initialization script that:
 - Creates the `leap` schema for organizing tables
 - Creates 7 tables: clients, accounts, instruments, holdings, orders, price_quotes, cash_transactions
