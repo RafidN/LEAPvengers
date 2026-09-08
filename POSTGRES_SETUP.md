@@ -31,7 +31,7 @@ docker-compose ps
 - Port: `5432` (or whatever you set in .env)
 - Database: `leapvengersdb`
 - Username: `postgres`
-- Password: `postgres` (change this in .env for production!)
+- Password: `leapvengers` (change this in .env for production!)
 
 **Using command line (psql):**
 
@@ -53,7 +53,7 @@ Connection details:
 - Port: `5432`
 - Database: `leapvengersdb`
 - User: `postgres`
-- Password: `postgres`
+- Password: `leapvengers`
 
 ## File Explanations
 
