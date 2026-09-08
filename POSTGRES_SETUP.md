@@ -43,11 +43,6 @@ docker-compose exec postgres psql -U postgres -d leapvengersdb
 docker-compose exec postgres psql -h 10.14.130.5 -U postgres -d leapvengersdb
 ```
 
-**Using a GUI tool:**
-- DBeaver (free, feature-rich)
-- pgAdmin (web-based)
-- DataGrip (JetBrains)
-
 Connection details:
 - Server: `localhost`
 - Port: `5432`
