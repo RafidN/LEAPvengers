@@ -36,11 +36,11 @@ docker-compose ps
 **Using command line (psql):**
 
 ```bash
-# Connect to the database
+# Connect to the database from localhost
 docker-compose exec postgres psql -U postgres -d leapvengersdb
 
-# Or from your host machine if psql is installed
-psql -h localhost -U postgres -d leapvengersdb
+# Connect to the database from another machine (This is mark's linux machine ip)
+docker-compose exec postgres psql -h 10.14.130.5 -U postgres -d leapvengersdb
 ```
 
 **Using a GUI tool:**
