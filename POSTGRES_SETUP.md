@@ -40,7 +40,11 @@ docker-compose ps
 docker-compose exec postgres psql -U postgres -d leapvengersdb
 
 # Connect to the database from another machine (This is Mark's linux machine ip)
-psql -h 10.14.130.5 -U postgres -d leapvengersdb
+psql -h 10.14.130.5 -U postgres -d leapvengersdb -W
+
+# Make sure psql is installed on your linux machine.
+sudo dnf install postgresql15
+
 ```
 
 Connection details:
