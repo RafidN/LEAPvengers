@@ -1,0 +1,67 @@
+# Docker Compose configuration for running PostgreSQL database
+# This file defines services that run in containers and their configurations
+
+version: '3.8'  # Docker Compose version - 3.8 is compatible with most Docker installations
+
+services:
+  # PostgreSQL Database Service
+  postgres:
+    # Use official PostgreSQL image from Docker Hub
+    # The '15-alpine' tag provides PostgreSQL 15 on a lightweight Alpine Linux base
+    image: postgres:15-alpine
+    
+    # Container name for easy reference when running docker commands
+    container_name: leap-postgres-db
+    
+    # Environment variables passed to PostgreSQL container
+    environment:
+      # Master password for PostgreSQL superuser (postgres)
+      # Loaded from .env file for security - never hardcode secrets
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      
+      # Name of the default database to create on startup
+      POSTGRES_DB: ${POSTGRES_DB:-leapdb}
+      
+      # PostgreSQL superuser name (default is 'postgres')
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    
+    # Port mapping - exposes PostgreSQL to your machine
+    # Format: "host_port:container_port"
+    # Access PostgreSQL from host machine: localhost:5432
+    # Change host_port if 5432 is already in use (e.g., "5433:5432")
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    
+    # Volume for persistent data storage
+    # Without this, data is lost when container stops
+    # Named volume 'postgres_data' stored by Docker
+    volumes:
+      # Store PostgreSQL data directory
+      - postgres_data:/var/lib/postgresql/data
+      
+      # Run initialization script when container first starts
+      # Only executes if data directory is empty
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    
+    # Health check to verify PostgreSQL is running
+    # The 'psql' command connects to verify the database is responsive
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      # How often to run the check
+      interval: 10s
+      # Max time to wait for check to complete
+      timeout: 5s
+      # Consecutive failures before marking unhealthy
+      retries: 5
+      # Initial wait before first check
+      start_period: 10s
+    
+    # Restart policy - keeps container running if it crashes
+    restart: unless-stopped
+
+# Named volumes persist data after container stops
+# Docker manages storage location automatically
+volumes:
+  postgres_data:
+    # Use the local driver (stores on host machine)
+    driver: local
