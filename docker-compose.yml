@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       
       # Name of the default database to create on startup
-      POSTGRES_DB: ${POSTGRES_DB:-leapdb}
+      POSTGRES_DB: ${POSTGRES_DB:-leapvengersdb}
       
       # PostgreSQL superuser name (default is 'postgres')
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -41,7 +41,7 @@ services:
       
       # Run initialization script when container first starts
       # Only executes if data directory is empty
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./enterprise-schema.sql:/docker-entrypoint-initdb.d/enterprise-schema.sql
     
     # Health check to verify PostgreSQL is running
     # The 'psql' command connects to verify the database is responsive
