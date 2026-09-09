@@ -1,0 +1,63 @@
+/* login.component.css */
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  background: #fff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.login-container {
+  background-color: #0a230f;
+  color: #888;
+  padding: 40px;
+  border-radius: 10px;
+  width: 350px;
+  box-shadow: 0 0 20px #0a230f;
+  text-align: center;
+}
+
+.login-container h1 {
+  color: #fff;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  background-color: #0d290d;
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85em;
+  margin-bottom: 20px;
+}
+
+a {
+  color: #4bb986;
+  text-decoration: none;
+}
+
+
+.signup {
+  margin-top: 10px;
+  font-size: 0.85em;
+}
+
+.footer {
+  font-size: 0.75em;
+  color: #888;
+  margin-top: 20px;
+}
