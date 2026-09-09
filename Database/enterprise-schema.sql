@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS cash_transactions;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS holdings;
 DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS clients;
 DROP TABLE IF EXISTS instruments;
 --Clients have basic personal information and a unique email address
@@ -15,6 +16,7 @@ CREATE TABLE clients (
     last_name             TEXT NOT NULL,
     email                 TEXT NOT NULL UNIQUE
 );
+
 -- Instruments are the financial products that can be traded, such as stocks, bonds, funds, and cash equivalents. This table will store their basic details.
 CREATE TABLE instruments (
     instrument_id  SERIAL PRIMARY KEY,
@@ -29,8 +31,31 @@ CREATE TABLE accounts (
     opened_date   DATE NOT NULL,
     balance       NUMERIC(14,4) NOT NULL DEFAULT 0 -- cash balance available to trade/withdraw
 );
+
 -- Index to quickly look up accounts by client_id for faster queries on client accounts
 CREATE INDEX accounts_client_id_idx ON accounts (client_id);
+
+-- Users table for authentication, linked to clients and accounts
+-- Each user (login) belongs to one client and accesses one specific account/portfolio
+CREATE TABLE users (
+    user_id               SERIAL PRIMARY KEY,
+    client_id             INTEGER NOT NULL REFERENCES clients(client_id),
+    account_id            INTEGER NOT NULL REFERENCES accounts(account_id),
+    username              TEXT NOT NULL UNIQUE,
+    password              VARCHAR(255) NOT NULL,
+    is_active             BOOLEAN DEFAULT true,
+    created_at            TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMP NOT NULL DEFAULT now(),
+    UNIQUE (username, account_id)
+);
+
+-- Index for fast username lookups during login
+CREATE INDEX users_username_idx ON users (username);
+-- Index for finding all users of a client
+CREATE INDEX users_client_id_idx ON users (client_id);
+-- Index for finding all users of an account
+CREATE INDEX users_account_id_idx ON users (account_id);
+
 -- Holdings represent the quantity of each instrument held in an account at a specific point in time. This table helps track the portfolio composition of each account.
 CREATE TABLE holdings (
     holding_id     SERIAL PRIMARY KEY,
