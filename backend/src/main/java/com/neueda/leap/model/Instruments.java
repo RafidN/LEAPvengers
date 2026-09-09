@@ -1,23 +1,105 @@
-package com.neueda.leap;
+package com.neueda.leap.model;
 
+import jakarta.persistence.*;
+import java.util.List;
+
+@Entity
+@Table(name = "instruments")
 public class Instruments {
-    private int instrument_id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "instrument_id")
+    private Integer instrumentId;
+
+    @Column(name = "ticker", nullable = false, unique = true)
     private String ticker;
-    private String instrument_name;
-    private String asset_class;
-    public Instruments()
-    {
-       instrument_id = 0;
-       ticker = "";
-       instrument_name = "";
-       asset_class = "";
+
+    @Column(name = "instrument_name", nullable = false)
+    private String instrumentName;
+
+    @Column(name = "asset_class", nullable = false)
+    private String assetClass;
+
+    @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Holdings> holdings;
+
+    @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Orders> orders;
+
+    @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PriceQuotes> priceQuotes;
+
+    // Constructors
+    public Instruments() {
     }
 
-    public Holdings(int instrument_id, String ticker, String instrument_name, String asset_class)
-    {
-        this.instrument_id = instrument_id;
+    public Instruments(String ticker, String instrumentName, String assetClass) {
         this.ticker = ticker;
-        this.instrument_name = instrument_name;
-        this.asset_class = asset_class;
+        this.instrumentName = instrumentName;
+        this.assetClass = assetClass;
+    }
+
+    public Instruments(Integer instrumentId, String ticker, String instrumentName, String assetClass) {
+        this.instrumentId = instrumentId;
+        this.ticker = ticker;
+        this.instrumentName = instrumentName;
+        this.assetClass = assetClass;
+    }
+
+    // Getters and Setters
+    public Integer getInstrumentId() {
+        return instrumentId;
+    }
+
+    public void setInstrumentId(Integer instrumentId) {
+        this.instrumentId = instrumentId;
+    }
+
+    public String getTicker() {
+        return ticker;
+    }
+
+    public void setTicker(String ticker) {
+        this.ticker = ticker;
+    }
+
+    public String getInstrumentName() {
+        return instrumentName;
+    }
+
+    public void setInstrumentName(String instrumentName) {
+        this.instrumentName = instrumentName;
+    }
+
+    public String getAssetClass() {
+        return assetClass;
+    }
+
+    public void setAssetClass(String assetClass) {
+        this.assetClass = assetClass;
+    }
+
+    public List<Holdings> getHoldings() {
+        return holdings;
+    }
+
+    public void setHoldings(List<Holdings> holdings) {
+        this.holdings = holdings;
+    }
+
+    public List<Orders> getOrders() {
+        return orders;
+    }
+
+    public void setOrders(List<Orders> orders) {
+        this.orders = orders;
+    }
+
+    public List<PriceQuotes> getPriceQuotes() {
+        return priceQuotes;
+    }
+
+    public void setPriceQuotes(List<PriceQuotes> priceQuotes) {
+        this.priceQuotes = priceQuotes;
     }
 }
