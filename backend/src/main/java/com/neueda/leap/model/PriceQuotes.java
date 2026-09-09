@@ -2,7 +2,6 @@ package com.neueda.leap.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,7 +23,7 @@ public class PriceQuotes {
     private BigDecimal price;
 
     @Column(name = "volume")
-    private BigInteger volume;
+    private Long volume;
 
     @Column(name = "quote_timestamp", nullable = false)
     private LocalDateTime quoteTimestamp;
@@ -36,7 +35,7 @@ public class PriceQuotes {
     public PriceQuotes() {
     }
 
-    public PriceQuotes(Integer instrumentId, BigDecimal price, BigInteger volume, 
+    public PriceQuotes(Integer instrumentId, BigDecimal price, Long volume, 
                        LocalDateTime quoteTimestamp) {
         this.instrumentId = instrumentId;
         this.price = price;
@@ -45,7 +44,7 @@ public class PriceQuotes {
         this.fetchedAt = LocalDateTime.now();
     }
 
-    public PriceQuotes(Integer priceQuoteId, Integer instrumentId, BigDecimal price, BigInteger volume, 
+    public PriceQuotes(Integer priceQuoteId, Integer instrumentId, BigDecimal price, Long volume, 
                        LocalDateTime quoteTimestamp, LocalDateTime fetchedAt) {
         this.priceQuoteId = priceQuoteId;
         this.instrumentId = instrumentId;
@@ -88,11 +87,11 @@ public class PriceQuotes {
         this.price = price;
     }
 
-    public BigInteger getVolume() {
+    public Long getVolume() {
         return volume;
     }
 
-    public void setVolume(BigInteger volume) {
+    public void setVolume(Long volume) {
         this.volume = volume;
     }
 

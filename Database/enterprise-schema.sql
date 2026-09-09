@@ -1,14 +1,14 @@
 --Drops tables and materialized views if they exist before recreating the schema
 DROP MATERIALIZED VIEW IF EXISTS account_valuations;
 DROP MATERIALIZED VIEW IF EXISTS latest_price_quotes;
-DROP TABLE IF EXISTS price_quotes;
-DROP TABLE IF EXISTS cash_transactions;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS holdings;
-DROP TABLE IF EXISTS accounts;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS clients;
-DROP TABLE IF EXISTS instruments;
+DROP TABLE IF EXISTS price_quotes CASCADE;
+DROP TABLE IF EXISTS cash_transactions CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS holdings CASCADE;
+DROP TABLE IF EXISTS accounts CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS instruments CASCADE;
 --Clients have basic personal information and a unique email address
 CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
