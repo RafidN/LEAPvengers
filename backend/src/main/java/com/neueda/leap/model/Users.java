@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = {"username", "account_id"}))
+@Table(name = "users")
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -14,16 +14,9 @@ public class Users {
     @Column(name = "client_id", nullable = false)
     private Integer clientId;
 
-    @Column(name = "account_id", nullable = false)
-    private Integer accountId;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false, insertable = false, updatable = false)
     private Clients client;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false, insertable = false, updatable = false)
-    private Accounts account;
 
     @Column(name = "username", nullable = false, unique = true)
     private String username;
@@ -44,9 +37,8 @@ public class Users {
     public Users() {
     }
 
-    public Users(Integer clientId, Integer accountId, String username, String password) {
+    public Users(Integer clientId, String username, String password) {
         this.clientId = clientId;
-        this.accountId = accountId;
         this.username = username;
         this.password = password;
         this.isActive = true;
@@ -54,11 +46,10 @@ public class Users {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public Users(Integer userId, Integer clientId, Integer accountId, String username, String password, 
+    public Users(Integer userId, Integer clientId, String username, String password, 
                  Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.userId = userId;
         this.clientId = clientId;
-        this.accountId = accountId;
         this.username = username;
         this.password = password;
         this.isActive = isActive;
@@ -83,28 +74,12 @@ public class Users {
         this.clientId = clientId;
     }
 
-    public Integer getAccountId() {
-        return accountId;
-    }
-
-    public void setAccountId(Integer accountId) {
-        this.accountId = accountId;
-    }
-
     public Clients getClient() {
         return client;
     }
 
     public void setClient(Clients client) {
         this.client = client;
-    }
-
-    public Accounts getAccount() {
-        return account;
-    }
-
-    public void setAccount(Accounts account) {
-        this.account = account;
     }
 
     public String getUsername() {

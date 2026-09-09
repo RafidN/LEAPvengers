@@ -35,18 +35,16 @@ CREATE TABLE accounts (
 -- Index to quickly look up accounts by client_id for faster queries on client accounts
 CREATE INDEX accounts_client_id_idx ON accounts (client_id);
 
--- Users table for authentication, linked to clients and accounts
--- Each user (login) belongs to one client and accesses one specific account/portfolio
+-- Users table for authentication, linked to clients
+-- Each user (login) belongs to one client and can access all of that client's accounts
 CREATE TABLE users (
     user_id               SERIAL PRIMARY KEY,
     client_id             INTEGER NOT NULL REFERENCES clients(client_id),
-    account_id            INTEGER NOT NULL REFERENCES accounts(account_id),
     username              TEXT NOT NULL UNIQUE,
     password              VARCHAR(255) NOT NULL,
     is_active             BOOLEAN DEFAULT true,
     created_at            TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMP NOT NULL DEFAULT now(),
-    UNIQUE (username, account_id)
+    updated_at            TIMESTAMP NOT NULL DEFAULT now()
 );
 
 -- Index for fast username lookups during login
