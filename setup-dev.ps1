@@ -237,6 +237,19 @@ try {
 }
 
 Write-Info ""
+Write-Info "Step 7: Opening application URLs in your default browser..."
+try {
+    Start-Process "http://localhost:4200"
+    Start-Process "http://localhost:8081/api/swagger-ui/index.html"
+    Write-Success "OK - Opened Angular app and Swagger UI in browser"
+} catch {
+    Write-Warning-Custom "Could not auto-open browser URLs: $_"
+    Write-Warning-Custom "You can open them manually:"
+    Write-Warning-Custom "  http://localhost:4200"
+    Write-Warning-Custom "  http://localhost:8081/api/swagger-ui/index.html"
+}
+
+Write-Info ""
 Write-Success "================================"
 Write-Success "Setup Complete!"
 Write-Success "================================"

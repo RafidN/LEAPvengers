@@ -48,7 +48,13 @@ public class SecurityConfig {
                     "/auth/forgot-password",
                     "/api/auth/register",
                     "/api/auth/login",
-                    "/api/auth/forgot-password"
+                    "/api/auth/forgot-password",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/api/swagger-ui/**",
+                    "/api/swagger-ui.html",
+                    "/api/v3/api-docs/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
