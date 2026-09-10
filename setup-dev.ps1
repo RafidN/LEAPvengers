@@ -26,6 +26,34 @@ function Write-Warning-Custom {
     Write-Host $message -ForegroundColor Yellow
 }
 
+function Wait-ForHttpEndpoint {
+    param(
+        [Parameter(Mandatory = $true)][string]$url,
+        [Parameter(Mandatory = $true)][string]$serviceName,
+        [int]$timeoutSeconds = 120,
+        [int]$retryDelaySeconds = 2
+    )
+
+    $deadline = (Get-Date).AddSeconds($timeoutSeconds)
+
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                Write-Success "OK - $serviceName is ready at $url"
+                return $true
+            }
+        } catch {
+            # Service not ready yet. Keep polling until timeout.
+        }
+
+        Start-Sleep -Seconds $retryDelaySeconds
+    }
+
+    Write-Warning-Custom "$serviceName was not ready after $timeoutSeconds seconds: $url"
+    return $false
+}
+
 # Configuration
 $pgHost = "localhost"
 $pgPort = "5432"
@@ -239,9 +267,25 @@ try {
 Write-Info ""
 Write-Info "Step 7: Opening application URLs in your default browser..."
 try {
-    Start-Process "http://localhost:4200"
-    Start-Process "http://localhost:8081/api/swagger-ui/index.html"
-    Write-Success "OK - Opened Angular app and Swagger UI in browser"
+    Write-Info "Waiting for backend readiness..."
+    $backendReady = Wait-ForHttpEndpoint -url "http://localhost:8081/api/swagger-ui/index.html" -serviceName "Backend Swagger UI" -timeoutSeconds 180
+
+    Write-Info "Waiting for frontend readiness..."
+    $frontendReady = Wait-ForHttpEndpoint -url "http://localhost:4200" -serviceName "Frontend Angular app" -timeoutSeconds 180
+
+    if ($frontendReady) {
+        Start-Process "http://localhost:4200"
+    }
+
+    if ($backendReady) {
+        Start-Process "http://localhost:8081/api/swagger-ui/index.html"
+    }
+
+    if ($frontendReady -or $backendReady) {
+        Write-Success "OK - Opened available service URLs in browser"
+    } else {
+        Write-Warning-Custom "No service URL was opened because neither endpoint became reachable in time"
+    }
 } catch {
     Write-Warning-Custom "Could not auto-open browser URLs: $_"
     Write-Warning-Custom "You can open them manually:"
