@@ -52,6 +52,10 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+
+    // This is a placeholder for the logout endpoint. 
+    // In a stateless JWT authentication system, logout is typically handled on the client side
+    //  by removing the token from storage.
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout() {
         Map<String, Object> response = new HashMap<>();
