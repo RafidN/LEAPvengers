@@ -1,10 +1,22 @@
 package com.neueda.leap.model.dto;
-/**
- * Login request DTO containing the username and password.
- * Java record has built in accessor methods for all fields. You can access it by using the field name as a method, e.g., `loginRequest.username()`.
- */
-public record LoginRequest(
-    String username,
-    String password
-) {
+
+public class LoginRequest {
+    private String username;
+    private String password;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }

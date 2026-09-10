@@ -1,10 +1,30 @@
 package com.neueda.leap.model.dto;
-/**
- * Forgot password response DTO containing the status and message.
- * Java record has built in accessor methods for all fields. You can access it by using the field name as a method, e.g., `forgotPasswordResponse.status()`.
- */
-public record ForgotPasswordResponse(
-    String status,
-    String message
-) {
+
+public class ForgotPasswordResponse {
+    private String status;
+    private String message;
+
+    public ForgotPasswordResponse() {
+    }
+
+    public ForgotPasswordResponse(String status, String message) {
+        this.status = status;
+        this.message = message;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
 }
