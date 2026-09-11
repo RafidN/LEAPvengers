@@ -11,7 +11,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'mvn -f ./backend/ -B clean install'
+                sh 'mvn -f ./backend/ -B clean install -q -DskipTests 2>&1'
             }
         }
         stage('Build Image') {
