@@ -52,6 +52,13 @@ a {
   text-decoration: none;
 }
 
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 
 .signup {
   margin-top: 10px;
