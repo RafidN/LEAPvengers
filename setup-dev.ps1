@@ -61,6 +61,7 @@ $pgUser = "postgres"
 $pgPassword = "n3u3d4!"
 $dbName = "leapvengersdb"
 $dbSchemaFile = "$scriptPath\Database\enterprise-schema.sql"
+$dbSeedFile = "$scriptPath\Database\seed.sql"
 $backendDir = "$scriptPath\backend"
 $frontendDir = "$scriptPath\frontend"
 
@@ -152,8 +153,30 @@ try {
 }
 Write-Info ""
 
-# Step 4: Build Backend with Maven
-Write-Info "Step 4: Building backend with Maven (mvn clean install)..."
+# Step 4: Seed Database
+Write-Info "Step 4: Seeding database with initial data..."
+if (-not (Test-Path $dbSeedFile)) {
+    Write-Error-Custom "ERROR - Seed file not found: $dbSeedFile"
+    exit 1
+}
+
+try {
+    $env:PGPASSWORD = $pgPassword
+    $ErrorActionPreference = "Continue"
+    psql -h $pgHost -p $pgPort -U $pgUser -d $dbName -f $dbSeedFile *>&1 | Out-Null
+    $ErrorActionPreference = "Stop"
+    
+    Write-Success "OK - Database seeded successfully"
+} catch {
+    Write-Error-Custom "ERROR - Database seeding failed: $_"
+    exit 1
+} finally {
+    Remove-Item env:PGPASSWORD -ErrorAction SilentlyContinue
+}
+Write-Info ""
+
+# Step 5: Build Backend with Maven
+Write-Info "Step 5: Building backend with Maven (mvn clean install)..."
 if (-not (Test-Path $backendDir)) {
     Write-Error-Custom "ERROR - Backend directory not found: $backendDir"
     exit 1
@@ -186,8 +209,8 @@ try {
 }
 Write-Info ""
 
-# Step 5: Install Frontend Dependencies
-Write-Info "Step 5: Installing Angular frontend dependencies..."
+# Step 6: Install Frontend Dependencies
+Write-Info "Step 6: Installing Angular frontend dependencies..."
 if (-not (Test-Path $frontendDir)) {
     Write-Error-Custom "ERROR - Frontend directory not found: $frontendDir"
     exit 1
@@ -220,8 +243,8 @@ try {
 }
 Write-Info ""
 
-# Step 6: Start Services
-Write-Info "Step 6: Starting services..."
+# Step 7: Start Services
+Write-Info "Step 7: Starting services..."
 Write-Info ""
 
 # Start Backend
@@ -265,7 +288,7 @@ try {
 }
 
 Write-Info ""
-Write-Info "Step 7: Opening application URLs in your default browser..."
+Write-Info "Step 8: Opening application URLs in your default browser..."
 try {
     Write-Info "Waiting for backend readiness..."
     $backendReady = Wait-ForHttpEndpoint -url "http://localhost:8081/api/swagger-ui/index.html" -serviceName "Backend Swagger UI" -timeoutSeconds 180
