@@ -11,7 +11,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'mvn -f ./backend/ -B clean install -q -DskipTests 2>&1'
+                sh 'mvn -f ./backend/ -B clean install -q -DskipTests'
             }
         }
         stage('Build Image') {
@@ -21,7 +21,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'mvn -B test -D  skipTests' // TODO: remove -DskipTests once real tests exist
+                sh 'mvn -f ./backend/ -B test -D  skipTests' // TODO: remove -DskipTests once real tests exist
             }
             post {
                 always {
