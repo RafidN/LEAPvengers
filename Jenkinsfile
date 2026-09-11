@@ -9,6 +9,11 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Build') {
+            steps {
+                sh 'mvn -B clean package'
+            }
+        }
         stage('Build Image') {
             steps {
                 sh "docker build -t team-skeleton:${BUILD_NUMBER} ."
