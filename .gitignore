@@ -1,0 +1,47 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE/editor files
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Postman local/workspace data
+postman/
+
+# Java/Spring build output
+backend/target/
+*.class
+
+# Node/Angular build output
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.cache/
+frontend/coverage/
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

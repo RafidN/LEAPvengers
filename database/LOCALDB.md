@@ -15,7 +15,7 @@ psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE leapvengersdb;"
 
 ### 2. Run Schema
 ```bash
-psql -h localhost -p 5432 -U postgres -d leapvengersdb -f Database/enterprise-schema.sql
+psql -h localhost -p 5432 -U postgres -d leapvengersdb -f database/enterprise-schema.sql
 ```
 
 ### 3. Verify Setup
