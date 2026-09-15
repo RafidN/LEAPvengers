@@ -1,0 +1,72 @@
+/* login.component.css */
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  background: linear-gradient(rgba(10, 35, 15, 0.8), rgba(10, 35, 15, 0.8)), url('C:/Users/Administrator/Desktop/LEAPvengers/frontend/src/app/imports/jason-leem-50bzI1F6urA-unsplash.jpg');
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.login-container {
+  background-color: #0a230f;
+  color: #888;
+  padding: 35px;
+  border-radius: 10px;
+  width: 320px;
+  box-shadow: 0 0 30px #0a230f;
+  text-align: center;
+}
+
+.login-container h1 {
+  color: #fff;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  background-color: #0d290d;
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85em;
+  margin-bottom: 20px;
+}
+
+a {
+  color: #4bb986;
+  text-decoration: none;
+}
+
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+
+.signup {
+  margin-top: 10px;
+  font-size: 0.85em;
+}
+
+.footer {
+  font-size: 0.75em;
+  color: #888;
+  margin-top: 20px;
+}

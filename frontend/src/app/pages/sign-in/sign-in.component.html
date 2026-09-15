@@ -1,0 +1,26 @@
+<!-- login.component.html -->
+<div class="login-container">
+
+  <h1>Welcome to S.H.I.E.L.D.</h1>
+  <p>Sign in to manage your digital portfolio.</p>
+
+  <form (ngSubmit)="onSubmit()">
+    <input type="text" name="username" placeholder="username" required />
+    <input type="password" name="password" placeholder="••••••••••••" required />
+
+    <div class="actions">
+      <label><input type="checkbox" name="rememberMe" /> Remember Me</label>
+      <a href="#">Forgot password?</a>
+    </div>
+
+    <app-button label="Sign in to Dashboard" color="primary"></app-button>
+    <p>OR CONTINUE WITH</p>
+    <app-button label="Continue with Google" color="secondary"></app-button>
+
+    <div class="signup">
+      Don’t have an account? <a href="#">Sign up</a>
+    </div>
+  </form>
+<div class="footer">PROTECTED BY FIDELITY INVESTMENTS CO.</div>
+
+</div>
