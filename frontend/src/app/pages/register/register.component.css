@@ -90,5 +90,28 @@ label {
   color: #ff6b6b;
   font-size: 0.85em;
   margin: 10px 0;
+  padding: 10px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 5px;
   text-align: center;
+}
+
+.success-message {
+  color: #37b87b;
+  font-size: 0.85em;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: rgba(55, 184, 123, 0.1);
+  border-radius: 5px;
+  text-align: center;
+}
+
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
