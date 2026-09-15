@@ -14,11 +14,10 @@ export class LandingComponent {
   });
 
   protected readonly balanceHidden = signal(true);
-  protected readonly balance = signal(128450.32);
+  protected balance = signal(128450.32);
   protected readonly todaysPL = signal(864.17);
-  protected readonly availableCash = signal(25340.11);
+  protected availableCash = signal(25340.11);
   protected readonly addCashPressed = signal(false);
-
   protected readonly balanceDisplay = computed(() => {
     if (this.balanceHidden()) {
       return '••••••';
@@ -45,6 +44,7 @@ export class LandingComponent {
   }
 
   protected onAddCash(): void {
+    this.availableCash.update((value) => value + 1);
     this.addCashPressed.set(true);
     setTimeout(() => {
       this.addCashPressed.set(false);
