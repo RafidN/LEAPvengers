@@ -9,6 +9,11 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Build') {
+            steps {
+                sh 'mvn -f ./backend/ -B clean install -q -DskipTests'
+            }
+        }
         stage('Build Image') {
             steps {
                 sh "docker build -t team-skeleton:${BUILD_NUMBER} ."
@@ -16,7 +21,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'mvn -B test -D  skipTests' // TODO: remove -DskipTests once real tests exist
+                sh 'mvn -f ./backend/ -B test -D  skipTests' // TODO: remove -DskipTests once real tests exist
             }
             post {
                 always {
