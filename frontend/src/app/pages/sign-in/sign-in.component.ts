@@ -36,8 +36,7 @@ export class SignInComponent {
       next: (response) => {
         this.isLoading = false;
         console.log('Login successful:', response);
-        // Navigate to landing page after successful login
-        this.router.navigate(['/landing']);
+        this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         this.isLoading = false;

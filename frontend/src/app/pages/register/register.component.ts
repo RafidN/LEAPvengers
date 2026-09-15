@@ -64,7 +64,7 @@ export class RegisterComponent {
         this.successMessage = 'Account created successfully! Redirecting to dashboard...';
         console.log('Registration successful:', response);
         setTimeout(() => {
-          this.router.navigate(['/landing']);
+          this.router.navigate(['/dashboard']);
         }, 1500);
       },
       error: (error) => {
