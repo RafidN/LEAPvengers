@@ -1,0 +1,44 @@
+<main class="landing">
+  <header class="heading">
+    <p class="eyebrow">Overview</p>
+    <h1>Today at a glance</h1>
+  </header>
+
+  <section class="top-cards" aria-label="Account highlights">
+    <article class="metric-card" aria-label="Balance card">
+      <div class="card-head">
+        <h2>Balance</h2>
+        <button
+          type="button"
+          class="ghost-control"
+          (click)="toggleBalanceVisibility()"
+          [attr.aria-pressed]="balanceHidden()"
+          aria-label="Toggle balance visibility"
+        >
+          {{ balanceHidden() ? 'Show' : 'Hide' }}
+        </button>
+      </div>
+      <p class="metric-value">{{ balanceDisplay() }}</p>
+    </article>
+
+    <article class="metric-card" aria-label="Today profit and loss card">
+      <h2>Today's P/L</h2>
+      <p class="metric-value" [class.positive]="isProfit()" [class.negative]="!isProfit()">
+        {{ todaysPLDisplay() }}
+      </p>
+    </article>
+
+    <article class="metric-card" aria-label="Available cash card">
+      <h2>Available Cash</h2>
+      <p class="metric-value">{{ availableCashDisplay() }}</p>
+      <button
+        type="button"
+        class="add-cash"
+        (click)="onAddCash()"
+        [class.pressed]="addCashPressed()"
+      >
+        Add Cash
+      </button>
+    </article>
+  </section>
+</main>
