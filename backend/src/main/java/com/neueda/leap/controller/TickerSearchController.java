@@ -3,6 +3,7 @@ package com.neueda.leap.controller;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
+import com.neueda.leap.model.dto.PriceQuoteResult;
 import com.neueda.leap.model.dto.TickerSearchRequest;
 import com.neueda.leap.model.dto.TickerSearchResult;
 import com.neueda.leap.security.JwtUtil;
@@ -85,7 +86,7 @@ public class TickerSearchController {
 
         try {
             // No JWT validation needed - this is public market data
-            List<TickerSearchResult> results = tickerSearchService.searchByTicker(null, request);
+            List<PriceQuoteResult> results = tickerSearchService.searchTickerPrice(request);
             return ResponseEntity.ok(results);
 
         } catch (InvalidInputException e) {
