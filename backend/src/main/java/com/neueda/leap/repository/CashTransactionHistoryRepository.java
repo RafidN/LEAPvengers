@@ -18,94 +18,94 @@ public interface CashTransactionHistoryRepository extends JpaRepository<CashTran
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) BETWEEN :startDate AND :endDate
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate BETWEEN :startDate AND :endDate
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsByDateRange(
         @Param("clientId") Integer clientId,
-        @Param("startDate") String startDate,
-        @Param("endDate") String endDate
+        @Param("startDate") java.time.LocalDate startDate,
+        @Param("endDate") java.time.LocalDate endDate
     );
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) >= CURRENT_DATE - INTERVAL YEAR
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate >= CURRENT_DATE - 1 YEAR
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsPastYear(@Param("clientId") Integer clientId);
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) >= CURRENT_DATE - INTERVAL MONTH
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate >= CURRENT_DATE - 1 MONTH
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsPastMonth(@Param("clientId") Integer clientId);
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) >= CURRENT_DATE - INTERVAL WEEK
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate >= CURRENT_DATE - 7 DAY
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsPast7Days(@Param("clientId") Integer clientId);
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) >= CURRENT_DATE - INTERVAL DAY
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate >= CURRENT_DATE - 1 DAY
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsPastDay(@Param("clientId") Integer clientId);
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(
             ct.cashTransactionId,
-            ct.transactionType,
+            ct.txnType,
             ct.amount,
-            CAST(ct.transactionDate AS string)
+            ct.txnDate
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-            AND CAST(ct.transactionDate AS date) = CURRENT_DATE
-        ORDER BY ct.transactionDate DESC
+            AND ct.txnDate = CURRENT_DATE
+        ORDER BY ct.txnDate DESC
     """)
     List<CashTransactionResult> findTransactionsToday(@Param("clientId") Integer clientId);
 }

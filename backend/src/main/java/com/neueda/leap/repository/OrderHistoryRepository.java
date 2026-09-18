@@ -20,23 +20,23 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) BETWEEN :startDate AND :endDate
+            AND o.orderDate BETWEEN :startDate AND :endDate
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersByDateRange(
         @Param("clientId") Integer clientId,
-        @Param("startDate") String startDate,
-        @Param("endDate") String endDate
+        @Param("startDate") java.time.LocalDate startDate,
+        @Param("endDate") java.time.LocalDate endDate
     );
 
     @Query("""
@@ -44,17 +44,17 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) >= CURRENT_DATE - INTERVAL YEAR
+            AND o.orderDate >= CURRENT_DATE - 1 YEAR
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersPastYear(@Param("clientId") Integer clientId);
@@ -64,17 +64,17 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) >= CURRENT_DATE - INTERVAL MONTH
+            AND o.orderDate >= CURRENT_DATE - 1 MONTH
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersPastMonth(@Param("clientId") Integer clientId);
@@ -84,17 +84,17 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) >= CURRENT_DATE - INTERVAL WEEK
+            AND o.orderDate >= CURRENT_DATE - 7 DAY
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersPast7Days(@Param("clientId") Integer clientId);
@@ -104,17 +104,17 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) >= CURRENT_DATE - INTERVAL DAY
+            AND o.orderDate >= CURRENT_DATE - 1 DAY
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersPastDay(@Param("clientId") Integer clientId);
@@ -124,17 +124,17 @@ public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
             o.orderId,
             i.ticker,
             o.orderType,
-            CAST(o.quantity AS java.lang.Long),
+            o.quantity,
             o.price,
             o.orderStatus,
-            CAST(o.orderDate AS string),
-            CAST(o.submittedAt AS string)
+            o.orderDate,
+            o.submittedAt
         )
         FROM Orders o
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
-            AND CAST(o.orderDate AS date) = CURRENT_DATE
+            AND o.orderDate = CURRENT_DATE
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersToday(@Param("clientId") Integer clientId);

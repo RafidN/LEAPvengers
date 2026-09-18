@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * Repository for historical price quotes by time period
@@ -23,18 +24,19 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) BETWEEN :startDate AND :endDate
+            AND pq.quoteTimestamp >= :startTimestamp
+            AND pq.quoteTimestamp < :endTimestamp
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesByDateRange(
         @Param("ticker") String ticker,
-        @Param("startDate") String startDate,
-        @Param("endDate") String endDate
+        @Param("startTimestamp") LocalDateTime startTimestamp,
+        @Param("endTimestamp") LocalDateTime endTimestamp
     );
 
     @Query("""
@@ -43,12 +45,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) >= CURRENT_DATE - INTERVAL YEAR
+            AND pq.quoteTimestamp >= CURRENT_TIMESTAMP - 1 YEAR
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesPastYear(@Param("ticker") String ticker);
@@ -59,12 +61,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) >= CURRENT_DATE - INTERVAL MONTH
+            AND pq.quoteTimestamp >= CURRENT_TIMESTAMP - 1 MONTH
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesPastMonth(@Param("ticker") String ticker);
@@ -75,12 +77,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) >= CURRENT_DATE - INTERVAL WEEK
+            AND pq.quoteTimestamp >= CURRENT_TIMESTAMP - 7 DAY
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesPast7Days(@Param("ticker") String ticker);
@@ -91,12 +93,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) >= CURRENT_DATE - INTERVAL DAY
+            AND pq.quoteTimestamp >= CURRENT_TIMESTAMP - 1 DAY
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesPastDay(@Param("ticker") String ticker);
@@ -107,12 +109,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integ
             i.instrumentName,
             pq.price,
             pq.volume,
-            CAST(pq.quoteTimestamp AS string)
+            pq.quoteTimestamp
         )
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
-            AND CAST(pq.quoteTimestamp AS date) = CURRENT_DATE
+            AND pq.quoteTimestamp >= CURRENT_DATE
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesToday(@Param("ticker") String ticker);

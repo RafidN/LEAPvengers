@@ -20,22 +20,22 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(:asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            :asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
             AND h.asOfDate <= :asOfDate
         ORDER BY i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioAsOfDate(
         @Param("clientId") Integer clientId,
-        @Param("asOfDate") String asOfDate
+        @Param("asOfDate") java.time.LocalDate asOfDate
     );
 
     @Query("""
@@ -43,17 +43,17 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(h.asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            h.asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
-            AND h.asOfDate >= CURRENT_DATE - INTERVAL YEAR
+            AND h.asOfDate >= CURRENT_DATE - 1 YEAR
         ORDER BY h.asOfDate DESC, i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioPastYear(@Param("clientId") Integer clientId);
@@ -63,17 +63,17 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(h.asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            h.asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
-            AND h.asOfDate >= CURRENT_DATE - INTERVAL MONTH
+            AND h.asOfDate >= CURRENT_DATE - 1 MONTH
         ORDER BY h.asOfDate DESC, i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioPastMonth(@Param("clientId") Integer clientId);
@@ -83,17 +83,17 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(h.asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            h.asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
-            AND h.asOfDate >= CURRENT_DATE - INTERVAL WEEK
+            AND h.asOfDate >= CURRENT_DATE - 7 DAY
         ORDER BY h.asOfDate DESC, i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioPast7Days(@Param("clientId") Integer clientId);
@@ -103,17 +103,17 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(h.asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            h.asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
-            AND h.asOfDate >= CURRENT_DATE - INTERVAL DAY
+            AND h.asOfDate >= CURRENT_DATE - 1 DAY
         ORDER BY h.asOfDate DESC, i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioPastDay(@Param("clientId") Integer clientId);
@@ -123,15 +123,15 @@ public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Inte
             h.holdingId,
             i.ticker,
             i.instrumentName,
-            CAST(h.quantity AS java.lang.Long),
-            COALESCE(lpq.price, 0.0),
-            CAST(h.quantity AS java.lang.Double) * COALESCE(lpq.price, 0.0),
-            CAST(h.asOfDate AS string)
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            h.asOfDate
         )
         FROM Holdings h
         JOIN h.instrument i
         JOIN h.account a
-        LEFT JOIN LatestPriceQuotes lpq ON i.id = lpq.instrumentId
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
         WHERE a.clientId = :clientId
             AND h.asOfDate = CURRENT_DATE
         ORDER BY i.ticker

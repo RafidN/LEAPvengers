@@ -1,5 +1,9 @@
 package com.neueda.leap.model.dto;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 /**
  * Response DTO for order history by time period
  * Represents a single order placed by user
@@ -8,18 +12,18 @@ public class OrderHistoryResult {
     private Integer orderId;
     private String ticker;
     private String orderType;  // BUY or SELL
-    private Long quantity;
-    private Double price;
+    private BigDecimal quantity;
+    private BigDecimal price;
     private String orderStatus;  // Pending, Filled, Canceled, Rejected
-    private String orderDate;
-    private String submittedAt;
+    private LocalDate orderDate;
+    private LocalDateTime submittedAt;
 
     public OrderHistoryResult() {
     }
 
-    public OrderHistoryResult(Integer orderId, String ticker, String orderType, 
-                             Long quantity, Double price, String orderStatus, 
-                             String orderDate, String submittedAt) {
+    public OrderHistoryResult(Integer orderId, String ticker, String orderType,
+                             BigDecimal quantity, BigDecimal price, String orderStatus,
+                             LocalDate orderDate, LocalDateTime submittedAt) {
         this.orderId = orderId;
         this.ticker = ticker;
         this.orderType = orderType;
@@ -55,19 +59,19 @@ public class OrderHistoryResult {
         this.orderType = orderType;
     }
 
-    public Long getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(Long quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
-    public Double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
@@ -79,19 +83,19 @@ public class OrderHistoryResult {
         this.orderStatus = orderStatus;
     }
 
-    public String getOrderDate() {
+    public LocalDate getOrderDate() {
         return orderDate;
     }
 
-    public void setOrderDate(String orderDate) {
+    public void setOrderDate(LocalDate orderDate) {
         this.orderDate = orderDate;
     }
 
-    public String getSubmittedAt() {
+    public LocalDateTime getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt(String submittedAt) {
+    public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
     }
 }
