@@ -15,13 +15,8 @@ export class ForgotPasswordComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  firstName = '';
-  lastName = '';
-  email = '';
   username = '';
-  password = '';
-  confirmPassword = '';
-  agreeToTerms = false;
+  email = '';
   passwordMismatch = false;
   isLoading = false;
   errorMessage = '';
@@ -31,21 +26,16 @@ export class ForgotPasswordComponent {
     event.preventDefault();
     
     // Validation
-    if (!this.firstName || !this.lastName || !this.email || !this.username || !this.password || !this.confirmPassword) {
-      this.errorMessage = 'Please fill in all fields';
+    if (!this.username) {
+      this.errorMessage = 'Please fill in your username';
+      return;
+    }
+    if (!this.email) {
+      this.errorMessage = 'Please fill in your email address';
       return;
     }
 
-    if (this.password !== this.confirmPassword) {
-      this.passwordMismatch = true;
-      this.errorMessage = 'Passwords do not match';
-      return;
-    }
 
-    if (!this.agreeToTerms) {
-      this.errorMessage = 'You must agree to the terms and conditions';
-      return;
-    }
 
     // Validate email format
     if (!this.isValidEmail(this.email)) {
@@ -58,19 +48,19 @@ export class ForgotPasswordComponent {
     this.successMessage = '';
     this.isLoading = true;
 
-    this.authService.register(this.firstName, this.lastName, this.email, this.username, this.password).subscribe({
+    this.authService.forgotPassword(this.email).subscribe({
       next: (response) => {
         this.isLoading = false;
-        this.successMessage = 'Account created successfully! Redirecting to dashboard...';
-        console.log('Registration successful:', response);
+        this.successMessage = 'Password reset link sent successfully! Please check your email.';
+        console.log('Forgot password request successful:', response);
         setTimeout(() => {
           this.router.navigate(['/dashboard']);
         }, 1500);
       },
       error: (error) => {
         this.isLoading = false;
-        console.error('Registration failed:', error);
-        this.errorMessage = error.error?.message || 'Registration failed. Please try again.';
+        console.error('Password reset failed:', error);
+        this.errorMessage = error.error?.message || 'Password reset failed. Please try again.';
       }
     });
   }
