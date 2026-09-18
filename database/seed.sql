@@ -8,7 +8,12 @@ DELETE FROM HOLDINGS;
 
 -- Clients
 INSERT INTO clients (first_name, last_name, email) VALUES
-('Test', 'User', 'test@test.com')
+('Test', 'User', 'test@test.com'),
+('Paula', 'Agyeman', 'paula.agyeman@lol.com'),
+('Rafid', 'Nasery', 'rafid.nasery@lol.com'),
+('Sam', 'Onukweme', 'sam.onukweme@lol.com'),
+('Bryan', 'Nguyen', 'bryan.nguyen@lol.com'),
+('Mark', 'Bounheuangvilay', 'mark.boun@lol.com')
 ON CONFLICT (email) DO NOTHING;
 
 -- Instruments (Common stocks, ETFs, bonds, crypto, and FX)
@@ -33,18 +38,33 @@ ON CONFLICT (ticker) DO NOTHING;
 
 -- Accounts
 INSERT INTO accounts (client_id, opened_date, balance) VALUES
-((SELECT client_id FROM clients WHERE email = 'test@test.com'), '2026-01-01', 100000.00)
+((SELECT client_id FROM clients WHERE email = 'test@test.com'), '2026-01-01', 100000.00),
+((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), '2026-01-15', 150000.00),
+((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), '2026-01-20', 125000.00),
+((SELECT client_id FROM clients WHERE email = 'sam.onukweme@lol.com'), '2026-01-25', 200000.00),
+((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), '2026-02-01', 175000.00),
+((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), '2026-02-05', 180000.00)
 ON CONFLICT DO NOTHING;
 
 -- Users (authentication)
 -- Password hash for: Test123
 INSERT INTO users (client_id, username, password, is_active) VALUES
-((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true)
+((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
+((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), 'paula', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
+((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), 'rafid', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
+((SELECT client_id FROM clients WHERE email = 'sam.onukweme@lol.com'), 'sam', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
+((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), 'bryan', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
+((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), 'mark', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Cash Transactions (Deposits)
 INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date) VALUES
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'test@test.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 100000.00, '2026-01-01')
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'test@test.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 100000.00, '2026-01-01'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 150000.00, '2026-01-15'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 125000.00, '2026-01-20'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'sam.onukweme@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 200000.00, '2026-01-25'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 175000.00, '2026-02-01'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 180000.00, '2026-02-05')
 ON CONFLICT DO NOTHING;
 
 -- Orders and holdings intentionally omitted for this minimal single-user seed.
