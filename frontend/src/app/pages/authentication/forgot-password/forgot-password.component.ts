@@ -17,7 +17,6 @@ export class ForgotPasswordComponent {
 
   username = '';
   email = '';
-  passwordMismatch = false;
   isLoading = false;
   errorMessage = '';
   successMessage = '';
@@ -43,18 +42,17 @@ export class ForgotPasswordComponent {
       return;
     }
 
-    this.passwordMismatch = false;
     this.errorMessage = '';
     this.successMessage = '';
     this.isLoading = true;
 
-    this.authService.forgotPassword(this.email).subscribe({
+    this.authService.forgotPassword(this.username, this.email).subscribe({
       next: (response) => {
         this.isLoading = false;
         this.successMessage = 'Password reset link sent successfully! Please check your email.';
         console.log('Forgot password request successful:', response);
         setTimeout(() => {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/signin']);
         }, 1500);
       },
       error: (error) => {
@@ -65,9 +63,6 @@ export class ForgotPasswordComponent {
     });
   }
 
-  onPasswordChange() {
-    this.passwordMismatch = false;
-  }
 
   private isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
