@@ -4,28 +4,29 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO for ticker price quote results
- * Represents public market data for a specific ticker
+ * Response DTO for historical price quotes by time period
+ * Represents a single price quote for a ticker at a point in time
  */
-public class PriceQuoteResult {
+public class PriceHistoryResult {
     private String ticker;
     private String instrumentName;
-    private BigDecimal currentPrice;
-    private String assetClass;
+    private BigDecimal price;
+    private Long volume;
     private LocalDateTime quoteTimestamp;
 
-    public PriceQuoteResult() {
+    public PriceHistoryResult() {
     }
 
-    public PriceQuoteResult(String ticker, String instrumentName, BigDecimal currentPrice,
-                            String assetClass, LocalDateTime quoteTimestamp) {
+    public PriceHistoryResult(String ticker, String instrumentName, BigDecimal price,
+                             Long volume, LocalDateTime quoteTimestamp) {
         this.ticker = ticker;
         this.instrumentName = instrumentName;
-        this.currentPrice = currentPrice;
-        this.assetClass = assetClass;
+        this.price = price;
+        this.volume = volume;
         this.quoteTimestamp = quoteTimestamp;
     }
 
+    // Getters and Setters
     public String getTicker() {
         return ticker;
     }
@@ -42,20 +43,20 @@ public class PriceQuoteResult {
         this.instrumentName = instrumentName;
     }
 
-    public BigDecimal getCurrentPrice() {
-        return currentPrice;
+    public BigDecimal getPrice() {
+        return price;
     }
 
-    public void setCurrentPrice(BigDecimal currentPrice) {
-        this.currentPrice = currentPrice;
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
-    public String getAssetClass() {
-        return assetClass;
+    public Long getVolume() {
+        return volume;
     }
 
-    public void setAssetClass(String assetClass) {
-        this.assetClass = assetClass;
+    public void setVolume(Long volume) {
+        this.volume = volume;
     }
 
     public LocalDateTime getQuoteTimestamp() {
