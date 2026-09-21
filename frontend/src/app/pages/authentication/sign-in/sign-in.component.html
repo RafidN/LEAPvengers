@@ -1,0 +1,32 @@
+<!-- login.component.html -->
+<div class="login-container">
+
+  <h1>Welcome to S.H.I.E.L.D.</h1>
+  <p>Sign in to manage your digital portfolio.</p>
+
+  <form (ngSubmit)="onSubmit($event)">
+    <input type="text" name="username" placeholder="username" required [(ngModel)]="username" [disabled]="isLoading" />
+    <input type="password" name="password" placeholder="••••••••••••" required [(ngModel)]="password" [disabled]="isLoading" />
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div class="actions">
+      <label><input type="checkbox" name="rememberMe" [(ngModel)]="rememberMe" [disabled]="isLoading" /> Remember Me</label>
+      <a routerLink="/forgot-password">Forgot password?</a>
+    </div>
+
+    <button type="submit" class="primary" [disabled]="isLoading">
+      {{ isLoading ? 'Signing in...' : 'Sign in to Dashboard' }}
+    </button>
+    <p>OR CONTINUE WITH</p>
+    <button type="button" class="secondary" [disabled]="isLoading">Continue with Google</button>
+
+    <div class="signup">
+      Don't have an account? <a routerLink="/register">Sign up</a>
+    </div>
+  </form>
+<div class="footer">PROTECTED BY FIDELITY INVESTMENTS CO.</div>
+
+</div>

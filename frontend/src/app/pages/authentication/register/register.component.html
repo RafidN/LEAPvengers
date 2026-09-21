@@ -1,0 +1,43 @@
+<!-- register.component.html -->
+<div class="login-container register-container">
+
+  <h1>Join S.H.I.E.L.D.</h1>
+  <p>Create an account to manage your digital portfolio.</p>
+
+  <form (ngSubmit)="onSubmit($event)">
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="successMessage" class="success-message">
+      {{ successMessage }}
+    </div>
+
+    <div class="form-row">
+      <input type="text" name="firstName" [(ngModel)]="firstName" placeholder="First Name" required [disabled]="isLoading" />
+      <input type="text" name="lastName" [(ngModel)]="lastName" placeholder="Last Name" required [disabled]="isLoading" />
+    </div>
+
+    <input type="email" name="email" [(ngModel)]="email" placeholder="Email Address" required [disabled]="isLoading" />
+    <input type="text" name="username" [(ngModel)]="username" placeholder="Username" required [disabled]="isLoading" />
+    <input type="password" name="password" [(ngModel)]="password" (ngModelChange)="onPasswordChange()" placeholder="Password" required [disabled]="isLoading" />
+    <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" (ngModelChange)="onPasswordChange()" placeholder="Confirm Password" required [disabled]="isLoading" />
+
+    <div class="actions">
+      <label><input type="checkbox" name="agreeToTerms" [(ngModel)]="agreeToTerms" [disabled]="isLoading" /> I agree to Terms</label>
+    </div>
+
+    <button type="submit" class="primary" [disabled]="isLoading">
+      {{ isLoading ? 'Creating Account...' : 'Create Account' }}
+    </button>
+    <p>OR CONTINUE WITH</p>
+    <button type="button" class="secondary" [disabled]="isLoading">Continue with Google</button>
+
+    <div class="signup">
+      Already have an account? <a routerLink="/sign-in">Sign in</a>
+    </div>
+  </form>
+  <div class="footer">PROTECTED BY FIDELITY INVESTMENTS CO.</div>
+
+
+</div>
