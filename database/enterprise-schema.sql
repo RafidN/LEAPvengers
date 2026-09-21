@@ -51,7 +51,7 @@ CREATE TABLE users (
 CREATE INDEX users_username_idx ON users (username);
 -- Index for finding all users of a client
 CREATE INDEX users_client_id_idx ON users (client_id);
-CREATE INDEX users_account_id_idx ON users (client_id);
+CREATE INDEX users_account_id_idx ON users (account_id);
 -- Holdings represent the quantity of each instrument held in an account at a specific point in time. This table helps track the portfolio composition of each account.
 CREATE TABLE holdings (
     holding_id     SERIAL PRIMARY KEY,
