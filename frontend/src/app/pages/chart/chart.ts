@@ -19,6 +19,7 @@ export class Chart {
       tension: 0.4,
     },]
   };
+  
 
   public lineChartOptions: ChartConfiguration<'line'>['options'] = {
     responsive: true,

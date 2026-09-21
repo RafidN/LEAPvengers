@@ -1,12 +1,13 @@
 import { Component, computed, signal } from '@angular/core';
 import {Chart } from '../chart/chart';
+import { HlmNavigationMenuImports } from '@spartan-ng/helm/navigation-menu';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.css',
-  imports: [Chart],
+  imports: [Chart, HlmNavigationMenuImports],
 })
 export class LandingComponent {
   private readonly currencyFormatter = new Intl.NumberFormat('en-US', {

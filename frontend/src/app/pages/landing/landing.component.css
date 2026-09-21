@@ -71,14 +71,14 @@ h1 {
   gap: clamp(0.9rem, 2vw, 1.4rem);
 }
 .metric-card {
-  background: rgba(0
-  , 255, 255, 0.85);
+  background: rgba(255
+  , 255, 255, 255);
   border: 1px solid var(--line-soft);
   border-radius: 16px;
   padding: 1.15rem 1.15rem 1.2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 10rem;
   box-shadow: var(--card-shadow);
-  min-height: 164px;
+  min-height: 50px;
   backdrop-filter: blur(2px);
 }
 
