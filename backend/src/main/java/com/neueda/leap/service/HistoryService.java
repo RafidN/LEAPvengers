@@ -18,16 +18,16 @@ import java.util.List;
 @Service
 public class HistoryService {
 
-    private final OrderHistoryRepository orderHistoryRepository;
-    private final CashTransactionHistoryRepository cashTransactionHistoryRepository;
-    private final PriceHistoryRepository priceHistoryRepository;
-    private final PortfolioHistoryRepository portfolioHistoryRepository;
+    private final OrderRepository orderHistoryRepository;
+    private final CashTransactionRepository cashTransactionHistoryRepository;
+    private final PriceQuotesRepository priceHistoryRepository;
+    private final PortfolioRepository portfolioHistoryRepository;
     private final UserRepository userRepository;
 
-    public HistoryService(OrderHistoryRepository orderHistoryRepository,
-                         CashTransactionHistoryRepository cashTransactionHistoryRepository,
-                         PriceHistoryRepository priceHistoryRepository,
-                         PortfolioHistoryRepository portfolioHistoryRepository,
+    public HistoryService(OrderRepository orderHistoryRepository,
+                         CashTransactionRepository cashTransactionHistoryRepository,
+                         PriceQuotesRepository priceHistoryRepository,
+                         PortfolioRepository portfolioHistoryRepository,
                          UserRepository userRepository) {
         this.orderHistoryRepository = orderHistoryRepository;
         this.cashTransactionHistoryRepository = cashTransactionHistoryRepository;

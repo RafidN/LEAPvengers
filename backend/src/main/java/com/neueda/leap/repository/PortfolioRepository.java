@@ -13,7 +13,7 @@ import java.util.List;
  * User-specific: only returns holdings for authenticated user's accounts
  * Custom @Query methods return DTOs instead of managed entities
  */
-public interface PortfolioHistoryRepository extends JpaRepository<Holdings, Integer> {
+public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.PortfolioHistoryResult(

@@ -6,8 +6,8 @@ import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.PriceQuoteResult;
 import com.neueda.leap.model.dto.TickerSearchRequest;
 import com.neueda.leap.model.dto.TickerSearchResult;
-import com.neueda.leap.repository.PriceQuoteRepository;
-import com.neueda.leap.repository.TickerRepository;
+import com.neueda.leap.repository.InstrumentsRepository;
+import com.neueda.leap.repository.HoldingsRepository;
 import com.neueda.leap.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +20,9 @@ import java.util.List;
 @Service
 public class TickerSearchService {
 
-    private final TickerRepository tickerRepository;
+    private final HoldingsRepository tickerRepository;
     private final UserRepository userRepository;
-    private final PriceQuoteRepository priceQuoteRepository;
+    private final InstrumentsRepository priceQuoteRepository;
 
     /**
      * Constructor for TickerSearchService
@@ -31,8 +31,8 @@ public class TickerSearchService {
      * @param userRepository Repository for user data
      * @param priceQuoteRepository Repository for public price quote data
      */
-    public TickerSearchService(TickerRepository tickerRepository, UserRepository userRepository,
-                               PriceQuoteRepository priceQuoteRepository) {
+    public TickerSearchService(HoldingsRepository tickerRepository, UserRepository userRepository,
+                               InstrumentsRepository priceQuoteRepository) {
         this.tickerRepository = tickerRepository;
         this.userRepository = userRepository;
         this.priceQuoteRepository = priceQuoteRepository;

@@ -5,8 +5,6 @@ import com.neueda.leap.model.dto.PriceHistoryResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.time.LocalDateTime;
 
@@ -15,8 +13,7 @@ import java.time.LocalDateTime;
  * Public data: no authentication required - anyone can view historical prices
  * Custom @Query methods return DTOs instead of managed entities
  */
-@Repository
-public interface PriceHistoryRepository extends JpaRepository<PriceQuotes, Integer> {
+public interface PriceQuotesRepository extends JpaRepository<PriceQuotes, Integer> {
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.PriceHistoryResult(

@@ -13,7 +13,7 @@ import java.util.List;
  * User-specific: only returns orders for authenticated user's accounts
  * Custom @Query methods return DTOs instead of managed entities
  */
-public interface OrderHistoryRepository extends JpaRepository<Orders, Integer> {
+public interface OrderRepository extends JpaRepository<Orders, Integer> {
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.OrderHistoryResult(

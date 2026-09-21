@@ -13,7 +13,7 @@ import java.util.List;
  * User-specific: only returns transactions for authenticated user's accounts
  * Custom @Query methods return DTOs instead of managed entities
  */
-public interface CashTransactionHistoryRepository extends JpaRepository<CashTransactions, Integer> {
+public interface CashTransactionRepository extends JpaRepository<CashTransactions, Integer> {
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.CashTransactionResult(

@@ -4,16 +4,13 @@ import com.neueda.leap.model.dto.TickerSearchResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
 /**
  * Repository with parameterized query for ticker search
  * All parameters are bound safely - prevents SQL injection
  */
-@Repository
-public interface TickerRepository extends JpaRepository<com.neueda.leap.model.Holdings, Integer> {
+public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.Holdings, Integer> {
 
     /**
      * Search holdings by ticker with client isolation

@@ -5,8 +5,6 @@ import com.neueda.leap.model.dto.PriceQuoteResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
 /**
@@ -15,8 +13,7 @@ import java.util.List;
  * No authentication required - this is public data
  * Custom @Query methods return DTOs instead of managed entities
  */
-@Repository
-public interface PriceQuoteRepository extends JpaRepository<Instruments, Integer> {
+public interface InstrumentsRepository extends JpaRepository<Instruments, Integer> {
 
     /**
      * Search for ticker price quotes by ticker symbol
