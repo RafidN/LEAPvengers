@@ -1,10 +1,11 @@
-DELETE FROM CLIENTS;
-DELETE FROM INSTRUMENTS;
-DELETE FROM ACCOUNTS;
-DELETE FROM USERS;
-DELETE FROM CASH_TRANSACTIONS;
-DELETE FROM ORDERS;
-DELETE FROM HOLDINGS;
+DELETE FROM price_quotes;
+DELETE FROM cash_transactions;
+DELETE FROM holdings;
+DELETE FROM orders;
+DELETE FROM users;
+DELETE FROM accounts;
+DELETE FROM instruments;
+DELETE FROM clients;
 
 -- Clients
 INSERT INTO clients (first_name, last_name, email) VALUES
@@ -13,7 +14,7 @@ INSERT INTO clients (first_name, last_name, email) VALUES
 ('Rafid', 'Nasery', 'rafid.nasery@lol.com'),
 ('Sam', 'Onukweme', 'sam.onukweme@lol.com'),
 ('Bryan', 'Nguyen', 'bryan.nguyen@lol.com'),
-('Mark', 'Bounheuangvilay', 'mark.boun@lol.com')
+('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com')
 ON CONFLICT (email) DO NOTHING;
 
 -- Instruments (Common stocks, ETFs, bonds, crypto, and FX)
