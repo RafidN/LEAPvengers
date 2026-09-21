@@ -1,11 +1,13 @@
-DELETE FROM price_quotes;
-DELETE FROM cash_transactions;
-DELETE FROM holdings;
-DELETE FROM orders;
-DELETE FROM users;
-DELETE FROM accounts;
-DELETE FROM instruments;
-DELETE FROM clients;
+TRUNCATE TABLE
+	price_quotes,
+	cash_transactions,
+	orders,
+	holdings,
+	users,
+	accounts,
+	clients,
+	instruments
+RESTART IDENTITY CASCADE;
 
 -- Clients
 INSERT INTO clients (first_name, last_name, email) VALUES
@@ -17,7 +19,7 @@ INSERT INTO clients (first_name, last_name, email) VALUES
 ('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com')
 ON CONFLICT (email) DO NOTHING;
 
--- Instruments (Common stocks, ETFs, bonds, crypto, and FX)
+-- Instruments for Yahoo Finance historical backfill.
 INSERT INTO instruments (ticker, instrument_name, asset_class) VALUES
 ('NFLX', 'Netflix, Inc.', 'Equity'),
 ('AMD', 'Advanced Micro Devices, Inc.', 'Equity'),
@@ -26,15 +28,15 @@ INSERT INTO instruments (ticker, instrument_name, asset_class) VALUES
 ('ASML', 'ASML Holding N.V.', 'Equity'),
 ('SHEL', 'Shell plc', 'Equity'),
 ('NVO', 'Novo Nordisk A/S', 'Equity'),
-('RELIANCE', 'Reliance Industries Limited', 'Equity'),
-('TCS', 'Tata Consultancy Services Limited', 'Equity'),
-('HDFCBANK', 'HDFC Bank Limited', 'Equity'),
-('BTCUSD', 'Bitcoin / US Dollar', 'Cash'),
-('ETHUSD', 'Ethereum / US Dollar', 'Cash'),
-('SOLUSD', 'Solana / US Dollar', 'Cash'),
-('EURUSD', 'Euro / US Dollar', 'Cash'),
-('GBPUSD', 'British Pound / US Dollar', 'Cash'),
-('USDJPY', 'US Dollar / Japanese Yen', 'Cash')
+('RELIANCE.NS', 'Reliance Industries Limited', 'Equity'),
+('TCS.NS', 'Tata Consultancy Services Limited', 'Equity'),
+('HDFCBANK.NS', 'HDFC Bank Limited', 'Equity'),
+('BTC-USD', 'Bitcoin / US Dollar', 'Cash'),
+('ETH-USD', 'Ethereum / US Dollar', 'Cash'),
+('SOL-USD', 'Solana / US Dollar', 'Cash'),
+('EURUSD=X', 'Euro / US Dollar', 'Cash'),
+('GBPUSD=X', 'British Pound / US Dollar', 'Cash'),
+('USDJPY=X', 'US Dollar / Japanese Yen', 'Cash')
 ON CONFLICT (ticker) DO NOTHING;
 
 -- Accounts
@@ -70,26 +72,4 @@ ON CONFLICT DO NOTHING;
 
 -- Orders and holdings intentionally omitted for this minimal single-user seed.
 
--- Price quotes for current instrument seed data
-INSERT INTO price_quotes (instrument_id, price, volume, quote_timestamp) VALUES
-((SELECT instrument_id FROM instruments WHERE ticker = 'NFLX'), 690.25, 28000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'AMD'), 198.40, 65000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'ORCL'), 182.60, 12000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'SAP'), 235.80, 4000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'ASML'), 1015.35, 2200000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'SHEL'), 73.45, 9000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'NVO'), 141.20, 5500000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'RELIANCE'), 3000.50, 10000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'TCS'), 4300.75, 4200000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'HDFCBANK'), 1785.30, 6000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'BTCUSD'), 98500.00, 25000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'ETHUSD'), 3650.00, 18000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'SOLUSD'), 210.50, 12000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'EURUSD'), 1.0875, 1500000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'GBPUSD'), 1.2740, 1200000000, NOW()),
-((SELECT instrument_id FROM instruments WHERE ticker = 'USDJPY'), 154.8500, 1400000000, NOW())
-ON CONFLICT (instrument_id, quote_timestamp) DO NOTHING;
-
--- Refresh materialized views
-REFRESH MATERIALIZED VIEW latest_price_quotes;
-REFRESH MATERIALIZED VIEW account_valuations;
+-- Price quotes are backfilled from Yahoo Finance during setup.
