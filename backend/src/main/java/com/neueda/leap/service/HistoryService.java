@@ -155,50 +155,50 @@ public class HistoryService {
      * @return List of price quotes from past year
      */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastYear(String ticker) 
+    public List<PriceHistoryResult> getPriceHistoryPastYear(String query) 
             throws InvalidInputException {
-        validateTicker(ticker);
-        return priceHistoryRepository.findPricesPastYear(ticker);
+        validateInstrumentQuery(query);
+        return priceHistoryRepository.findPricesPastYear(query);
     }
 
     /**
      * Get price history from past month
      */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastMonth(String ticker) 
+    public List<PriceHistoryResult> getPriceHistoryPastMonth(String query) 
             throws InvalidInputException {
-        validateTicker(ticker);
-        return priceHistoryRepository.findPricesPastMonth(ticker);
+        validateInstrumentQuery(query);
+        return priceHistoryRepository.findPricesPastMonth(query);
     }
 
     /**
      * Get price history from past 7 days
      */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPast7Days(String ticker) 
+    public List<PriceHistoryResult> getPriceHistoryPast7Days(String query) 
             throws InvalidInputException {
-        validateTicker(ticker);
-        return priceHistoryRepository.findPricesPast7Days(ticker);
+        validateInstrumentQuery(query);
+        return priceHistoryRepository.findPricesPast7Days(query);
     }
 
     /**
      * Get price history from past day
      */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastDay(String ticker) 
+    public List<PriceHistoryResult> getPriceHistoryPastDay(String query) 
             throws InvalidInputException {
-        validateTicker(ticker);
-        return priceHistoryRepository.findPricesPastDay(ticker);
+        validateInstrumentQuery(query);
+        return priceHistoryRepository.findPricesPastDay(query);
     }
 
     /**
      * Get price history from today only
      */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryToday(String ticker) 
+    public List<PriceHistoryResult> getPriceHistoryToday(String query) 
             throws InvalidInputException {
-        validateTicker(ticker);
-        return priceHistoryRepository.findPricesToday(ticker);
+        validateInstrumentQuery(query);
+        return priceHistoryRepository.findPricesToday(query);
     }
 
     // ===== PORTFOLIO HISTORY METHODS =====
@@ -267,16 +267,16 @@ public class HistoryService {
     }
 
     /**
-     * Validate ticker input
+     * Validate instrument query input.
      */
-    private void validateTicker(String ticker) throws InvalidInputException {
-        if (ticker == null || ticker.trim().isEmpty()) {
-            throw new InvalidInputException("Ticker cannot be empty");
+    private void validateInstrumentQuery(String query) throws InvalidInputException {
+        if (query == null || query.trim().isEmpty()) {
+            throw new InvalidInputException("Search query cannot be empty");
         }
 
-        String trimmed = ticker.trim();
-        if (trimmed.length() >= 6) {
-            throw new InvalidInputException("Ticker too long");
+        String trimmed = query.trim();
+        if (trimmed.length() > 100) {
+            throw new InvalidInputException("Search query too long");
         }
     }
 }
