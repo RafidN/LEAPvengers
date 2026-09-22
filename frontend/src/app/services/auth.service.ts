@@ -20,7 +20,7 @@ interface AuthenticationResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8081/api/auth';
+  private apiUrl = '/api/auth';
 
   constructor(private http: HttpClient) {}
 
@@ -73,5 +73,13 @@ export class AuthService {
 
   getUsername(): string | null {
     return localStorage.getItem('username');
+  }
+
+  forgotPassword(username: string, email: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/forgot-password`, { username, email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/reset-password`, { token, newPassword });
   }
 }
