@@ -191,7 +191,7 @@ Route to protected endpoint (user can access all their client's accounts)
 ### Files to Modify (3)
 1. `backend/src/main/java/com/neueda/leap/exception/GlobalExceptionHandler.java` — add auth exception handlers
 2. `backend/src/main/java/com/neueda/leap/model/Users.java` ✅ (DONE)
-3. `backend/Database/enterprise-schema.sql` ✅ (DONE)
+3. `database/enterprise-schema.sql` ✅ (DONE)
 
 ### Exception Classes to Create (4)
 - `exception/InvalidCredentialsException.java`
