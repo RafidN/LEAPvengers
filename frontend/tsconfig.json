@@ -13,7 +13,8 @@
     "module": "preserve",
     "paths": {
       "@spartan-ng/helm/navigation-menu": ["./libs/ui/navigation-menu/src/index.ts"],
-      "@spartan-ng/helm/utils": ["./libs/ui/utils/src/index.ts"]
+      "@spartan-ng/helm/utils": ["./libs/ui/utils/src/index.ts"],
+      "@spartan-ng/helm/table": ["./libs/ui/table/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

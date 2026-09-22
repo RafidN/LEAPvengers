@@ -1,15 +1,20 @@
 <main class="landing">
   <header class="heading">
+    <nav hlmNavigationMenu>
+      <ul hlmNavigationMenuList>
+        <li hlmNavigationMenuItem>
+          <button hlmNavigationMenuTrigger type="button"> Dashboard </button>
+          <hlm-navigation-menu-content>
+            <a hlmNavigationMenuLink href="#">Dashboard</a>
+            <a hlmNavigationMenuLink href="#">Portfolio</a>
+            <a hlmNavigationMenuLink href="#">Settings</a>
+          </hlm-navigation-menu-content>
+          </li>
+      </ul>
+    </nav>
     <p class="eyebrow">Overview</p>
     <h1>Portfolio Dashboard</h1>
   </header>
-<nav hlmNavigationMenu>
-  <ul hlmNavigationMenuList>
-    <li hlmNavigationMenuItem>
-      <button type="button"> Home </button>
-    </li>
-  </ul>
-</nav>
 
   <section class="top-cards" aria-label="Account highlights">
     <article class="metric-card" aria-label="Balance card">
@@ -62,41 +67,46 @@
 
   <section class="bottom-cards" aria-label="Portfolio details">
     <article class="metric-card" aria-label="Card Visuals">
-      <div class="card-heads">
+    
         <h2>Holdings</h2>
-          <table class="holdings-data" aria-label="All holdings">
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Name</th>
-                <th>Shares</th>
-                <th>Current Value</th>
-                <th>% Change</th>
+        <div hlmTableContainer>
+
+          <table hlmTable>
+            <caption hlmTableCaption>Portfolio Holdings</caption>
+            <thead hlmTableHeader>
+              <tr hlmTableRow>
+                <th hlmTableHead class="w-[100px]">Ticker</th>
+                <th hlmTableHead>Name</th>
+                <th hlmTableHead>Shares</th>
+                <th hlmTableHead>Current Value</th>
+                <th hlmTableHead>% Change</th>
               </tr>
-              <tr>
-                <td>AA</td>
-                <td>Alcoa Inc.</td>
-                <td>3</td>
-                <td>45.92</td>
-                <td>+3.95%</td>
+            </thead >
+            <tbody hlmTableBody>
+              <tr hlmTableRow>
+                <td hlmTableCell>AA</td>
+                <td hlmTableCell>Alcoa Inc.</td>
+                <td hlmTableCell>3</td>
+                <td hlmTableCell>45.92</td>
+                <td hlmTableCell>+3.95%</td>
               </tr>
-              <tr>
-                <td>C</td>
-                <td>Citigroup Inc.</td>
-                <td>15</td>
-                <td>35.92</td>
-                <td>+2.44%</td>
+              <tr hlmTableRow>
+                <td hlmTableCell>C</td>
+                <td hlmTableCell>Citigroup Inc.</td>
+                <td hlmTableCell>15</td>
+                <td hlmTableCell>35.92</td>
+                <td hlmTableCell>+2.44%</td>
               </tr>
-              <tr>
-                <td>BBBY</td>
-                <td>Bed Bath and Beyond Inc.</td>
-                <td>10</td>
-                <td>195.92</td>
-                <td>-1.39%</td>
+              <tr hlmTableRow>
+                <td hlmTableCell>BBBY</td>
+                <td hlmTableCell>Bed Bath and Beyond Inc.</td>
+                <td hlmTableCell>10</td>
+                <td hlmTableCell>195.92</td>
+                <td hlmTableCell>-1.39%</td>
               </tr>
-            </thead>
+            </tbody>
           </table>
-      </div>
+        </div>
     </article>
     <article class="metric-card" aria-label="Card Visuals">
       <div class="card-heads">
