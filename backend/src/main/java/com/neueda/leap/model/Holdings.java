@@ -4,28 +4,40 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * Entity representing holdings in the system.
+ * Maps to the "holdings" table in the database.
+ */
 @Entity
 @Table(name = "holdings", uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "instrument_id"}))
 public class Holdings {
+    // Primary key for the holdings entity. GenerationType.IDENTITY works like serial in PostgreSQL.
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "holding_id")
     private Integer holdingId;
 
+    // Foreign key to the accounts table.
     @Column(name = "account_id", nullable = false)
     private Integer accountId;
 
+    // Foreign key to the instruments table.
     @Column(name = "instrument_id", nullable = false)
     private Integer instrumentId;
 
+    // Many-to-one relationship to the accounts entity.
+    // Many instruments can belong to one account.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false, insertable = false, updatable = false)
     private Accounts account;
 
+    // Many-to-one relationship to the instruments entity.
+    // Many holdings can refer to the same instrument.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "instrument_id", nullable = false, insertable = false, updatable = false)
     private Instruments instrument;
 
+    //Precision at 14 with scale of 4 for the quantity column. Precision means the total number of digits, and scale means the number of digits to the right of the decimal point.
     @Column(name = "quantity", nullable = false, precision = 14, scale = 4)
     private BigDecimal quantity;
 
@@ -33,9 +45,12 @@ public class Holdings {
     private LocalDate asOfDate;
 
     // Constructors
+    // Holdings left blank constructor for JPA. Required for entity instantiation.
+    // Parameterized constructors for convenience when creating new Holdings instances.
     public Holdings() {
     }
 
+    //This constructor refers to the holdings without specifying the holdingId, typically used when creating new holdings before they are persisted and assigned an ID.
     public Holdings(Integer accountId, Integer instrumentId, BigDecimal quantity, LocalDate asOfDate) {
         this.accountId = accountId;
         this.instrumentId = instrumentId;
@@ -43,6 +58,7 @@ public class Holdings {
         this.asOfDate = asOfDate;
     }
 
+    //This constructor includes the holdingId, typically used when the holding already exists in the database.
     public Holdings(Integer holdingId, Integer accountId, Integer instrumentId, 
                     BigDecimal quantity, LocalDate asOfDate) {
         this.holdingId = holdingId;

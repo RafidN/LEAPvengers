@@ -26,6 +26,17 @@ function Write-Warning-Custom {
     Write-Host $message -ForegroundColor Yellow
 }
 
+function Get-PythonLauncher {
+    foreach ($candidate in @("python", "py")) {
+        $command = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($command) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 function Wait-ForHttpEndpoint {
     param(
         [Parameter(Mandatory = $true)][string]$url,
@@ -64,6 +75,16 @@ $dbSchemaFile = "$scriptPath\database\enterprise-schema.sql"
 $dbSeedFile = "$scriptPath\database\seed.sql"
 $backendDir = "$scriptPath\backend"
 $frontendDir = "$scriptPath\frontend"
+$yahooBackfillScript = "$scriptPath\scripts\yahoo_backfill.py"
+$liveQuoteGeneratorScript = "$scriptPath\scripts\live_quote_generator.py"
+$pythonRequirementsFile = "$scriptPath\scripts\requirements.txt"
+$historicalInterval = "auto"
+$liveQuoteIntervalSeconds = 15
+$historicalStartDate = (Get-Date).AddDays(-365).ToString("yyyy-MM-dd")
+$historicalEndDate = (Get-Date).AddDays(1).ToString("yyyy-MM-dd")
+
+$pythonLauncher = Get-PythonLauncher
+$pythonLauncherArgs = if ($pythonLauncher -eq "py") { @("-3") } else { @() }
 
 Write-Info "================================"
 Write-Info "LEAPvengers Development Setup"
@@ -175,8 +196,82 @@ try {
 }
 Write-Info ""
 
-# Step 5: Build Backend with Maven
-Write-Info "Step 5: Building backend with Maven (mvn clean install)..."
+# Step 5: Install Python Market Data Dependencies
+Write-Info "Step 5: Installing Python market data dependencies..."
+if (-not $pythonLauncher) {
+    Write-Error-Custom "ERROR - Python was not found in PATH"
+    exit 1
+}
+
+if (-not (Test-Path $pythonRequirementsFile)) {
+    Write-Error-Custom "ERROR - Python requirements file not found: $pythonRequirementsFile"
+    exit 1
+}
+
+try {
+    & $pythonLauncher @pythonLauncherArgs -m pip install -q -r $pythonRequirementsFile
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "OK - Python market data dependencies installed"
+    } else {
+        Write-Error-Custom "ERROR - Failed to install Python market data dependencies"
+        exit 1
+    }
+} catch {
+    Write-Error-Custom "ERROR - Python dependency installation failed: $_"
+    exit 1
+}
+Write-Info ""
+
+# Step 6: Backfill Historical Market Data
+Write-Info "Step 6: Backfilling Yahoo Finance historical prices..."
+if (-not (Test-Path $yahooBackfillScript)) {
+    Write-Error-Custom "ERROR - Yahoo backfill script not found: $yahooBackfillScript"
+    exit 1
+}
+
+try {
+    & $pythonLauncher @pythonLauncherArgs $yahooBackfillScript --host $pgHost --port $pgPort --database $dbName --user $pgUser --password $pgPassword --start-date $historicalStartDate --end-date $historicalEndDate --interval $historicalInterval
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "OK - Historical market data backfill completed"
+    } else {
+        Write-Error-Custom "ERROR - Historical market data backfill failed"
+        exit 1
+    }
+} catch {
+    Write-Error-Custom "ERROR - Historical market data backfill failed: $_"
+    exit 1
+}
+Write-Info ""
+
+# Step 7: Start Live Quote Generator
+Write-Info "Step 7: Starting live quote generator..."
+if (-not (Test-Path $liveQuoteGeneratorScript)) {
+    Write-Error-Custom "ERROR - Live quote generator script not found: $liveQuoteGeneratorScript"
+    exit 1
+}
+
+try {
+    $generatorCommand = if ($pythonLauncher -eq "py") {
+        "cd '$scriptPath'; py -3 '$liveQuoteGeneratorScript' --host $pgHost --port $pgPort --database $dbName --user $pgUser --password '$pgPassword' --interval-seconds $liveQuoteIntervalSeconds --iterations 0"
+    } else {
+        "cd '$scriptPath'; python '$liveQuoteGeneratorScript' --host $pgHost --port $pgPort --database $dbName --user $pgUser --password '$pgPassword' --interval-seconds $liveQuoteIntervalSeconds --iterations 0"
+    }
+
+    $generatorProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", $generatorCommand -PassThru
+    $generatorPID = $generatorProcess.Id
+
+    Write-Success "OK - Live quote generator started (PID: $generatorPID)"
+    Write-Info "  The live quote generator will append simulated updates every 15 seconds"
+} catch {
+    Write-Error-Custom "ERROR - Failed to start live quote generator: $_"
+    exit 1
+}
+Write-Info ""
+
+# Step 8: Build Backend with Maven
+Write-Info "Step 8: Building backend with Maven (mvn clean install)..."
 if (-not (Test-Path $backendDir)) {
     Write-Error-Custom "ERROR - Backend directory not found: $backendDir"
     exit 1
@@ -209,8 +304,8 @@ try {
 }
 Write-Info ""
 
-# Step 6: Install Frontend Dependencies
-Write-Info "Step 6: Installing Angular frontend dependencies..."
+# Step 9: Install Frontend Dependencies
+Write-Info "Step 9: Installing Angular frontend dependencies..."
 if (-not (Test-Path $frontendDir)) {
     Write-Error-Custom "ERROR - Frontend directory not found: $frontendDir"
     exit 1
@@ -243,8 +338,8 @@ try {
 }
 Write-Info ""
 
-# Step 7: Start Services
-Write-Info "Step 7: Starting services..."
+# Step 10: Start Services
+Write-Info "Step 10: Starting services..."
 Write-Info ""
 
 # Start Backend
@@ -288,7 +383,7 @@ try {
 }
 
 Write-Info ""
-Write-Info "Step 8: Opening application URLs in your default browser..."
+Write-Info "Step 11: Opening application URLs in your default browser..."
 try {
     Write-Info "Waiting for backend readiness..."
     $backendReady = Wait-ForHttpEndpoint -url "http://localhost:8081/api/swagger-ui/index.html" -serviceName "Backend Swagger UI" -timeoutSeconds 180
@@ -336,7 +431,17 @@ Write-Info "    Host: $pgHost"
 Write-Info "    Port: $pgPort"
 Write-Info "    Database: $dbName"
 Write-Info ""
+Write-Info "  Historical Market Data:"
+Write-Info "    Source: Yahoo Finance"
+Write-Info "    Backfill Range: $historicalStartDate to $historicalEndDate"
+Write-Info "    Interval: $historicalInterval (auto-selects the finest supported Yahoo interval for the full range)"
+Write-Info ""
+Write-Info "  Live Quote Generator:"
+Write-Info "    Interval: $liveQuoteIntervalSeconds seconds"
+Write-Info "    PID: $generatorPID"
+Write-Info ""
 Write-Warning-Custom "To stop the services, close the terminal windows or run:"
+Write-Warning-Custom "  taskkill /PID $generatorPID /F  (to stop live quote generator)"
 Write-Warning-Custom "  taskkill /PID $backendPID /F  (to stop backend)"
 Write-Warning-Custom "  taskkill /PID $frontendPID /F  (to stop frontend)"
 Write-Info ""
