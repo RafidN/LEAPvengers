@@ -1,32 +1,31 @@
 <main class="landing">
   <header class="heading">
-    <nav hlmNavigationMenu>
-      <ul hlmNavigationMenuList>
-        <li hlmNavigationMenuItem>
-          <button hlmNavigationMenuTrigger type="button"> Dashboard </button>
-          <hlm-navigation-menu-content>
-            <a hlmNavigationMenuLink href="#">Dashboard</a>
-            <a hlmNavigationMenuLink href="#">Portfolio</a>
-            <a hlmNavigationMenuLink href="#">Settings</a>
-          </hlm-navigation-menu-content>
+    <div class="homeNav">
+      <h1>Dashboard</h1>
+      <nav hlmNavigationMenu>
+        <ul hlmNavigationMenuList>
+          <li hlmNavigationMenuItem>
+            <button hlmNavigationMenuTrigger> ☰ </button>
+            <hlm-navigation-menu-content *hlmNavigationMenuPortal>
+              <ul>
+                <!-- <li class="row-span-3"><a hlmNavigationMenuLink href="#">Dashboard</a></li> -->
+                <li class="row-span-3"><a hlmNavigationMenuLink href="#">Transactions</a></li>
+                <li class="row-span-3"><a hlmNavigationMenuLink href="#">Settings</a></li>
+              </ul>
+            </hlm-navigation-menu-content>
           </li>
-      </ul>
-    </nav>
-    <p class="eyebrow">Overview</p>
-    <h1>Portfolio Dashboard</h1>
+        </ul>
+      </nav>
+
+    </div>
   </header>
 
   <section class="top-cards" aria-label="Account highlights">
     <article class="metric-card" aria-label="Balance card">
       <div class="card-head">
         <h2>Balance</h2>
-        <button
-          type="button"
-          class="ghost-control"
-          (click)="toggleBalanceVisibility()"
-          [attr.aria-pressed]="balanceHidden()"
-          aria-label="Toggle balance visibility"
-        >
+        <button type="button" class="ghost-control" (click)="toggleBalanceVisibility()"
+          [attr.aria-pressed]="balanceHidden()" aria-label="Toggle balance visibility">
           {{ balanceHidden() ? 'Show' : 'Hide' }}
         </button>
       </div>
@@ -43,12 +42,7 @@
     <article class="metric-card" aria-label="Available cash card">
       <h2>Available Cash</h2>
       <p class="metric-value">{{ availableCashDisplay() }}</p>
-      <button
-        type="button"
-        class="add-cash"
-        (click)="onAddCash()"
-        [class.pressed]="addCashPressed()"
-      >
+      <button type="button" class="add-cash" (click)="onAddCash()" [class.pressed]="addCashPressed()">
         Add Cash
       </button>
     </article>
@@ -58,9 +52,9 @@
     <article class="metric-card" aria-label="Card Visuals">
       <div class="card-heads">
         <h2>Timeline</h2>
-        
-          <app-chart></app-chart>
-        
+
+        <app-chart></app-chart>
+
       </div>
     </article>
   </section>
@@ -68,45 +62,45 @@
   <section class="bottom-cards" aria-label="Portfolio details">
 
     <article class="metric-card" aria-label="Card Visuals">
-    
-        <h2>Holdings</h2>
-        <div hlmTableContainer>
-          <table hlmTable>
-            <caption hlmTableCaption>Portfolio Holdings</caption>
-            <thead hlmTableHeader>
-              <tr hlmTableRow>
-                <th hlmTableHead class="w-[100px]">Ticker</th>
-                <th hlmTableHead>Name</th>
-                <th hlmTableHead>Shares</th>
-                <th hlmTableHead>Current Value</th>
-                <th hlmTableHead>% Change</th>
-              </tr>
-            </thead >
-            <tbody hlmTableBody>
-              <tr hlmTableRow>
-                <td hlmTableCell>AA</td>
-                <td hlmTableCell>Alcoa Inc.</td>
-                <td hlmTableCell>3</td>
-                <td hlmTableCell>45.92</td>
-                <td hlmTableCell>+3.95%</td>
-              </tr>
-              <tr hlmTableRow>
-                <td hlmTableCell>C</td>
-                <td hlmTableCell>Citigroup Inc.</td>
-                <td hlmTableCell>15</td>
-                <td hlmTableCell>35.92</td>
-                <td hlmTableCell>+2.44%</td>
-              </tr>
-              <tr hlmTableRow>
-                <td hlmTableCell>BBBY</td>
-                <td hlmTableCell>Bed Bath and Beyond Inc.</td>
-                <td hlmTableCell>10</td>
-                <td hlmTableCell>195.92</td>
-                <td hlmTableCell>-1.39%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+
+      <h2>Holdings</h2>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <caption hlmTableCaption>Portfolio Holdings</caption>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead class="w-[100px]">Ticker</th>
+              <th hlmTableHead>Name</th>
+              <th hlmTableHead>Shares</th>
+              <th hlmTableHead>Current Value</th>
+              <th hlmTableHead>% Change</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            <tr hlmTableRow>
+              <td hlmTableCell>AA</td>
+              <td hlmTableCell>Alcoa Inc.</td>
+              <td hlmTableCell>3</td>
+              <td hlmTableCell>45.92</td>
+              <td hlmTableCell>+3.95%</td>
+            </tr>
+            <tr hlmTableRow>
+              <td hlmTableCell>C</td>
+              <td hlmTableCell>Citigroup Inc.</td>
+              <td hlmTableCell>15</td>
+              <td hlmTableCell>35.92</td>
+              <td hlmTableCell>+2.44%</td>
+            </tr>
+            <tr hlmTableRow>
+              <td hlmTableCell>BBBY</td>
+              <td hlmTableCell>Bed Bath and Beyond Inc.</td>
+              <td hlmTableCell>10</td>
+              <td hlmTableCell>195.92</td>
+              <td hlmTableCell>-1.39%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </article>
     <article class="metric-card" aria-label="Card Visuals">
       <div class="card-heads">
@@ -120,5 +114,5 @@
       </div>
     </article>
   </section>
-  
+
 </main>

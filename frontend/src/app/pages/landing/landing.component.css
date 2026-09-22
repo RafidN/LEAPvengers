@@ -54,6 +54,12 @@ h1 {
   font-weight: 530;
 }
 
+.homeNav {
+  margin-bottom: clamp(1.8rem, 3vw, 2.6rem);
+  display: flex;
+  justify-content: space-between;
+}
+
 .top-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
