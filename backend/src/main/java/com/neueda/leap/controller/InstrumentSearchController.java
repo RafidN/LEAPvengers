@@ -3,11 +3,11 @@ package com.neueda.leap.controller;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
+import com.neueda.leap.model.dto.InstrumentSearchRequest;
 import com.neueda.leap.model.dto.PriceQuoteResult;
-import com.neueda.leap.model.dto.TickerSearchRequest;
 import com.neueda.leap.model.dto.TickerSearchResult;
 import com.neueda.leap.security.JwtUtil;
-import com.neueda.leap.service.TickerSearchService;
+import com.neueda.leap.service.InstrumentSearchService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,43 +15,40 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * REST endpoint for ticker search
- * Requires JWT authentication via Authorization header
+ * REST endpoints for instrument search.
+ * Requires JWT authentication via Authorization header for holdings search.
  */
 @RestController
 @RequestMapping("/api/search")
-public class TickerSearchController {
+public class InstrumentSearchController {
 
-    private final TickerSearchService tickerSearchService;
+    private final InstrumentSearchService instrumentSearchService;
     private final JwtUtil jwtUtil;
     private static final String BEARER_PREFIX = "Bearer ";
 
-    public TickerSearchController(TickerSearchService tickerSearchService, JwtUtil jwtUtil) {
-        this.tickerSearchService = tickerSearchService;
+    public InstrumentSearchController(InstrumentSearchService instrumentSearchService, JwtUtil jwtUtil) {
+        this.instrumentSearchService = instrumentSearchService;
         this.jwtUtil = jwtUtil;
     }
 
     /**
-     * Search held tickers (user's portfolio holdings)
-     * 
-     * POST /api/search/held-tickers
+     * Search held instruments in the user's portfolio.
+     *
+     * POST /api/search/held-instruments
      * Authorization: Bearer {JWT_TOKEN}
      * Content-Type: application/json
-     * 
-     * Request body: { "ticker": "AAPL" }
+     *
+     * Request body: { "query": "AAPL" }
      * Response: [ { "holdingId": 1, "ticker": "AAPL", "quantity": 100, ... } ]
      */
-    @PostMapping("/held-tickers")
-    public ResponseEntity<?> searchHeldTickers(
+    @PostMapping({"/held-instruments", "/held-tickers"})
+    public ResponseEntity<?> searchHeldInstruments(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
 
         try {
-            // Extract userId from JWT token
             Integer userId = extractUserIdFromToken(authHeader);
-
-            // Search with parameterized query
-            List<TickerSearchResult> results = tickerSearchService.searchByTicker(userId, request);
+            List<TickerSearchResult> results = instrumentSearchService.searchHoldings(userId, request);
 
             return ResponseEntity.ok(results);
 
@@ -71,22 +68,21 @@ public class TickerSearchController {
     }
 
     /**
-     * Search ticker price quote (public market data)
-     * 
-     * POST /api/search/ticker-price-quote
+     * Search instrument price quotes using a ticker symbol or full instrument name.
+     *
+     * POST /api/search/instrument-price-quote
      * Content-Type: application/json
      * No authorization required
-     * 
-     * Request body: { "ticker": "AAPL" }
+     *
+     * Request body: { "query": "AAPL" }
      * Response: [ { "ticker": "AAPL", "currentPrice": 185.50, ... } ]
      */
-    @PostMapping("/ticker-price-quote")
-    public ResponseEntity<?> searchTickerPriceQuote(
-            @RequestBody TickerSearchRequest request) {
+    @PostMapping({"/instrument-price-quote", "/ticker-price-quote"})
+    public ResponseEntity<?> searchInstrumentPriceQuote(
+            @RequestBody InstrumentSearchRequest request) {
 
         try {
-            // No JWT validation needed - this is public market data
-            List<PriceQuoteResult> results = tickerSearchService.searchTickerPrice(request);
+            List<PriceQuoteResult> results = instrumentSearchService.searchInstrumentPrice(request);
             return ResponseEntity.ok(results);
 
         } catch (InvalidInputException e) {
@@ -99,11 +95,11 @@ public class TickerSearchController {
     }
 
     /**
-     * Extract userId from JWT token
-     * Validates token signature and expiration
+     * Extract userId from JWT token.
+     * Validates token signature and expiration.
      */
     private Integer extractUserIdFromToken(String authHeader) throws TokenValidationException {
-        
+
         if (authHeader == null || authHeader.isEmpty()) {
             throw new TokenValidationException("Missing Authorization header");
         }
@@ -119,8 +115,7 @@ public class TickerSearchController {
         }
 
         try {
-            Integer userId = jwtUtil.extractUserId(token);
-            return userId;
+            return jwtUtil.extractUserId(token);
         } catch (Exception e) {
             throw new TokenValidationException("Invalid token");
         }

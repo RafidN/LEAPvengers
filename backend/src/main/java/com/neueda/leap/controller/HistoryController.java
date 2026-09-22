@@ -238,14 +238,14 @@ public class HistoryController {
      * 
      * POST /api/history/prices/past-year
      * No authorization required
-     * Request body: { "ticker": "AAPL" }
+     * Request body: { "query": "AAPL" }
      * Response: [ { "ticker": "AAPL", "price": 150.00, ... } ]
      */
     @PostMapping("/prices/past-year")
     public ResponseEntity<?> getPriceHistoryPastYear(
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastYear(request.getTicker());
+            List<PriceHistoryResult> results = historyService.getPriceHistoryPastYear(request.getQuery());
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -258,9 +258,9 @@ public class HistoryController {
 
     @PostMapping("/prices/past-month")
     public ResponseEntity<?> getPriceHistoryPastMonth(
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastMonth(request.getTicker());
+            List<PriceHistoryResult> results = historyService.getPriceHistoryPastMonth(request.getQuery());
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -273,9 +273,9 @@ public class HistoryController {
 
     @PostMapping("/prices/past-7-days")
     public ResponseEntity<?> getPriceHistoryPast7Days(
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPast7Days(request.getTicker());
+            List<PriceHistoryResult> results = historyService.getPriceHistoryPast7Days(request.getQuery());
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -288,9 +288,9 @@ public class HistoryController {
 
     @PostMapping("/prices/past-day")
     public ResponseEntity<?> getPriceHistoryPastDay(
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastDay(request.getTicker());
+            List<PriceHistoryResult> results = historyService.getPriceHistoryPastDay(request.getQuery());
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -303,9 +303,9 @@ public class HistoryController {
 
     @PostMapping("/prices/today")
     public ResponseEntity<?> getPriceHistoryToday(
-            @RequestBody TickerSearchRequest request) {
+            @RequestBody InstrumentSearchRequest request) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryToday(request.getTicker());
+            List<PriceHistoryResult> results = historyService.getPriceHistoryToday(request.getQuery());
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

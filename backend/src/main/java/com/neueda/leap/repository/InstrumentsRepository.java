@@ -16,10 +16,10 @@ import java.util.List;
 public interface InstrumentsRepository extends JpaRepository<Instruments, Integer> {
 
     /**
-     * Search for ticker price quotes by ticker symbol
-     * Uses parameterized query to prevent SQL injection
+     * Search for price quotes by ticker symbol or instrument name.
+     * Uses parameterized query to prevent SQL injection.
      * 
-     * @param ticker The ticker symbol to search for (case-insensitive, partial match)
+     * @param query The user search term (case-insensitive, partial match)
      * @return List of matching price quotes with current market data
      */
     @Query("""
@@ -32,7 +32,8 @@ public interface InstrumentsRepository extends JpaRepository<Instruments, Intege
         )
         FROM Instruments i
         JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
-        WHERE UPPER(i.ticker) LIKE UPPER(CONCAT('%', :ticker, '%'))
+        WHERE UPPER(i.ticker) LIKE UPPER(CONCAT('%', :query, '%'))
+            OR UPPER(i.instrumentName) LIKE UPPER(CONCAT('%', :query, '%'))
     """)
-    List<PriceQuoteResult> searchTickerPrice(@Param("ticker") String ticker);
+    List<PriceQuoteResult> searchInstrumentPrice(@Param("query") String query);
 }

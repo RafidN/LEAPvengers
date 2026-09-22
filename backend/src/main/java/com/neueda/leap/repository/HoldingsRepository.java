@@ -13,14 +13,14 @@ import java.util.List;
 public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.Holdings, Integer> {
 
     /**
-     * Search holdings by ticker with client isolation
+     * Search holdings by ticker symbol or instrument name with client isolation.
      * 
      * @param clientId From JWT token - ensures user only sees their data
-     * @param ticker User input - parameterized to prevent SQL injection
+     * @param query User input - parameterized to prevent SQL injection
      * @return Matching holdings
      */
 
-    // Parameterized query to safely search holdings by ticker for a specific client. Written in JPQL to leverage JPA's query capabilities and prevent SQL injection.
+    // Parameterized query to safely search holdings by ticker symbol or instrument name for a specific client.
     @Query("""
         SELECT new com.neueda.leap.model.dto.TickerSearchResult(
             h.holdingId,
@@ -33,10 +33,13 @@ public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.
         JOIN h.instrument i
         JOIN h.account a
         WHERE a.clientId = :clientId
-            AND UPPER(i.ticker) LIKE UPPER(CONCAT('%', :ticker, '%'))
+            AND (
+                UPPER(i.ticker) LIKE UPPER(CONCAT('%', :query, '%'))
+                OR UPPER(i.instrumentName) LIKE UPPER(CONCAT('%', :query, '%'))
+            )
     """)
-    List<TickerSearchResult> searchByTicker(
+    List<TickerSearchResult> searchByInstrumentQuery(
         @Param("clientId") Integer clientId,
-        @Param("ticker") String ticker
+        @Param("query") String query
     );
 }
