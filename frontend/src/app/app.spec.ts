@@ -1,30 +1,28 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { App } from './app';
+import { AppComponent } from './app.component';
 import { routes } from './app.routes';
 
-describe('App', () => {
+describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App],
+      imports: [AppComponent],
       providers: [provideRouter(routes)],
     })
       .compileComponents();
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
 
-  it('should render landing cards', async () => {
-    const fixture = TestBed.createComponent(App);
+  it('should render router outlet', async () => {
+    const fixture = TestBed.createComponent(AppComponent);
     await fixture.whenStable();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('Balance');
-    expect(compiled.textContent).toContain("Today's P/L");
-    expect(compiled.textContent).toContain('Available Cash');
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 });

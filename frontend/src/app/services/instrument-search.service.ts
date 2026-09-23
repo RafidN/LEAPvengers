@@ -2,9 +2,10 @@
  * Service for instrument search requests.
  */
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 export interface InstrumentSearchRequest {
   query: string;
@@ -33,22 +34,16 @@ export class InstrumentSearchService {
   private readonly HELD_INSTRUMENTS_URL = '/api/search/held-instruments';
   private readonly INSTRUMENT_PRICE_QUOTE_URL = '/api/search/instrument-price-quote';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
   searchHeldInstruments(query: string): Observable<TickerSearchResult[]> {
-    const token = localStorage.getItem('jwtToken');
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
-
     const request: InstrumentSearchRequest = { query };
 
-    return this.http.post<TickerSearchResult[]>(this.HELD_INSTRUMENTS_URL, request, { headers })
+    return this.http.post<TickerSearchResult[]>(this.HELD_INSTRUMENTS_URL, request)
       .pipe(
         catchError(error => {
           if (error.status === 401) {
-            localStorage.removeItem('jwtToken');
+            this.authService.logout();
           }
 
           return throwError(() => error);
@@ -57,13 +52,9 @@ export class InstrumentSearchService {
   }
 
   searchInstrumentPriceQuote(query: string): Observable<PriceQuoteResult[]> {
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-
     const request: InstrumentSearchRequest = { query };
 
-    return this.http.post<PriceQuoteResult[]>(this.INSTRUMENT_PRICE_QUOTE_URL, request, { headers })
+    return this.http.post<PriceQuoteResult[]>(this.INSTRUMENT_PRICE_QUOTE_URL, request)
       .pipe(
         catchError(error => throwError(() => error))
       );
