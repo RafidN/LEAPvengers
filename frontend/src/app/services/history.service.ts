@@ -4,9 +4,10 @@
  * Supports time periods: past year, past month, past 7 days, past day, and today
  */
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 // ===== REQUEST INTERFACE =====
 export interface TimePeriodRequest {
@@ -66,16 +67,7 @@ export class HistoryService {
 
   private readonly BASE_URL = '/api/history';
 
-  constructor(private http: HttpClient) { }
-
-  // ===== HELPER: GET JWT TOKEN =====
-  private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('jwtToken');
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
-  }
+  constructor(private http: HttpClient, private authService: AuthService) { }
 
   // ===== ORDER HISTORY METHODS (AUTHENTICATED) =====
 
@@ -86,8 +78,7 @@ export class HistoryService {
   getOrderHistoryPastYear(): Observable<OrderHistoryResult[]> {
     return this.http.post<OrderHistoryResult[]>(
       `${this.BASE_URL}/orders/past-year`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -97,8 +88,7 @@ export class HistoryService {
   getOrderHistoryPastMonth(): Observable<OrderHistoryResult[]> {
     return this.http.post<OrderHistoryResult[]>(
       `${this.BASE_URL}/orders/past-month`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -108,8 +98,7 @@ export class HistoryService {
   getOrderHistoryPast7Days(): Observable<OrderHistoryResult[]> {
     return this.http.post<OrderHistoryResult[]>(
       `${this.BASE_URL}/orders/past-7-days`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -119,8 +108,7 @@ export class HistoryService {
   getOrderHistoryPastDay(): Observable<OrderHistoryResult[]> {
     return this.http.post<OrderHistoryResult[]>(
       `${this.BASE_URL}/orders/past-day`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -130,8 +118,7 @@ export class HistoryService {
   getOrderHistoryToday(): Observable<OrderHistoryResult[]> {
     return this.http.post<OrderHistoryResult[]>(
       `${this.BASE_URL}/orders/today`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -144,8 +131,7 @@ export class HistoryService {
   getCashHistoryPastYear(): Observable<CashTransactionResult[]> {
     return this.http.post<CashTransactionResult[]>(
       `${this.BASE_URL}/cash/past-year`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -155,8 +141,7 @@ export class HistoryService {
   getCashHistoryPastMonth(): Observable<CashTransactionResult[]> {
     return this.http.post<CashTransactionResult[]>(
       `${this.BASE_URL}/cash/past-month`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -166,8 +151,7 @@ export class HistoryService {
   getCashHistoryPast7Days(): Observable<CashTransactionResult[]> {
     return this.http.post<CashTransactionResult[]>(
       `${this.BASE_URL}/cash/past-7-days`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -177,8 +161,7 @@ export class HistoryService {
   getCashHistoryPastDay(): Observable<CashTransactionResult[]> {
     return this.http.post<CashTransactionResult[]>(
       `${this.BASE_URL}/cash/past-day`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -188,8 +171,7 @@ export class HistoryService {
   getCashHistoryToday(): Observable<CashTransactionResult[]> {
     return this.http.post<CashTransactionResult[]>(
       `${this.BASE_URL}/cash/today`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -257,8 +239,7 @@ export class HistoryService {
   getPortfolioHistoryPastYear(): Observable<PortfolioHistoryResult[]> {
     return this.http.post<PortfolioHistoryResult[]>(
       `${this.BASE_URL}/portfolio/past-year`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -268,8 +249,7 @@ export class HistoryService {
   getPortfolioHistoryPastMonth(): Observable<PortfolioHistoryResult[]> {
     return this.http.post<PortfolioHistoryResult[]>(
       `${this.BASE_URL}/portfolio/past-month`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -279,8 +259,7 @@ export class HistoryService {
   getPortfolioHistoryPast7Days(): Observable<PortfolioHistoryResult[]> {
     return this.http.post<PortfolioHistoryResult[]>(
       `${this.BASE_URL}/portfolio/past-7-days`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -290,8 +269,7 @@ export class HistoryService {
   getPortfolioHistoryPastDay(): Observable<PortfolioHistoryResult[]> {
     return this.http.post<PortfolioHistoryResult[]>(
       `${this.BASE_URL}/portfolio/past-day`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -301,8 +279,7 @@ export class HistoryService {
   getPortfolioHistoryToday(): Observable<PortfolioHistoryResult[]> {
     return this.http.post<PortfolioHistoryResult[]>(
       `${this.BASE_URL}/portfolio/today`,
-      {},
-      { headers: this.getAuthHeaders() }
+      {}
     ).pipe(catchError(error => this.handleError(error)));
   }
 
@@ -314,7 +291,7 @@ export class HistoryService {
    */
   private handleError(error: any) {
     if (error.status === 401) {
-      localStorage.removeItem('jwtToken');
+      this.authService.logout();
       // Could redirect to login here
     }
     return throwError(() => error);
