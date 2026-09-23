@@ -19,7 +19,7 @@ import java.util.List;
  * Requires JWT authentication via Authorization header for holdings search.
  */
 @RestController
-@RequestMapping("/api/search")
+@RequestMapping("/search")
 public class InstrumentSearchController {
 
     private final InstrumentSearchService instrumentSearchService;
