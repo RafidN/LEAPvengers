@@ -17,12 +17,13 @@ CREATE TABLE clients (
     email                 TEXT NOT NULL UNIQUE
 );
 
--- Instruments are the financial products that can be traded, such as stocks, bonds, funds, and cash equivalents. This table will store their basic details.
+-- Instruments are the financial products that can be traded, such as stocks, bonds, funds, cash equivalents, FX pairs and crypto. This table will store their basic details.
 CREATE TABLE instruments (
     instrument_id  SERIAL PRIMARY KEY,
     ticker         TEXT NOT NULL UNIQUE,
     instrument_name           TEXT NOT NULL,
-    asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash'))
+    asset_class    TEXT NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Fund', 'Cash', 'FX', 'Crypto')),
+    market         TEXT NOT NULL CHECK (market IN ('US', 'UK', 'IN')) -- exchange/market the instrument is quoted on; lets Indian stocks be told apart from US/UK
 );
 -- Accounts represent the different trading accounts held by clients. Each account has a cash balance.
 CREATE TABLE accounts (
