@@ -20,23 +20,26 @@ INSERT INTO clients (first_name, last_name, email) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- Instruments for Yahoo Finance historical backfill.
-INSERT INTO instruments (ticker, instrument_name, asset_class) VALUES
-('NFLX', 'Netflix, Inc.', 'Equity'),
-('AMD', 'Advanced Micro Devices, Inc.', 'Equity'),
-('ORCL', 'Oracle Corporation', 'Equity'),
-('SAP', 'SAP SE', 'Equity'),
-('ASML', 'ASML Holding N.V.', 'Equity'),
-('SHEL', 'Shell plc', 'Equity'),
-('NVO', 'Novo Nordisk A/S', 'Equity'),
-('RELIANCE.NS', 'Reliance Industries Limited', 'Equity'),
-('TCS.NS', 'Tata Consultancy Services Limited', 'Equity'),
-('HDFCBANK.NS', 'HDFC Bank Limited', 'Equity'),
-('BTC-USD', 'Bitcoin / US Dollar', 'Cash'),
-('ETH-USD', 'Ethereum / US Dollar', 'Cash'),
-('SOL-USD', 'Solana / US Dollar', 'Cash'),
-('EURUSD=X', 'Euro / US Dollar', 'Cash'),
-('GBPUSD=X', 'British Pound / US Dollar', 'Cash'),
-('USDJPY=X', 'US Dollar / Japanese Yen', 'Cash')
+-- market reflects where the ticker is quoted/listed: US-listed names (including ADRs for SAP, ASML
+-- and NVO), Shell's UK primary listing, and NSE-listed (.NS) Indian equities. Crypto and FX pairs
+-- are USD-quoted and global, so they're recorded as US market (no better fit in the US/UK/IN set).
+INSERT INTO instruments (ticker, instrument_name, asset_class, market) VALUES
+('NFLX', 'Netflix, Inc.', 'Equity', 'US'),
+('AMD', 'Advanced Micro Devices, Inc.', 'Equity', 'US'),
+('ORCL', 'Oracle Corporation', 'Equity', 'US'),
+('SAP', 'SAP SE', 'Equity', 'US'),
+('ASML', 'ASML Holding N.V.', 'Equity', 'US'),
+('SHEL', 'Shell plc', 'Equity', 'UK'),
+('NVO', 'Novo Nordisk A/S', 'Equity', 'US'),
+('RELIANCE.NS', 'Reliance Industries Limited', 'Equity', 'IN'),
+('TCS.NS', 'Tata Consultancy Services Limited', 'Equity', 'IN'),
+('HDFCBANK.NS', 'HDFC Bank Limited', 'Equity', 'IN'),
+('BTC-USD', 'Bitcoin / US Dollar', 'Crypto', 'US'),
+('ETH-USD', 'Ethereum / US Dollar', 'Crypto', 'US'),
+('SOL-USD', 'Solana / US Dollar', 'Crypto', 'US'),
+('EURUSD=X', 'Euro / US Dollar', 'FX', 'US'),
+('GBPUSD=X', 'British Pound / US Dollar', 'FX', 'US'),
+('USDJPY=X', 'US Dollar / Japanese Yen', 'FX', 'US')
 ON CONFLICT (ticker) DO NOTHING;
 
 -- Accounts

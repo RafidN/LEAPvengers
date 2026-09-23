@@ -20,6 +20,9 @@ public class Instruments {
     @Column(name = "asset_class", nullable = false)
     private String assetClass;
 
+    @Column(name = "market", nullable = false)
+    private String market;
+
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Holdings> holdings;
 
@@ -33,17 +36,19 @@ public class Instruments {
     public Instruments() {
     }
 
-    public Instruments(String ticker, String instrumentName, String assetClass) {
+    public Instruments(String ticker, String instrumentName, String assetClass, String market) {
         this.ticker = ticker;
         this.instrumentName = instrumentName;
         this.assetClass = assetClass;
+        this.market = market;
     }
 
-    public Instruments(Integer instrumentId, String ticker, String instrumentName, String assetClass) {
+    public Instruments(Integer instrumentId, String ticker, String instrumentName, String assetClass, String market) {
         this.instrumentId = instrumentId;
         this.ticker = ticker;
         this.instrumentName = instrumentName;
         this.assetClass = assetClass;
+        this.market = market;
     }
 
     // Getters and Setters
@@ -77,6 +82,14 @@ public class Instruments {
 
     public void setAssetClass(String assetClass) {
         this.assetClass = assetClass;
+    }
+
+    public String getMarket() {
+        return market;
+    }
+
+    public void setMarket(String market) {
+        this.market = market;
     }
 
     public List<Holdings> getHoldings() {
