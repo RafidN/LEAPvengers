@@ -10,13 +10,14 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- Clients
-INSERT INTO clients (first_name, last_name, email) VALUES
-('Test', 'User', 'test@test.com'),
-('Paula', 'Agyeman', 'paula.agyeman@lol.com'),
-('Rafid', 'Nasery', 'rafid.nasery@lol.com'),
-('Sam', 'Onukweme', 'sam.onukweme@lol.com'),
-('Bryan', 'Nguyen', 'bryan.nguyen@lol.com'),
-('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com')
+-- Segments are spread across all three tiers so analyst reports have something to group by.
+INSERT INTO clients (first_name, last_name, email, client_segment) VALUES
+('Test', 'User', 'test@test.com', 'RETAIL'),
+('Paula', 'Agyeman', 'paula.agyeman@lol.com', 'PREMIER'),
+('Rafid', 'Nasery', 'rafid.nasery@lol.com', 'PRIVATE'),
+('Sam', 'Onukweme', 'sam.onukweme@lol.com', 'RETAIL'),
+('Bryan', 'Nguyen', 'bryan.nguyen@lol.com', 'PREMIER'),
+('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com', 'PRIVATE')
 ON CONFLICT (email) DO NOTHING;
 
 -- Instruments for Yahoo Finance historical backfill.
@@ -51,13 +52,16 @@ ON CONFLICT DO NOTHING;
 
 -- Users (authentication)
 -- Password hash for: Test123
-INSERT INTO users (client_id, username, password, is_active) VALUES
-((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
-((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), 'paula', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
-((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), 'rafid', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
-((SELECT client_id FROM clients WHERE email = 'sam.onukweme@lol.com'), 'sam', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
-((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), 'bryan', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true),
-((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), 'mark', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', true)
+-- Traders belong to a client. Ops and Analyst are internal staff, so their client_id is NULL.
+INSERT INTO users (client_id, username, password, role, is_active) VALUES
+((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), 'paula', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), 'rafid', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'sam.onukweme@lol.com'), 'sam', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), 'bryan', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), 'mark', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+(NULL, 'ops', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'OPS', true),
+(NULL, 'analyst', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'ANALYST', true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Cash Transactions (Deposits)

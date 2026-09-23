@@ -11,11 +11,12 @@ public class Users {
     @Column(name = "user_id")
     private Integer userId;
 
-    @Column(name = "client_id", nullable = false)
+    // NULL for internal (OPS/ANALYST) users, who don't belong to a client
+    @Column(name = "client_id")
     private Integer clientId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false, insertable = false, updatable = false)
+    @JoinColumn(name = "client_id", insertable = false, updatable = false)
     private Clients client;
 
     @Column(name = "username", nullable = false, unique = true)
@@ -23,6 +24,11 @@ public class Users {
 
     @Column(name = "password", nullable = false)
     private String password;
+
+    // Defaulted here as well as in the schema: Hibernate writes every column on insert, so a null
+    // field would send an explicit NULL and bypass the database default.
+    @Column(name = "role", nullable = false)
+    private String role = "TRADER";
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
@@ -96,6 +102,14 @@ public class Users {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public Boolean getIsActive() {
