@@ -84,6 +84,8 @@ CREATE INDEX orders_account_id_idx ON orders (account_id);
 CREATE INDEX orders_instrument_id_idx ON orders (instrument_id);
 -- Index for audit queries that filter/sort by submission time across all accounts
 CREATE INDEX orders_submitted_at_idx ON orders (submitted_at);
+-- Supports client segmentation queries that count recent filled orders per account.
+CREATE INDEX orders_account_status_submitted_at_idx ON orders (account_id, order_status, submitted_at DESC);
 
 -- Blocks duplicate submissions (e.g. accidental double-click/retry) by rejecting an identical
 -- order for the same account+instrument+type+quantity+price within the same second.
