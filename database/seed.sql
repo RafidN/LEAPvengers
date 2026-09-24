@@ -10,14 +10,13 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- Clients
--- Segments are spread across all three tiers so analyst reports have something to group by.
-INSERT INTO clients (first_name, last_name, email, client_segment) VALUES
-('Test', 'User', 'test@test.com', 'RETAIL'),
-('Paula', 'Agyeman', 'paula.agyeman@lol.com', 'PREMIER'),
-('Rafid', 'Nasery', 'rafid.nasery@lol.com', 'PRIVATE'),
-('Sam', 'Onukweme', 'sam.onukweme@lol.com', 'RETAIL'),
-('Bryan', 'Nguyen', 'bryan.nguyen@lol.com', 'PREMIER'),
-('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com', 'PRIVATE')
+INSERT INTO clients (first_name, last_name, email) VALUES
+('Test', 'User', 'test@test.com'),
+('Paula', 'Agyeman', 'paula.agyeman@lol.com'),
+('Rafid', 'Nasery', 'rafid.nasery@lol.com'),
+('Sam', 'Onukweme', 'sam.onukweme@lol.com'),
+('Bryan', 'Nguyen', 'bryan.nguyen@lol.com'),
+('Mark', 'Bounheuangvilay', 'mark.bounheuangvilay@lol.com')
 ON CONFLICT (email) DO NOTHING;
 
 -- Instruments for Yahoo Finance historical backfill.

@@ -20,11 +20,6 @@ public class Clients {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    // Defaulted here as well as in the schema: Hibernate writes every column on insert, so a null
-    // field would send an explicit NULL and bypass the database default.
-    @Column(name = "client_segment", nullable = false)
-    private String clientSegment = "RETAIL";
-
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Users> users;
 
@@ -79,14 +74,6 @@ public class Clients {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getClientSegment() {
-        return clientSegment;
-    }
-
-    public void setClientSegment(String clientSegment) {
-        this.clientSegment = clientSegment;
     }
 
     public List<Users> getUsers() {

@@ -14,9 +14,7 @@ CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
     first_name            TEXT NOT NULL,
     last_name             TEXT NOT NULL,
-    email                 TEXT NOT NULL UNIQUE,
-    -- Service tier for the client, used to group trading activity in analyst reports
-    client_segment        TEXT NOT NULL DEFAULT 'RETAIL' CHECK (client_segment IN ('RETAIL', 'PREMIER', 'PRIVATE'))
+    email                 TEXT NOT NULL UNIQUE
 );
 
 -- Instruments are the financial products that can be traded, such as stocks, bonds, funds, and cash equivalents. This table will store their basic details.
