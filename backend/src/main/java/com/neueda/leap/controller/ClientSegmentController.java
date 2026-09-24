@@ -17,7 +17,7 @@ import java.util.List;
  * REST endpoint for client segmentation queries.
  */
 @RestController
-@RequestMapping("/api/clients")
+@RequestMapping("/clients")
 public class ClientSegmentController {
 
     private final ClientSegmentService clientSegmentService;

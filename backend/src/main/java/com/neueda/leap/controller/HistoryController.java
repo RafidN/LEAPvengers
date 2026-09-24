@@ -18,7 +18,7 @@ import java.util.List;
  * Time periods: past year, past month, past 7 days, past day, today
  */
 @RestController
-@RequestMapping("/api/history")
+@RequestMapping("/history")
 public class HistoryController {
 
     private final HistoryService historyService;
