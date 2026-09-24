@@ -6,7 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-sign-in',
-  styleUrls: ['./sign-in.component.css'],
+  styleUrls: ['../auth.css', './sign-in.component.css'],
   templateUrl: './sign-in.component.html',
   imports: [RouterModule, FormsModule, CommonModule],
   standalone: true
@@ -33,14 +33,12 @@ export class SignInComponent {
     this.errorMessage = '';
     
     this.authService.login(this.username, this.password).subscribe({
-      next: (response) => {
+      next: () => {
         this.isLoading = false;
-        console.log('Login successful:', response);
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         this.isLoading = false;
-        console.error('Login failed:', error);
         this.errorMessage = error.error?.message || 'Login failed. Please check your credentials.';
       }
     });

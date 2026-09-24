@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from '../services/auth.service';
 import { HistoryService } from '../services/history.service';
+import { InstrumentSearchService } from '../services/instrument-search.service';
 
 describe('authInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -33,7 +34,7 @@ describe('authInterceptor', () => {
   it('attaches the bearer token to an outgoing request', () => {
     localStorage.setItem('authToken', 'test-token-123');
 
-    historyService.getOrderHistoryPastYear().subscribe();
+    historyService.getOrderHistory('past-year').subscribe();
 
     const req = httpMock.expectOne('/api/history/orders/past-year');
     expect(req.request.headers.get('Authorization')).toBe('Bearer test-token-123');
@@ -41,7 +42,7 @@ describe('authInterceptor', () => {
   });
 
   it('sends no Authorization header when signed out', () => {
-    historyService.getOrderHistoryPastYear().subscribe();
+    historyService.getOrderHistory('past-year').subscribe();
 
     const req = httpMock.expectOne('/api/history/orders/past-year');
     expect(req.request.headers.has('Authorization')).toBe(false);
@@ -63,7 +64,7 @@ describe('authInterceptor', () => {
       email: 'trader@example.com'
     });
 
-    historyService.getOrderHistoryPastYear().subscribe();
+    historyService.getOrderHistory('past-year').subscribe();
 
     const historyReq = httpMock.expectOne('/api/history/orders/past-year');
     expect(historyReq.request.headers.get('Authorization')).toBe('Bearer token-from-login');
@@ -74,10 +75,9 @@ describe('authInterceptor', () => {
   it('attaches the token to instrument search requests too', () => {
     localStorage.setItem('authToken', 'search-token');
 
-    TestBed.inject(HistoryService);
-    historyService.getPortfolioHistoryToday().subscribe();
+    TestBed.inject(InstrumentSearchService).searchHeldInstruments('AAPL').subscribe();
 
-    const req = httpMock.expectOne('/api/history/portfolio/today');
+    const req = httpMock.expectOne('/api/search/held-instruments');
     expect(req.request.headers.get('Authorization')).toBe('Bearer search-token');
     req.flush([]);
   });

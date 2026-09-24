@@ -1,5 +1,4 @@
-<!-- register.component.html -->
-<div class="login-container register-container">
+<div class="login-container">
 
   <h1>Join S.H.I.E.L.D.</h1>
   <p>Create an account to manage your digital portfolio.</p>
@@ -30,14 +29,12 @@
     <button type="submit" class="primary" [disabled]="isLoading">
       {{ isLoading ? 'Creating Account...' : 'Create Account' }}
     </button>
-    <p>OR CONTINUE WITH</p>
-    <button type="button" class="secondary" [disabled]="isLoading">Continue with Google</button>
 
     <div class="signup">
       Already have an account? <a routerLink="/sign-in">Sign in</a>
     </div>
   </form>
-  <div class="footer">PROTECTED BY FIDELITY INVESTMENTS CO.</div>
+  <div class="footer">PROTECTED BY THE LEAPVENGERS</div>
 
 
 </div>

@@ -4,7 +4,6 @@ import {ChartConfiguration} from 'chart.js';
 @Component({
   imports: [BaseChartDirective],
   selector: 'app-chart',
-  styleUrls: ['./chart.css'],
   templateUrl: './chart.html',
   standalone: true,
 })
