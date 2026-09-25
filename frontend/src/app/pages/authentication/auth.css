@@ -1,4 +1,4 @@
-/* forgot-password.component.css */
+/* Shared by sign-in, register and forgot-password. */
 :host {
   display: flex;
   justify-content: center;
@@ -6,17 +6,12 @@
   min-height: 100vh;
   width: 100%;
   padding: 20px 0;
-  background: linear-gradient(rgba(10, 35, 15, 0.8), rgba(10, 35, 15, 0.8)), url('C:/Users/Administrator/Desktop/LEAPvengers/frontend/src/app/imports/jason-leem-50bzI1F6urA-unsplash.jpg');
+  background: linear-gradient(rgba(10, 35, 15, 0.8), rgba(10, 35, 15, 0.8)), url('../../imports/jason-leem-50bzI1F6urA-unsplash.jpg');
   background-size: cover;
   background-attachment: fixed;
 }
 
-body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-}
-
-.forgot-password-container {
+.login-container {
   background-color: #0a230f;
   color: #888;
   padding: 35px;
@@ -26,7 +21,7 @@ body {
   text-align: center;
 }
 
-.forgot-password-container h1 {
+.login-container h1 {
   color: #fff;
 }
 
@@ -38,7 +33,6 @@ input {
   border-radius: 5px;
   background-color: #0d290d;
   color: #fff;
-  box-sizing: border-box;
 }
 
 input::placeholder {
@@ -52,7 +46,6 @@ input::placeholder {
 
 .form-row input {
   flex: 1;
-  margin: 10px 0;
 }
 
 .actions {
@@ -86,31 +79,40 @@ label {
   margin-top: 20px;
 }
 
-.error-message {
-  color: #ff6b6b;
+.error-message,
+.success-message {
   font-size: 0.85em;
   margin: 10px 0;
   padding: 10px;
-  background-color: rgba(255, 107, 107, 0.1);
   border-radius: 5px;
   text-align: center;
+}
+
+.error-message {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
 }
 
 .success-message {
   color: #37b87b;
-  font-size: 0.85em;
-  margin: 10px 0;
-  padding: 10px;
   background-color: rgba(55, 184, 123, 0.1);
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
   border-radius: 5px;
-  text-align: center;
+  cursor: pointer;
+  font-weight: bold;
 }
 
-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+button.primary {
+  background-color: #37b87b;
+  color: #000;
 }
 
+input:disabled,
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

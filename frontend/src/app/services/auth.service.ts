@@ -86,10 +86,6 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/forgot-password`, { username, email });
   }
 
-  resetPassword(token: string, newPassword: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/reset-password`, { token, newPassword });
-  }
-
   private storeSession(response: AuthenticationResponse): void {
     if (!this.isBrowser) {
       return;

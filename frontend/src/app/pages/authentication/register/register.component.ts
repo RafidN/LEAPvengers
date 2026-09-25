@@ -6,7 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-register',
-  styleUrls: ['./register.component.css'],
+  styleUrls: ['../auth.css'],
   templateUrl: './register.component.html',
   imports: [CommonModule, FormsModule, RouterModule],
   standalone: true
@@ -59,17 +59,15 @@ export class RegisterComponent {
     this.isLoading = true;
 
     this.authService.register(this.firstName, this.lastName, this.email, this.username, this.password).subscribe({
-      next: (response) => {
+      next: () => {
         this.isLoading = false;
         this.successMessage = 'Account created successfully! Redirecting to dashboard...';
-        console.log('Registration successful:', response);
         setTimeout(() => {
           this.router.navigate(['/dashboard']);
         }, 1500);
       },
       error: (error) => {
         this.isLoading = false;
-        console.error('Registration failed:', error);
         this.errorMessage = error.error?.message || 'Registration failed. Please try again.';
       }
     });

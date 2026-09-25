@@ -6,7 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
-  styleUrls: ['./forgot-password.css'],
+  styleUrls: ['../auth.css'],
   templateUrl: './forgot-password.html',
   imports: [CommonModule, FormsModule, RouterModule],
   standalone: true
@@ -47,17 +47,15 @@ export class ForgotPasswordComponent {
     this.isLoading = true;
 
     this.authService.forgotPassword(this.username, this.email).subscribe({
-      next: (response) => {
+      next: () => {
         this.isLoading = false;
         this.successMessage = 'Password reset link sent successfully! Please check your email.';
-        console.log('Forgot password request successful:', response);
         setTimeout(() => {
-          this.router.navigate(['/signin']);
+          this.router.navigate(['/sign-in']);
         }, 1500);
       },
       error: (error) => {
         this.isLoading = false;
-        console.error('Password reset failed:', error);
         this.errorMessage = error.error?.message || 'Password reset failed. Please try again.';
       }
     });
