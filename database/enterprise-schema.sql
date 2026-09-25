@@ -37,12 +37,14 @@ CREATE TABLE accounts (
 CREATE INDEX accounts_client_id_idx ON accounts (client_id);
 
 -- Users table for authentication, linked to clients
--- Each user (login) belongs to one client and can access all of that client's accounts
+-- A TRADER belongs to one client and can access all of that client's accounts.
+-- OPS and ANALYST users are internal staff, so they have no client_id.
 CREATE TABLE users (
     user_id               SERIAL PRIMARY KEY,
-    client_id             INTEGER NOT NULL REFERENCES clients(client_id),
+    client_id             INTEGER REFERENCES clients(client_id), -- NULL for internal (OPS/ANALYST) users
     username              TEXT NOT NULL UNIQUE,
     password              VARCHAR(255) NOT NULL,
+    role                  TEXT NOT NULL DEFAULT 'TRADER' CHECK (role IN ('TRADER', 'OPS', 'ANALYST')),
     is_active             BOOLEAN DEFAULT true,
     created_at            TIMESTAMP NOT NULL DEFAULT now(),
     updated_at            TIMESTAMP NOT NULL DEFAULT now()

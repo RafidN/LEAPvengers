@@ -76,9 +76,7 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        String email = clientRepository.findById(user.getClientId())
-            .map(Clients::getEmail)
-            .orElse(null);
+        String email = findClientEmail(user.getClientId());
         String token = jwtUtil.generateToken(user);
 
         return new AuthenticationResponse(token, user.getUserId(), user.getUsername(), user.getClientId(), email);
@@ -92,9 +90,7 @@ public class AuthService {
         Users user = userRepository.findByUsername(username)
             .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        String userEmail = clientRepository.findById(user.getClientId())
-            .map(Clients::getEmail)
-            .orElse(null);
+        String userEmail = findClientEmail(user.getClientId());
         if (userEmail == null || !userEmail.equalsIgnoreCase(email)) {
             throw new InvalidInputException("Provided email does not match account records");
         }
@@ -103,6 +99,19 @@ public class AuthService {
             "success",
             "Password reset workflow not implemented yet. Please contact support."
         );
+    }
+
+    /**
+     * Looks up a client's email, tolerating a null client id.
+     * Internal users (OPS/ANALYST) have no client_id, and findById(null) would throw.
+     */
+    private String findClientEmail(Integer clientId) {
+        if (clientId == null) {
+            return null;
+        }
+        return clientRepository.findById(clientId)
+            .map(Clients::getEmail)
+            .orElse(null);
     }
 
     private boolean isBlank(String value) {
