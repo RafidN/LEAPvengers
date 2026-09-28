@@ -8,7 +8,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.GrantedAuthority;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -58,16 +59,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = jwtUtil.extractUsername(token);
         Integer userId = jwtUtil.extractUserId(token);
         Integer clientId = jwtUtil.extractClientId(token);
+        String role = jwtUtil.extractRole(token);
+
+        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" +role));
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(username, null, List.of());
+                new UsernamePasswordAuthenticationToken(username, null, authorities);
 
             Map<String, Object> details = new HashMap<>();
             details.put("userId", userId);
             details.put("clientId", clientId);
             details.put("username", username);
+            details.put("role", role);
 
+           
             authentication.setDetails(details);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
