@@ -1,5 +1,5 @@
 package com.neueda.leap.model.dto;
-
+import java.math.BigDecimal;
 public class OrderRequest {
     private String ticker;
     private BigDecimal quantity;
@@ -10,7 +10,7 @@ public class OrderRequest {
     public OrderRequest(String ticker, BigDecimal quantity, String orderType){
         this.ticker = ticker;
         this.quantity = quantity;
-        this.isBuy = isBuy;
+        this.orderType = orderType;
     }
 
     public String getTicker(){
