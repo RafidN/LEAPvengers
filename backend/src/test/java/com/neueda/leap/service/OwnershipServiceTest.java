@@ -1,11 +1,10 @@
-package com.neueda.leap;
+package com.neueda.leap.service;
 
 import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.UserRepository;
-import com.neueda.leap.service.OwnershipService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,12 +31,15 @@ class OwnershipServiceTest {
     @Mock
     private AccountRepository accountRepository;
 
+    private CurrentUserService currentUserService;
+
     private OwnershipService ownershipService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        ownershipService = new OwnershipService(userRepository, accountRepository);
+        currentUserService = new CurrentUserService(userRepository);
+        ownershipService = new OwnershipService(accountRepository, currentUserService);
     }
 
     @AfterEach
