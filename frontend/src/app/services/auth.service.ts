@@ -15,6 +15,7 @@ interface AuthenticationResponse {
   username: string;
   clientId: number;
   email: string;
+  role: string;
 }
 
 /**
@@ -62,6 +63,7 @@ export class AuthService {
     localStorage.removeItem('username');
     localStorage.removeItem('clientId');
     localStorage.removeItem('email');
+    localStorage.removeItem('role');
   }
 
   isLoggedIn(): boolean {
@@ -82,6 +84,13 @@ export class AuthService {
     return localStorage.getItem('username');
   }
 
+  getRole(): string | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+    return localStorage.getItem('role');
+  }
+
   forgotPassword(username: string, email: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/forgot-password`, { username, email });
   }
@@ -95,5 +104,6 @@ export class AuthService {
     localStorage.setItem('username', response.username);
     localStorage.setItem('clientId', response.clientId.toString());
     localStorage.setItem('email', response.email);
+    localStorage.setItem('role', response.role);
   }
 }

@@ -82,6 +82,7 @@ public class AuthController {
         response.put("userId", jwtUtil.extractUserId(token));
         response.put("clientId", jwtUtil.extractClientId(token));
         response.put("username", jwtUtil.extractUsername(token));
+        response.put("role", jwtUtil.extractRole(token));
         return ResponseEntity.ok(response);
     }
 }

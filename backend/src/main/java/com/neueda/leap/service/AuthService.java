@@ -60,7 +60,8 @@ public class AuthService {
             savedUser.getUserId(),
             savedUser.getUsername(),
             savedUser.getClientId(),
-            savedClient.getEmail()
+            savedClient.getEmail(),
+            savedUser.getRole()
         );
     }
 
@@ -79,7 +80,7 @@ public class AuthService {
         String email = findClientEmail(user.getClientId());
         String token = jwtUtil.generateToken(user);
 
-        return new AuthenticationResponse(token, user.getUserId(), user.getUsername(), user.getClientId(), email);
+        return new AuthenticationResponse(token, user.getUserId(), user.getUsername(), user.getClientId(), email, user.getRole());
     }
 
     public ForgotPasswordResponse forgotPassword(String username, String email) {
