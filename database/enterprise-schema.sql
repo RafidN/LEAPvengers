@@ -77,9 +77,12 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Canceled', 'Rejected')),
+    order_status     TEXT NOT NULL DEFAULT 'PENDING' CHECK (order_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED')),
+    rejection_reason TEXT,
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
+
+    CONSTRAINT rejection_reason_required CHECK ((order_status = 'REJECTED' AND rejection_reason IS NOT NULL) OR (order_status != 'REJECTED'))
 );
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
