@@ -1,29 +1,39 @@
-<div class="login-container">
+<section hlmCard class="w-[340px] text-center shadow-[0_0_30px_#0a230f] ring-0">
+  <div hlmCardHeader>
+    <h1 hlmCardTitle class="text-2xl">Welcome to S.H.I.E.L.D.</h1>
+    <p hlmCardDescription>Sign in to manage your digital portfolio.</p>
+  </div>
 
-  <h1>Welcome to S.H.I.E.L.D.</h1>
-  <p>Sign in to manage your digital portfolio.</p>
-
-  <form (ngSubmit)="onSubmit($event)">
-    <input type="text" name="username" placeholder="username" required [(ngModel)]="username" [disabled]="isLoading" />
-    <input type="password" name="password" placeholder="••••••••••••" required [(ngModel)]="password" [disabled]="isLoading" />
-
-    <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
+  <form hlmCardContent class="flex flex-col gap-3 text-left" (ngSubmit)="onSubmit()">
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="username">Username</label>
+      <input hlmInput id="username" name="username" class="h-11 bg-input" autocomplete="username"
+        required [(ngModel)]="username" [disabled]="isLoading()" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="password">Password</label>
+      <input hlmInput id="password" type="password" name="password" class="h-11 bg-input" placeholder="••••••••••••"
+        autocomplete="current-password" required [(ngModel)]="password" [disabled]="isLoading()" />
     </div>
 
-    <div class="actions">
-      <label><input type="checkbox" name="rememberMe" [(ngModel)]="rememberMe" [disabled]="isLoading" /> Remember Me</label>
+    @if (errorMessage()) {
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ errorMessage() }}</p>
+      </div>
+    }
+
+    <div class="flex justify-end text-sm">
       <a routerLink="/forgot-password">Forgot password?</a>
     </div>
 
-    <button type="submit" class="primary" [disabled]="isLoading">
-      {{ isLoading ? 'Signing in...' : 'Sign in to Dashboard' }}
+    <button hlmBtn type="submit" size="lg" class="h-11 w-full font-bold" [disabled]="isLoading()">
+      {{ isLoading() ? 'Signing in...' : 'Sign in to Dashboard' }}
     </button>
 
-    <div class="signup">
+    <p class="text-muted-foreground text-center text-sm">
       Don't have an account? <a routerLink="/register">Sign up</a>
-    </div>
+    </p>
   </form>
-<div class="footer">PROTECTED BY THE LEAPVENGERS</div>
 
-</div>
+  <p class="text-muted-foreground text-xs tracking-wide">PROTECTED BY THE LEAPVENGERS</p>
+</section>

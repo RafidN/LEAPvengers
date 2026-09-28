@@ -1,0 +1,143 @@
+<div class="mb-6">
+  <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Overview</p>
+  <h1 class="text-3xl font-medium tracking-tight">Dashboard</h1>
+</div>
+
+@if (error()) {
+  <div hlmAlert variant="destructive" class="mb-6">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+}
+
+<!-- Account totals -->
+<section class="mb-6 grid gap-4 md:grid-cols-3">
+  <div hlmCard>
+    <div hlmCardHeader>
+      <p hlmCardDescription>Total value</p>
+      <div hlmCardAction>
+        <button hlmBtn variant="ghost" size="icon-sm" (click)="toggleBalance()"
+          [attr.aria-label]="balanceHidden() ? 'Show balance' : 'Hide balance'">
+          <ng-icon [name]="balanceHidden() ? 'lucideEye' : 'lucideEyeOff'" />
+        </button>
+      </div>
+    </div>
+    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+      {{ loading() ? '…' : balanceHidden() ? '••••••' : (totalValue() | currency) }}
+    </p>
+  </div>
+
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Cash</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+      {{ loading() ? '…' : (cash() | currency) }}
+    </p>
+  </div>
+
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Holdings value</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+      {{ loading() ? '…' : (holdingsValue() | currency) }}
+    </p>
+  </div>
+</section>
+
+<section class="grid gap-4 lg:grid-cols-3">
+  <!-- Holdings -->
+  <div hlmCard class="lg:col-span-2">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Holdings</h2>
+      <p hlmCardDescription>What you own today</p>
+    </div>
+    <div hlmCardContent>
+      @if (holdings().length) {
+        <div hlmTableContainer>
+          <table hlmTable>
+            <thead hlmTableHeader>
+              <tr hlmTableRow>
+                <th hlmTableHead>Ticker</th>
+                <th hlmTableHead>Name</th>
+                <th hlmTableHead class="text-right">Quantity</th>
+                <th hlmTableHead class="text-right">Price</th>
+                <th hlmTableHead class="text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody hlmTableBody>
+              @for (h of holdings(); track h.holdingId) {
+                <tr hlmTableRow>
+                  <td hlmTableCell class="font-medium">{{ h.ticker }}</td>
+                  <td hlmTableCell>{{ h.instrumentName }}</td>
+                  <td hlmTableCell class="text-right">{{ h.quantity | number }}</td>
+                  <td hlmTableCell class="text-right">{{ h.price | number: '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right">{{ h.totalValue | currency }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (!loading()) {
+        <div class="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
+          No holdings yet. Trading is coming soon. Until then, browse live prices on
+          <a routerLink="/markets" class="text-primary underline-offset-4 hover:underline">Markets</a>.
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Recent activity -->
+  <div hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Recent activity</h2>
+    </div>
+    <ul hlmCardContent class="flex flex-col gap-3">
+      @for (item of activity(); track $index) {
+        <li class="flex items-start justify-between gap-3 text-sm">
+          <span>{{ item.text }}</span>
+          <span hlmBadge variant="outline" class="shrink-0">{{ item.date | date: 'MMM d' }}</span>
+        </li>
+      } @empty {
+        @if (!loading()) {
+          <li class="text-muted-foreground text-sm">No activity yet.</li>
+        }
+      }
+    </ul>
+  </div>
+
+  <!-- Watchlist -->
+  <div hlmCard class="lg:col-span-3">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Watchlist</h2>
+      <p hlmCardDescription>Live prices, refreshed every 15 seconds</p>
+      <div hlmCardAction>
+        <a hlmBtn variant="outline" routerLink="/markets">All markets</a>
+      </div>
+    </div>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Ticker</th>
+              <th hlmTableHead>Name</th>
+              <th hlmTableHead>Asset class</th>
+              <th hlmTableHead class="text-right">Price</th>
+              <th hlmTableHead class="text-right">As of</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (q of watchlist(); track q.ticker) {
+              <tr hlmTableRow>
+                <td hlmTableCell class="font-medium">
+                  <a [routerLink]="['/markets']" [queryParams]="{ ticker: q.ticker }" class="hover:underline">{{ q.ticker }}</a>
+                </td>
+                <td hlmTableCell>{{ q.instrumentName }}</td>
+                <td hlmTableCell><span hlmBadge variant="secondary">{{ q.assetClass }}</span></td>
+                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | number: '1.2-4' }}</td>
+                <td hlmTableCell class="text-muted-foreground text-right">{{ q.quoteTimestamp | date: 'MMM d, HH:mm:ss' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

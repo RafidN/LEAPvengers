@@ -1,40 +1,51 @@
-<div class="login-container">
+<section hlmCard class="w-[380px] text-center shadow-[0_0_30px_#0a230f] ring-0">
+  <div hlmCardHeader>
+    <h1 hlmCardTitle class="text-2xl">Join S.H.I.E.L.D.</h1>
+    <p hlmCardDescription>Create an account to manage your digital portfolio.</p>
+  </div>
 
-  <h1>Join S.H.I.E.L.D.</h1>
-  <p>Create an account to manage your digital portfolio.</p>
+  <form hlmCardContent class="flex flex-col gap-3 text-left" (ngSubmit)="onSubmit()">
+    @if (errorMessage()) {
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ errorMessage() }}</p>
+      </div>
+    }
+    @if (successMessage()) {
+      <div hlmAlert>
+        <p hlmAlertDescription class="text-primary">{{ successMessage() }}</p>
+      </div>
+    }
 
-  <form (ngSubmit)="onSubmit($event)">
-    <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
+    <div class="flex gap-2">
+      <input hlmInput name="firstName" class="h-11 bg-input" placeholder="First name" aria-label="First name"
+        required [(ngModel)]="firstName" [disabled]="isLoading()" />
+      <input hlmInput name="lastName" class="h-11 bg-input" placeholder="Last name" aria-label="Last name"
+        required [(ngModel)]="lastName" [disabled]="isLoading()" />
     </div>
+    <input hlmInput type="email" name="email" class="h-11 bg-input" placeholder="Email address" aria-label="Email address"
+      required [(ngModel)]="email" [disabled]="isLoading()" />
+    <input hlmInput name="username" class="h-11 bg-input" placeholder="Username" aria-label="Username"
+      autocomplete="username" required [(ngModel)]="username" [disabled]="isLoading()" />
+    <input hlmInput type="password" name="password" class="h-11 bg-input" placeholder="Password" aria-label="Password"
+      autocomplete="new-password" required [(ngModel)]="password" [disabled]="isLoading()" />
+    <input hlmInput type="password" name="confirmPassword" class="h-11 bg-input" placeholder="Confirm password"
+      aria-label="Confirm password" autocomplete="new-password" required [(ngModel)]="confirmPassword"
+      [disabled]="isLoading()" />
 
-    <div *ngIf="successMessage" class="success-message">
-      {{ successMessage }}
-    </div>
+    <label hlmLabel class="justify-center py-1">
+      <input type="checkbox" name="agreeToTerms" class="accent-primary size-4" [(ngModel)]="agreeToTerms"
+        [disabled]="isLoading()" />
+      I agree to the terms
+    </label>
 
-    <div class="form-row">
-      <input type="text" name="firstName" [(ngModel)]="firstName" placeholder="First Name" required [disabled]="isLoading" />
-      <input type="text" name="lastName" [(ngModel)]="lastName" placeholder="Last Name" required [disabled]="isLoading" />
-    </div>
-
-    <input type="email" name="email" [(ngModel)]="email" placeholder="Email Address" required [disabled]="isLoading" />
-    <input type="text" name="username" [(ngModel)]="username" placeholder="Username" required [disabled]="isLoading" />
-    <input type="password" name="password" [(ngModel)]="password" (ngModelChange)="onPasswordChange()" placeholder="Password" required [disabled]="isLoading" />
-    <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" (ngModelChange)="onPasswordChange()" placeholder="Confirm Password" required [disabled]="isLoading" />
-
-    <div class="actions">
-      <label><input type="checkbox" name="agreeToTerms" [(ngModel)]="agreeToTerms" [disabled]="isLoading" /> I agree to Terms</label>
-    </div>
-
-    <button type="submit" class="primary" [disabled]="isLoading">
-      {{ isLoading ? 'Creating Account...' : 'Create Account' }}
+    <button hlmBtn type="submit" size="lg" class="h-11 w-full font-bold" [disabled]="isLoading()">
+      {{ isLoading() ? 'Creating account...' : 'Create account' }}
     </button>
 
-    <div class="signup">
+    <p class="text-muted-foreground text-center text-sm">
       Already have an account? <a routerLink="/sign-in">Sign in</a>
-    </div>
+    </p>
   </form>
-  <div class="footer">PROTECTED BY THE LEAPVENGERS</div>
 
-
-</div>
+  <p class="text-muted-foreground text-xs tracking-wide">PROTECTED BY THE LEAPVENGERS</p>
+</section>

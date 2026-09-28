@@ -13,8 +13,8 @@ interface AuthenticationResponse {
   token: string;
   userId: number;
   username: string;
-  clientId: number;
-  email: string;
+  clientId: number | null;
+  email: string | null;
 }
 
 /**
@@ -64,8 +64,18 @@ export class AuthService {
     localStorage.removeItem('email');
   }
 
+  /** True when a token is stored and hasn't expired yet. */
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof payload.exp !== 'number' || payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
   }
 
   getToken(): string | null {
@@ -93,7 +103,8 @@ export class AuthService {
     localStorage.setItem('authToken', response.token);
     localStorage.setItem('userId', response.userId.toString());
     localStorage.setItem('username', response.username);
-    localStorage.setItem('clientId', response.clientId.toString());
-    localStorage.setItem('email', response.email);
+    // Ops and Analyst users have no client, so clientId and email can be null
+    localStorage.setItem('clientId', String(response.clientId ?? ''));
+    localStorage.setItem('email', response.email ?? '');
   }
 }

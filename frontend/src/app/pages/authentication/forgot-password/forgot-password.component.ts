@@ -1,15 +1,18 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmLabelImports } from '@spartan-ng/helm/label';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
   styleUrls: ['../auth.css'],
   templateUrl: './forgot-password.html',
-  imports: [CommonModule, FormsModule, RouterModule],
-  standalone: true
+  imports: [FormsModule, RouterLink, HlmAlertImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports]
 })
 export class ForgotPasswordComponent {
   private authService = inject(AuthService);
@@ -17,20 +20,19 @@ export class ForgotPasswordComponent {
 
   username = '';
   email = '';
-  isLoading = false;
-  errorMessage = '';
-  successMessage = '';
+  // Signals, so updates from HTTP callbacks re-render (the app has no zone.js)
+  isLoading = signal(false);
+  errorMessage = signal('');
+  successMessage = signal('');
 
-  onSubmit(event: Event) {
-    event.preventDefault();
-    
+  onSubmit() {
     // Validation
     if (!this.username) {
-      this.errorMessage = 'Please fill in your username';
+      this.errorMessage.set('Please fill in your username');
       return;
     }
     if (!this.email) {
-      this.errorMessage = 'Please fill in your email address';
+      this.errorMessage.set('Please fill in your email address');
       return;
     }
 
@@ -38,25 +40,25 @@ export class ForgotPasswordComponent {
 
     // Validate email format
     if (!this.isValidEmail(this.email)) {
-      this.errorMessage = 'Please enter a valid email address';
+      this.errorMessage.set('Please enter a valid email address');
       return;
     }
 
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.isLoading = true;
+    this.errorMessage.set('');
+    this.successMessage.set('');
+    this.isLoading.set(true);
 
     this.authService.forgotPassword(this.username, this.email).subscribe({
       next: () => {
-        this.isLoading = false;
-        this.successMessage = 'Password reset link sent successfully! Please check your email.';
+        this.isLoading.set(false);
+        this.successMessage.set('Password reset link sent successfully! Please check your email.');
         setTimeout(() => {
           this.router.navigate(['/sign-in']);
         }, 1500);
       },
       error: (error) => {
-        this.isLoading = false;
-        this.errorMessage = error.error?.message || 'Password reset failed. Please try again.';
+        this.isLoading.set(false);
+        this.errorMessage.set(error.error?.message || 'Password reset failed. Please try again.');
       }
     });
   }
