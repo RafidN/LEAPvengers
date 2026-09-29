@@ -95,30 +95,6 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
     account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
 );
 
--- Keeps holdings in sync when an order is filled, instead of relying on the app to remember to
--- update both tables. Only whole fills adjust holdings
-CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
-DECLARE
-    signed_quantity NUMERIC(14,4);
-BEGIN
-    IF NEW.order_status = 'Filled' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'Filled') THEN
-        signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
-
-        INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
-        VALUES (NEW.account_id, NEW.instrument_id, signed_quantity, CURRENT_DATE)
-        ON CONFLICT (account_id, instrument_id) DO UPDATE
-            SET quantity = holdings.quantity + EXCLUDED.quantity,
-                as_of_date = EXCLUDED.as_of_date;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- When an order is made the database will automatically update the holdings if the order is filled, ensuring consistency between orders and holdings
-CREATE TRIGGER orders_sync_holdings
-    AFTER INSERT OR UPDATE OF order_status ON orders
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_holdings_on_order_fill();
 -- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
