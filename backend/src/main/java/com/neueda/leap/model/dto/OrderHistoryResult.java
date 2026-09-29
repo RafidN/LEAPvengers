@@ -14,7 +14,7 @@ public class OrderHistoryResult {
     private String orderType;  // BUY or SELL
     private BigDecimal quantity;
     private BigDecimal price;
-    private String orderStatus;  // Pending, Filled, Canceled, Rejected
+    private String orderStatus;  // PENDING, ACCEPTED, FILLED, REJECTED, FAILED
     private LocalDate orderDate;
     private LocalDateTime submittedAt;
 
