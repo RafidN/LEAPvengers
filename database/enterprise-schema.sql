@@ -81,6 +81,16 @@ CREATE TABLE orders (
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
 );
+CREATE TABLE order_events(
+    event_id        SERIAL PRIMARY KEY,
+    order_id        INTEGER NOT NULL REFERENCES orders(order_id),
+    user_id   INTEGER REFERENCES users(user_id),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    event_timestamp TIMESTAMP NOT NULL DEFAULT now(),
+    details         TEXT, -- optional field to annotate the event with additional context
+    CHECK (from_status IS DISTINCT FROM to_status)
+);
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
 CREATE INDEX orders_instrument_id_idx ON orders (instrument_id);
