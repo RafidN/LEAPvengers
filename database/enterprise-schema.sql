@@ -82,7 +82,7 @@ CREATE TABLE orders (
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
 
-    CONSTRAINT rejection_reason_required CHECK ((order_status = 'REJECTED' AND rejection_reason IS NOT NULL) OR (order_status != 'REJECTED'))
+    CONSTRAINT rejection_reason_required CHECK ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL OR (order_status != 'REJECTED' AND order_status != 'FAILED'))
 );
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
