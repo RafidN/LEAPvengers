@@ -6,8 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
-
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 /**
  * Repository for user order history by time period
  * User-specific: only returns orders for authenticated user's accounts
@@ -138,4 +140,40 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersToday(@Param("clientId") Integer clientId);
+
+    @Query("""
+        INSERT INTO new com.neueda.leap.model.dto.OrderHistoryResult(
+            a.clientId,
+            i.ticker,
+            o.orderType,
+            o.quantity,
+            o.price,
+            o.orderStatus,
+            o.orderDate,
+            o.submittedAt
+        )
+        VALUES(
+            :clientId,
+            :ticker,
+            :orderType,
+            :quantity,
+            :price,
+            :orderStatus,
+            :orderDate,
+            :submttedAt
+        )
+        FROM Orders o
+        JOIN o.instrument i
+        JOIN o.account a
+    """)
+    List<OrderHistoryResult> placeOrder(
+    @Param("clientId") Integer clientId,
+    @Param("ticker") String ticker,
+    @Param("orderType") String orderType,
+    @Param("quantity") BigDecimal quantity,
+    @Param("price") BigDecimal price,
+    @Param("orderStatus") String orderStatus,
+    @Param("orderDate") LocalDate orderDate,
+    @Param("submittedAt") LocalDateTime submittedAt
+    );
 }

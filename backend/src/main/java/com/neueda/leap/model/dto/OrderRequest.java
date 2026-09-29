@@ -1,16 +1,20 @@
 package com.neueda.leap.model.dto;
 import java.math.BigDecimal;
+import com.neueda.leap.model.Accounts;
+
 public class OrderRequest {
     private String ticker;
     private BigDecimal quantity;
-    public String orderType;
+    private String orderType;
+    private Accounts account;
     public OrderRequest(){
     }
 
-    public OrderRequest(String ticker, BigDecimal quantity, String orderType){
+    public OrderRequest(String ticker, BigDecimal quantity, String orderType, Accounts account){
         this.ticker = ticker;
         this.quantity = quantity;
         this.orderType = orderType;
+        this.account = account;
     }
 
     public String getTicker(){
@@ -35,5 +39,13 @@ public class OrderRequest {
 
     public void setOrderType(String orderType){
         this.orderType = orderType;
+    }
+
+    public Accounts getAccount(){
+        return account;
+    }
+
+    public void setAccount(Accounts account){
+        this.account = account;
     }
 }
