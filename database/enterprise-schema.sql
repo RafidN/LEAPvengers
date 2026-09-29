@@ -84,10 +84,10 @@ CREATE TABLE orders (
 CREATE TABLE order_events(
     event_id        SERIAL PRIMARY KEY,
     order_id        INTEGER NOT NULL REFERENCES orders(order_id),
-    user_id   INTEGER REFERENCES users(user_id),
+    created_by      INTEGER REFERENCES users(user_id),
     from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
     to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
-    event_timestamp TIMESTAMP NOT NULL DEFAULT now(),
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
     details         TEXT, -- optional field to annotate the event with additional context
     CHECK (from_status IS DISTINCT FROM to_status)
 );

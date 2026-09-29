@@ -28,11 +28,11 @@ public class OrderEvents {
 	@JoinColumn(name = "order_id", nullable = false, insertable = false, updatable = false)
 	private Orders order;
 
-	@Column(name = "user_id")
-	private Integer userId;
+	@Column(name = "created_by")
+	private Integer createdBy;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", insertable = false, updatable = false)
+	@JoinColumn(name = "created_by", insertable = false, updatable = false)
 	private Users user;
 
 	@Column(name = "from_status")
@@ -41,8 +41,8 @@ public class OrderEvents {
 	@Column(name = "to_status", nullable = false)
 	private String toStatus;
 
-	@Column(name = "event_timestamp", nullable = false)
-	private LocalDateTime eventTimestamp;
+	@Column(name = "created_at", nullable = false)
+	private LocalDateTime createdAt;
 
 	@Column(name = "details")
 	private String details;
@@ -50,24 +50,24 @@ public class OrderEvents {
 	public OrderEvents() {
 	}
 
-	public OrderEvents(Integer orderId, Integer userId, String fromStatus, String toStatus,
-					   LocalDateTime eventTimestamp, String details) {
+	public OrderEvents(Integer orderId, Integer createdBy, String fromStatus, String toStatus,
+					   LocalDateTime createdAt, String details) {
 		this.orderId = orderId;
-		this.userId = userId;
+		this.createdBy = createdBy;
 		this.fromStatus = fromStatus;
 		this.toStatus = toStatus;
-		this.eventTimestamp = eventTimestamp;
+		this.createdAt = createdAt;
 		this.details = details;
 	}
 
-	public OrderEvents(Integer eventId, Integer orderId, Integer userId, String fromStatus,
-					   String toStatus, LocalDateTime eventTimestamp, String details) {
+	public OrderEvents(Integer eventId, Integer orderId, Integer createdBy, String fromStatus,
+					   String toStatus, LocalDateTime createdAt, String details) {
 		this.eventId = eventId;
 		this.orderId = orderId;
-		this.userId = userId;
+		this.createdBy = createdBy;
 		this.fromStatus = fromStatus;
 		this.toStatus = toStatus;
-		this.eventTimestamp = eventTimestamp;
+		this.createdAt = createdAt;
 		this.details = details;
 	}
 
@@ -95,12 +95,12 @@ public class OrderEvents {
 		this.order = order;
 	}
 
-	public Integer getUserId() {
-		return userId;
+	public Integer getCreatedBy() {
+		return createdBy;
 	}
 
-	public void setUserId(Integer userId) {
-		this.userId = userId;
+	public void setCreatedBy(Integer createdBy) {
+		this.createdBy = createdBy;
 	}
 
 	public Users getUser() {
@@ -127,12 +127,12 @@ public class OrderEvents {
 		this.toStatus = toStatus;
 	}
 
-	public LocalDateTime getEventTimestamp() {
-		return eventTimestamp;
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
 	}
 
-	public void setEventTimestamp(LocalDateTime eventTimestamp) {
-		this.eventTimestamp = eventTimestamp;
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
 	}
 
 	public String getDetails() {
