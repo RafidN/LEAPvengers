@@ -9,12 +9,13 @@ import com.neueda.leap.service.HistoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.neueda.leap.security.SecurityContextHelper;
 import java.util.List;
 
 /**
  * REST endpoints for historical data queries
- * Supports order history, cash transactions, price history, and portfolio history
+ * Supports order history, cash transactions, price history, and portfolio
+ * history
  * Time periods: past year, past month, past 7 days, past day, today
  */
 @RestController
@@ -24,10 +25,13 @@ public class HistoryController {
     private final HistoryService historyService;
     private final JwtUtil jwtUtil;
     private static final String BEARER_PREFIX = "Bearer ";
+    private final SecurityContextHelper securityContextHelper;
 
-    public HistoryController(HistoryService historyService, JwtUtil jwtUtil) {
+    public HistoryController(HistoryService historyService, JwtUtil jwtUtil,
+            SecurityContextHelper securityContextHelper) {
         this.historyService = historyService;
         this.jwtUtil = jwtUtil;
+        this.securityContextHelper = securityContextHelper;
     }
 
     // ===== ORDER HISTORY ENDPOINTS (AUTHENTICATED) =====
@@ -40,10 +44,9 @@ public class HistoryController {
      * Response: [ { "orderId": 1, "ticker": "AAPL", ... } ]
      */
     @PostMapping("/orders/past-year")
-    public ResponseEntity<?> getOrderHistoryPastYear(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOrderHistoryPastYear() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<OrderHistoryResult> results = historyService.getOrderHistoryPastYear(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -59,10 +62,9 @@ public class HistoryController {
     }
 
     @PostMapping("/orders/past-month")
-    public ResponseEntity<?> getOrderHistoryPastMonth(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOrderHistoryPastMonth() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<OrderHistoryResult> results = historyService.getOrderHistoryPastMonth(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -78,10 +80,9 @@ public class HistoryController {
     }
 
     @PostMapping("/orders/past-7-days")
-    public ResponseEntity<?> getOrderHistoryPast7Days(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOrderHistoryPast7Days() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<OrderHistoryResult> results = historyService.getOrderHistoryPast7Days(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -97,10 +98,9 @@ public class HistoryController {
     }
 
     @PostMapping("/orders/past-day")
-    public ResponseEntity<?> getOrderHistoryPastDay(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOrderHistoryPastDay() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<OrderHistoryResult> results = historyService.getOrderHistoryPastDay(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -116,10 +116,9 @@ public class HistoryController {
     }
 
     @PostMapping("/orders/today")
-    public ResponseEntity<?> getOrderHistoryToday(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOrderHistoryToday() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<OrderHistoryResult> results = historyService.getOrderHistoryToday(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -137,10 +136,9 @@ public class HistoryController {
     // ===== CASH TRANSACTION HISTORY ENDPOINTS (AUTHENTICATED) =====
 
     @PostMapping("/cash/past-year")
-    public ResponseEntity<?> getCashHistoryPastYear(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCashHistoryPastYear() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<CashTransactionResult> results = historyService.getCashHistoryPastYear(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -156,10 +154,9 @@ public class HistoryController {
     }
 
     @PostMapping("/cash/past-month")
-    public ResponseEntity<?> getCashHistoryPastMonth(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCashHistoryPastMonth() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<CashTransactionResult> results = historyService.getCashHistoryPastMonth(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -175,10 +172,9 @@ public class HistoryController {
     }
 
     @PostMapping("/cash/past-7-days")
-    public ResponseEntity<?> getCashHistoryPast7Days(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCashHistoryPast7Days() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<CashTransactionResult> results = historyService.getCashHistoryPast7Days(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -194,10 +190,9 @@ public class HistoryController {
     }
 
     @PostMapping("/cash/past-day")
-    public ResponseEntity<?> getCashHistoryPastDay(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCashHistoryPastDay() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<CashTransactionResult> results = historyService.getCashHistoryPastDay(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -213,10 +208,9 @@ public class HistoryController {
     }
 
     @PostMapping("/cash/today")
-    public ResponseEntity<?> getCashHistoryToday(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCashHistoryToday() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<CashTransactionResult> results = historyService.getCashHistoryToday(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -320,9 +314,9 @@ public class HistoryController {
 
     @PostMapping("/portfolio/past-year")
     public ResponseEntity<?> getPortfolioHistoryPastYear(
-            @RequestHeader("Authorization") String authHeader) {
+            String authHeader) {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastYear(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -338,10 +332,9 @@ public class HistoryController {
     }
 
     @PostMapping("/portfolio/past-month")
-    public ResponseEntity<?> getPortfolioHistoryPastMonth(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getPortfolioHistoryPastMonth() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastMonth(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -357,10 +350,9 @@ public class HistoryController {
     }
 
     @PostMapping("/portfolio/past-7-days")
-    public ResponseEntity<?> getPortfolioHistoryPast7Days(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getPortfolioHistoryPast7Days() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPast7Days(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -376,10 +368,9 @@ public class HistoryController {
     }
 
     @PostMapping("/portfolio/past-day")
-    public ResponseEntity<?> getPortfolioHistoryPastDay(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getPortfolioHistoryPastDay() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastDay(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -395,10 +386,9 @@ public class HistoryController {
     }
 
     @PostMapping("/portfolio/today")
-    public ResponseEntity<?> getPortfolioHistoryToday(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getPortfolioHistoryToday() {
         try {
-            Integer userId = extractUserIdFromToken(authHeader);
+            Integer userId = securityContextHelper.getUserIdFromContext();
             List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryToday(userId);
             return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
@@ -418,7 +408,7 @@ public class HistoryController {
      * Validates token signature and expiration
      */
     private Integer extractUserIdFromToken(String authHeader) throws TokenValidationException {
-        
+
         if (authHeader == null || authHeader.isEmpty()) {
             throw new TokenValidationException("Missing Authorization header");
         }

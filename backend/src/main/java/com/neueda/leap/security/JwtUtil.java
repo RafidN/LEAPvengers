@@ -30,6 +30,7 @@ public class JwtUtil {
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUsername());
         claims.put("clientId", user.getClientId());
+        claims.put("role", user.getRole());
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
@@ -62,6 +63,10 @@ public class JwtUtil {
 
     public Integer extractClientId(String token) {
         return parseClaims(token).get("clientId", Integer.class);
+    }
+
+    public String extractRole(String token) {
+        return parseClaims(token).get("role", String.class);
     }
 
     private Claims parseClaims(String token) {

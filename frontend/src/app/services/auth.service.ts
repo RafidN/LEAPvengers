@@ -13,8 +13,9 @@ interface AuthenticationResponse {
   token: string;
   userId: number;
   username: string;
-  clientId: number | null;
-  email: string | null;
+  clientId: number;
+  email: string;
+  role: string;
 }
 
 /**
@@ -62,6 +63,7 @@ export class AuthService {
     localStorage.removeItem('username');
     localStorage.removeItem('clientId');
     localStorage.removeItem('email');
+    localStorage.removeItem('role');
   }
 
   /** True when a token is stored and hasn't expired yet. */
@@ -92,6 +94,13 @@ export class AuthService {
     return localStorage.getItem('username');
   }
 
+  getRole(): string | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+    return localStorage.getItem('role');
+  }
+
   forgotPassword(username: string, email: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/forgot-password`, { username, email });
   }
@@ -103,8 +112,8 @@ export class AuthService {
     localStorage.setItem('authToken', response.token);
     localStorage.setItem('userId', response.userId.toString());
     localStorage.setItem('username', response.username);
-    // Ops and Analyst users have no client, so clientId and email can be null
-    localStorage.setItem('clientId', String(response.clientId ?? ''));
-    localStorage.setItem('email', response.email ?? '');
+    localStorage.setItem('clientId', response.clientId.toString());
+    localStorage.setItem('email', response.email);
+    localStorage.setItem('role', response.role);
   }
 }
