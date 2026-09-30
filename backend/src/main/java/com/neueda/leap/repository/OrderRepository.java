@@ -4,6 +4,7 @@ import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
@@ -141,34 +142,33 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
     """)
     List<OrderHistoryResult> findOrdersToday(@Param("clientId") Integer clientId);
 
-    @Query("""
-        INSERT INTO new com.neueda.leap.model.dto.OrderHistoryResult(
-            a.clientId,
-            i.ticker,
-            o.orderType,
-            o.quantity,
-            o.price,
-            o.orderStatus,
-            o.orderDate,
-            o.submittedAt
+    @Modifying
+    @Query(value = """
+        INSERT INTO Orders(
+            account_id,
+            instrument_id,
+            order_type,
+            quantity,
+            price,
+            CAST(order_date) as date,
+            CAST(order_status) datetime,
+            submitted_at
         )
         VALUES(
-            :clientId,
-            :ticker,
+            :accountId,
+            :instrumentId,
             :orderType,
             :quantity,
             :price,
             :orderStatus,
             :orderDate,
-            :submttedAt
+            :submittedAt
         )
-        FROM Orders o
-        JOIN o.instrument i
-        JOIN o.account a
-    """)
+    """,
+    nativeQuery = true)
     List<OrderHistoryResult> placeOrder(
-    @Param("clientId") Integer clientId,
-    @Param("ticker") String ticker,
+    @Param("accountId") Integer accountId,
+    @Param("instrumentId") Integer instrumentId,
     @Param("orderType") String orderType,
     @Param("quantity") BigDecimal quantity,
     @Param("price") BigDecimal price,

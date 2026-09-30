@@ -1,3 +1,5 @@
+package com.neueda.leap.controller;
+
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
@@ -9,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 @RestController
-@RequestMapping("/api/order")
+@RequestMapping("/order")
 public class OrderController {
         private final OrderService orderService;
         private final JwtUtil jwtUtil;

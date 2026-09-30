@@ -53,7 +53,8 @@ class AuthControllerTest {
                 101,
                 "newuser",
                 42,
-                "newuser@example.com"
+                "newuser@example.com",
+                "client"
         );
         //Performs a POST request to the /auth/register endpoint with the registration details and verifies the response
         mockMvc.perform(post("/auth/register")
@@ -72,7 +73,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.userId").value(101))
                 .andExpect(jsonPath("$.username").value("newuser"))
                 .andExpect(jsonPath("$.clientId").value(42))
-                .andExpect(jsonPath("$.email").value("newuser@example.com"));
+                .andExpect(jsonPath("$.email").value("newuser@example.com"))
+                .andExpect(jsonPath("$.role").value("client"));
+
 
         //Verifies that the captured registration request in the fake AuthService matches the input data
             assertEquals("Jane", authService.capturedRegisterRequest.getFirstName());
@@ -89,7 +92,8 @@ class AuthControllerTest {
                 202,
                 "existinguser",
                 77,
-                "existinguser@example.com"
+                "existinguser@example.com",
+                "client"
         );
 
         //Performs a POST request to the /auth/login endpoint with the login details and verifies the response
@@ -101,7 +105,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.userId").value(202))
                 .andExpect(jsonPath("$.username").value("existinguser"))
                 .andExpect(jsonPath("$.clientId").value(77))
-                .andExpect(jsonPath("$.email").value("existinguser@example.com"));
+                .andExpect(jsonPath("$.email").value("existinguser@example.com"))
+                .andExpect(jsonPath("$.role").value("client"));
         //Verifies that the captured login details in the fake AuthService match the input data
         assertEquals("existinguser", authService.capturedUsername);
         assertEquals("SecretPass1!", authService.capturedPassword);

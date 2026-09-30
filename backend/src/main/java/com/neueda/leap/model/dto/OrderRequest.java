@@ -6,15 +6,15 @@ public class OrderRequest {
     private String ticker;
     private BigDecimal quantity;
     private String orderType;
-    private Accounts account;
+    private Integer accountId;
     public OrderRequest(){
     }
 
-    public OrderRequest(String ticker, BigDecimal quantity, String orderType, Accounts account){
+    public OrderRequest(String ticker, BigDecimal quantity, String orderType, Integer accountId){
         this.ticker = ticker;
         this.quantity = quantity;
         this.orderType = orderType;
-        this.account = account;
+        this.accountId = accountId;
     }
 
     public String getTicker(){
@@ -41,11 +41,11 @@ public class OrderRequest {
         this.orderType = orderType;
     }
 
-    public Accounts getAccount(){
-        return account;
+    public Integer getAccountId(){
+        return accountId;
     }
 
-    public void setAccount(Accounts account){
-        this.account = account;
+    public void setAccountId(Integer accountId){
+        this.accountId = accountId;
     }
 }
