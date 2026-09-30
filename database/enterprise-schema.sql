@@ -4,6 +4,7 @@ DROP MATERIALIZED VIEW IF EXISTS latest_price_quotes;
 DROP TABLE IF EXISTS price_quotes CASCADE;
 DROP TABLE IF EXISTS cash_transactions CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS order_events CASCADE;
 DROP TABLE IF EXISTS holdings CASCADE;
 DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -77,10 +78,44 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Canceled', 'Rejected')),
+    order_status     TEXT NOT NULL DEFAULT 'PENDING' CHECK (order_status IN ('PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
+    rejection_reason TEXT,
+    execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
+
+    CONSTRAINT rejection_reason_required CHECK (
+        ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL)
+        OR (order_status != 'REJECTED' AND order_status != 'FAILED')
+    ),
+    CONSTRAINT execution_price_filled_only CHECK (
+        (order_status = 'FILLED' AND execution_price IS NOT NULL)
+        OR (order_status != 'FILLED' AND execution_price IS NULL)
+    )
 );
+CREATE TABLE order_events(
+    event_id        SERIAL PRIMARY KEY,
+    order_id        INTEGER NOT NULL REFERENCES orders(order_id),
+    created_by      INTEGER REFERENCES users(user_id),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    details         TEXT, -- optional field to annotate the event with additional context
+    CHECK (from_status IS DISTINCT FROM to_status)
+);
+
+-- Makes order_events append-only by rejecting any attempt to update or delete an existing event.
+CREATE OR REPLACE FUNCTION prevent_order_event_mutation() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'order_events is append-only; % is not allowed', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_events_append_only
+    BEFORE UPDATE OR DELETE ON order_events
+    FOR EACH ROW
+    EXECUTE FUNCTION prevent_order_event_mutation();
+
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
 CREATE INDEX orders_instrument_id_idx ON orders (instrument_id);
@@ -95,30 +130,6 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
     account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
 );
 
--- Keeps holdings in sync when an order is filled, instead of relying on the app to remember to
--- update both tables. Only whole fills adjust holdings
-CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
-DECLARE
-    signed_quantity NUMERIC(14,4);
-BEGIN
-    IF NEW.order_status = 'Filled' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'Filled') THEN
-        signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
-
-        INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
-        VALUES (NEW.account_id, NEW.instrument_id, signed_quantity, CURRENT_DATE)
-        ON CONFLICT (account_id, instrument_id) DO UPDATE
-            SET quantity = holdings.quantity + EXCLUDED.quantity,
-                as_of_date = EXCLUDED.as_of_date;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- When an order is made the database will automatically update the holdings if the order is filled, ensuring consistency between orders and holdings
-CREATE TRIGGER orders_sync_holdings
-    AFTER INSERT OR UPDATE OF order_status ON orders
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_holdings_on_order_fill();
 -- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,

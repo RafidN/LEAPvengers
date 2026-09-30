@@ -1,6 +1,7 @@
 package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Holdings;
+import com.neueda.leap.model.dto.AccountHoldingResponse;
 import com.neueda.leap.model.dto.PortfolioHistoryResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,7 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.holdingId,
             i.ticker,
             i.instrumentName,
+            i.assetClass,
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
@@ -43,6 +45,7 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.holdingId,
             i.ticker,
             i.instrumentName,
+            i.assetClass,
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
@@ -63,6 +66,7 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.holdingId,
             i.ticker,
             i.instrumentName,
+            i.assetClass,
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
@@ -83,6 +87,7 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.holdingId,
             i.ticker,
             i.instrumentName,
+            i.assetClass,
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
@@ -103,6 +108,7 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.holdingId,
             i.ticker,
             i.instrumentName,
+            i.assetClass,
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
@@ -137,4 +143,26 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
         ORDER BY i.ticker
     """)
     List<PortfolioHistoryResult> findPortfolioToday(@Param("clientId") Integer clientId);
+
+     @Query("""
+        SELECT new com.neueda.leap.model.dto.AccountHoldingResponse(
+            i.ticker,
+            i.instrumentName,
+            i.assetClass,
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
+            lpq.quoteTimestamp
+        )
+        FROM Holdings h
+        JOIN h.instrument i
+        JOIN h.account a
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
+        WHERE a.accountId = :accountId
+        ORDER BY i.ticker
+    """)
+    List<AccountHoldingResponse> findAccountHoldings(@Param("accountId") Integer accountId);
+
+   
+
 }
