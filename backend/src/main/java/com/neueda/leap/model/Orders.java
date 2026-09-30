@@ -42,6 +42,12 @@ public class Orders {
     @Column(name = "order_status", nullable = false)
     private String orderStatus;
 
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
+    @Column(name = "execution_price", precision = 14, scale = 4)
+    private BigDecimal executionPrice;
+
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
@@ -60,13 +66,14 @@ public class Orders {
         this.quantity = quantity;
         this.price = price;
         this.orderDate = orderDate;
-        this.orderStatus = "Pending";
+        this.orderStatus = "PENDING";
         this.submittedAt = LocalDateTime.now();
     }
 
     public Orders(Integer orderId, Integer accountId, Integer instrumentId, String orderType, 
-                  BigDecimal quantity, BigDecimal price, LocalDate orderDate, String orderStatus, 
-                  LocalDateTime submittedAt, LocalDateTime executedAt) {
+                  BigDecimal quantity, BigDecimal price, LocalDate orderDate, String orderStatus,
+                  String rejectionReason, BigDecimal executionPrice, LocalDateTime submittedAt,
+                  LocalDateTime executedAt) {
         this.orderId = orderId;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
@@ -75,6 +82,8 @@ public class Orders {
         this.price = price;
         this.orderDate = orderDate;
         this.orderStatus = orderStatus;
+        this.rejectionReason = rejectionReason;
+        this.executionPrice = executionPrice;
         this.submittedAt = submittedAt;
         this.executedAt = executedAt;
     }
@@ -158,6 +167,22 @@ public class Orders {
 
     public void setOrderStatus(String orderStatus) {
         this.orderStatus = orderStatus;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
+    public BigDecimal getExecutionPrice() {
+        return executionPrice;
+    }
+
+    public void setExecutionPrice(BigDecimal executionPrice) {
+        this.executionPrice = executionPrice;
     }
 
     public LocalDateTime getSubmittedAt() {
