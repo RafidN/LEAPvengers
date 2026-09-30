@@ -77,9 +77,20 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Filled', 'Canceled', 'Rejected')),
+    order_status     TEXT NOT NULL DEFAULT 'PENDING' CHECK (order_status IN ('PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
+    rejection_reason TEXT,
+    execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP -- set by application/business logic when the order is executed
+
+    CONSTRAINT rejection_reason_required CHECK (
+        ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL)
+        OR (order_status != 'REJECTED' AND order_status != 'FAILED')
+    ),
+    CONSTRAINT execution_price_filled_only CHECK (
+        (order_status = 'FILLED' AND execution_price IS NOT NULL)
+        OR (order_status != 'FILLED' AND execution_price IS NULL)
+    )
 );
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
@@ -101,7 +112,7 @@ CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
 DECLARE
     signed_quantity NUMERIC(14,4);
 BEGIN
-    IF NEW.order_status = 'Filled' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'Filled') THEN
+    IF NEW.order_status = 'FILLED' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'FILLED') THEN
         signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
 
         INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)

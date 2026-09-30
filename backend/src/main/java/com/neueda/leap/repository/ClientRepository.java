@@ -24,7 +24,7 @@ public interface ClientRepository extends JpaRepository<Clients, Integer> {
 			FROM accounts a
 			LEFT JOIN orders o
 				ON o.account_id = a.account_id
-				AND o.order_status = 'Filled'
+				AND o.order_status = 'FILLED'
 				AND o.submitted_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
 			GROUP BY a.client_id
 		)
