@@ -4,6 +4,7 @@ DROP MATERIALIZED VIEW IF EXISTS latest_price_quotes;
 DROP TABLE IF EXISTS price_quotes CASCADE;
 DROP TABLE IF EXISTS cash_transactions CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS order_events CASCADE;
 DROP TABLE IF EXISTS holdings CASCADE;
 DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -92,6 +93,29 @@ CREATE TABLE orders (
         OR (order_status != 'FILLED' AND execution_price IS NULL)
     )
 );
+CREATE TABLE order_events(
+    event_id        SERIAL PRIMARY KEY,
+    order_id        INTEGER NOT NULL REFERENCES orders(order_id),
+    created_by      INTEGER REFERENCES users(user_id),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    details         TEXT, -- optional field to annotate the event with additional context
+    CHECK (from_status IS DISTINCT FROM to_status)
+);
+
+-- Makes order_events append-only by rejecting any attempt to update or delete an existing event.
+CREATE OR REPLACE FUNCTION prevent_order_event_mutation() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'order_events is append-only; % is not allowed', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_events_append_only
+    BEFORE UPDATE OR DELETE ON order_events
+    FOR EACH ROW
+    EXECUTE FUNCTION prevent_order_event_mutation();
+
 -- Indexes to quickly look up orders by account_id and instrument_id for faster queries on order history
 CREATE INDEX orders_account_id_idx ON orders (account_id);
 CREATE INDEX orders_instrument_id_idx ON orders (instrument_id);
