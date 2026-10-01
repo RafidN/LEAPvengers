@@ -85,6 +85,18 @@ Because Yahoo intraday history is limited, the backfill script automatically fal
 
 Use this data to test the dashboard, portfolio views, order history, and other features. The data reflects realistic trading patterns.
 
+### Demo personas
+
+The sign-in page has one-click buttons for the three personas from the business requirements. Every seeded password is `Test123`.
+
+| Username | Role | Lands on | What to show |
+|----------|------|----------|--------------|
+| `joanna` | Trader | `/dashboard` | Cash, holdings across US/UK/Indian stocks, crypto and FX; order history with filled, pending, rejected and canceled orders |
+| `david` | Ops | `/clients` | Every client with their segment; insights |
+| `priya` | Analyst | `/insights` | Activity and value by segment, clients shown by id only |
+
+Every role also has `/markets` and `/access`. The Access page calls the real API and shows which requests the server blocks for the signed-in role.
+
 ## Stopping Services
 
 The script opens new PowerShell windows for backend and frontend. To stop them:

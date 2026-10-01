@@ -1,69 +1,60 @@
-@import 'tailwindcss/theme.css';
-@import 'tailwindcss/preflight.css';
-@import 'tailwindcss/utilities.css';
+@import 'tailwindcss';
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
 
-/* Theme tokens used by the Spartan (hlm*) components in libs/ui */
+/*
+ * Theme tokens for the Spartan (hlm*) components in libs/ui.
+ * Components read these through Tailwind classes like bg-primary or text-muted-foreground,
+ * so a page can re-theme everything inside it by overriding them on its :host
+ * (see pages/authentication/auth.css).
+ */
 :root {
   color-scheme: light;
 
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
-    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-sans: 'Sansation', 'Segoe UI', sans-serif;
+  --font-heading: 'Space Grotesk', 'Segoe UI', sans-serif;
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
+  --radius: 0.75rem;
+  --background: #f5f3ee;
+  --foreground: #1f2328;
+  --card: #ffffff;
+  --card-foreground: #1f2328;
+  --popover: #ffffff;
+  --popover-foreground: #1f2328;
+  --primary: #0f6a46;
+  --primary-foreground: #ffffff;
+  --secondary: #ece8df;
+  --secondary-foreground: #1f2328;
+  --muted: #ece8df;
+  --muted-foreground: #6f7881;
+  --accent: #ece8df;
+  --accent-foreground: #1f2328;
+  --destructive: #b42318;
+  --border: #d9d2c7;
+  --input: #d9d2c7;
+  --ring: #37b87b;
 
-body {
-  color: #1f2328;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Money colours used by the dashboard and markets pages */
+  --profit: #0f6a46;
+  --loss: #8f2d2d;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    font-family: 'Sansation', sans-serif;
   }
 
   html,
   body {
-    width: 100%;
     height: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Tailwind's preflight reset is unlayered, so it overrides everything else
-     in this layer; only width and cursor take effect. Put real button styles
-     in the page's own CSS (see pages/authentication/auth.css). */
-  button {
-    width: 100%;
-    cursor: pointer;
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
   }
 }

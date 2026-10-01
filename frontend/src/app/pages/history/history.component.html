@@ -1,0 +1,139 @@
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Blotter</p>
+    <h1 class="text-3xl font-medium tracking-tight">History</h1>
+    <p class="text-muted-foreground mt-1 flex items-center gap-1.5 text-sm">
+      <ng-icon name="lucideRefreshCw" class="text-xs" />
+      Updates by itself every 15 seconds
+      @if (lastUpdated(); as t) { · last checked {{ t | date: 'HH:mm:ss' }} }
+    </p>
+  </div>
+
+  <div class="flex gap-1">
+    @for (p of periods; track p.value) {
+      <button hlmBtn size="sm" [variant]="period() === p.value ? 'default' : 'outline'" (click)="setPeriod(p.value)">
+        {{ p.label }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <div hlmAlert variant="destructive" class="mb-6">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+}
+
+<hlm-tabs [tab]="tab()" (tabActivated)="tab.set($event)">
+  <hlm-tabs-list aria-label="History type">
+    <button hlmTabsTrigger="orders" class="px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+      Orders <span class="opacity-60">{{ orders().length }}</span>
+    </button>
+    <button hlmTabsTrigger="cash" class="px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+      Cash <span class="opacity-60">{{ cash().length }}</span>
+    </button>
+  </hlm-tabs-list>
+
+  <!-- Orders -->
+  <div hlmTabsContent="orders" class="flex flex-col gap-3">
+    <div class="flex flex-wrap gap-2">
+      <button hlmBtn size="sm" [variant]="statusFilter() === null ? 'secondary' : 'ghost'" (click)="statusFilter.set(null)">
+        All <span class="opacity-60">{{ orders().length }}</span>
+      </button>
+      @for (s of statuses; track s) {
+        <button hlmBtn size="sm" [variant]="statusFilter() === s ? 'secondary' : 'ghost'" (click)="statusFilter.set(s)">
+          <ng-icon [name]="statusStyle(s).icon" />
+          {{ s }} <span class="opacity-60">{{ countFor(s) }}</span>
+        </button>
+      }
+    </div>
+
+    <div hlmCard class="py-2">
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable>
+            <thead hlmTableHeader>
+              <tr hlmTableRow>
+                <th hlmTableHead>Submitted</th>
+                <th hlmTableHead>Order</th>
+                <th hlmTableHead>Instrument</th>
+                <th hlmTableHead class="text-right">Quantity</th>
+                <th hlmTableHead class="text-right">Price</th>
+                <th hlmTableHead class="text-right">Value</th>
+                <th hlmTableHead>Status</th>
+              </tr>
+            </thead>
+            <tbody hlmTableBody>
+              @for (o of visibleOrders(); track o.orderId) {
+                <tr hlmTableRow>
+                  <td hlmTableCell class="text-muted-foreground tabular-nums">{{ o.submittedAt | date: 'MMM d, HH:mm' }}</td>
+                  <td hlmTableCell>
+                    <span class="font-semibold" [style.color]="o.orderType === 'BUY' ? 'var(--profit)' : 'var(--loss)'">
+                      {{ o.orderType === 'BUY' ? 'Buy' : 'Sell' }}
+                    </span>
+                    <span class="text-muted-foreground text-xs"> #{{ o.orderId }}</span>
+                  </td>
+                  <td hlmTableCell class="font-medium">{{ o.ticker }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-4' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ o.price | number: '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * o.price | currency }}</td>
+                  <td hlmTableCell>
+                    <span hlmBadge [variant]="statusStyle(o.orderStatus).variant">
+                      <ng-icon [name]="statusStyle(o.orderStatus).icon" />
+                      {{ o.orderStatus }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTableRow>
+                  <td hlmTableCell colspan="7" class="text-muted-foreground py-8 text-center">
+                    {{ loading() ? 'Loading orders…' : 'No orders in this period.' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cash -->
+  <div hlmTabsContent="cash">
+    <div hlmCard class="py-2">
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable>
+            <thead hlmTableHeader>
+              <tr hlmTableRow>
+                <th hlmTableHead>Date</th>
+                <th hlmTableHead>Type</th>
+                <th hlmTableHead class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody hlmTableBody>
+              @for (t of cash(); track t.cashTransactionId) {
+                <tr hlmTableRow>
+                  <td hlmTableCell class="text-muted-foreground tabular-nums">{{ t.transactionDate | date: 'MMM d, y' }}</td>
+                  <td hlmTableCell>
+                    <span hlmBadge variant="outline">{{ t.transactionType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal' }}</span>
+                  </td>
+                  <td hlmTableCell class="text-right font-medium tabular-nums"
+                    [style.color]="t.transactionType === 'DEPOSIT' ? 'var(--profit)' : 'var(--loss)'">
+                    {{ t.transactionType === 'DEPOSIT' ? '+' : '−' }}{{ t.amount | currency }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTableRow>
+                  <td hlmTableCell colspan="3" class="text-muted-foreground py-8 text-center">
+                    {{ loading() ? 'Loading cash movements…' : 'No deposits or withdrawals in this period.' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</hlm-tabs>

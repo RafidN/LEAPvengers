@@ -1,8 +1,0 @@
-/* Sign-in only: overrides on top of ../auth.css */
-.actions {
-  justify-content: space-between;
-}
-
-input::placeholder {
-  color: color-mix(in oklab, currentcolor 50%, transparent);
-}
