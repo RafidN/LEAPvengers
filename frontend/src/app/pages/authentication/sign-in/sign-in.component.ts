@@ -18,11 +18,24 @@ export class SignInComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
   
+  // Seeded demo users from database/seed.sql (BRS section 6 personas). All use password Test123.
+  readonly personas = [
+    { username: 'joanna', name: 'Joanna', role: 'Trader' },
+    { username: 'david', name: 'David', role: 'Operations' },
+    { username: 'priya', name: 'Priya', role: 'Analyst' }
+  ];
+
   username = '';
   password = '';
   // Signals, so updates from HTTP callbacks re-render (the app has no zone.js)
   isLoading = signal(false);
   errorMessage = signal('');
+
+  signInAs(username: string) {
+    this.username = username;
+    this.password = 'Test123';
+    this.onSubmit();
+  }
 
   onSubmit() {
     if (!this.username || !this.password) {
@@ -36,7 +49,7 @@ export class SignInComponent {
     this.authService.login(this.username, this.password).subscribe({
       next: () => {
         this.isLoading.set(false);
-        this.router.navigate(['/dashboard']);
+        this.router.navigateByUrl(this.authService.homePage());
       },
       error: (error) => {
         this.isLoading.set(false);

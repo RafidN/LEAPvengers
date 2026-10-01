@@ -27,7 +27,14 @@
   </div>
 
   <div hlmCard>
-    <div hlmCardHeader><p hlmCardDescription>Cash</p></div>
+    <div hlmCardHeader>
+      <p hlmCardDescription>Cash available</p>
+      <div hlmCardAction>
+        @for (a of accounts(); track a.accountId) {
+          <span hlmBadge variant="outline">Account #{{ a.accountId }}</span>
+        }
+      </div>
+    </div>
     <p hlmCardContent class="text-3xl font-semibold tracking-tight">
       {{ loading() ? '…' : (cash() | currency) }}
     </p>
@@ -76,7 +83,7 @@
         </div>
       } @else if (!loading()) {
         <div class="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-          No holdings yet. Trading is coming soon. Until then, browse live prices on
+          No holdings yet. Browse live prices on
           <a routerLink="/markets" class="text-primary underline-offset-4 hover:underline">Markets</a>.
         </div>
       }
@@ -87,6 +94,9 @@
   <div hlmCard>
     <div hlmCardHeader>
       <h2 hlmCardTitle>Recent activity</h2>
+      <div hlmCardAction>
+        <a hlmBtn variant="ghost" size="sm" routerLink="/history">See all</a>
+      </div>
     </div>
     <ul hlmCardContent class="flex flex-col gap-3">
       @for (item of activity(); track $index) {

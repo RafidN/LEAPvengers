@@ -56,9 +56,10 @@ public class SecurityConfig {
                                 "/api/swagger-ui.html",
                                 "/api/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/api/accounts/**", "/api/orders/**").hasRole("TRADER")
-                        .requestMatchers("/api/internal/audit/**").hasRole("OPS")
-                        .requestMatchers("/api/internal/reports/**").hasAnyRole("OPS", "ANALYST")
+                        // Paths are matched after the /api context path, so no /api prefix here
+                        .requestMatchers("/accounts/**", "/orders/**").hasRole("TRADER")
+                        .requestMatchers("/internal/audit/**").hasRole("OPS")
+                        .requestMatchers("/internal/reports/**", "/clients/**").hasAnyRole("OPS", "ANALYST")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

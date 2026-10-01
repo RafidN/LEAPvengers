@@ -1,0 +1,93 @@
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Security</p>
+    <h1 class="text-3xl font-medium tracking-tight">Access check</h1>
+    <p class="text-muted-foreground mt-1 max-w-2xl text-sm">
+      Calls the live backend as <b class="text-foreground">{{ roleLabel }}</b> and shows what the server allows.
+      Pages are hidden by role in the browser, but this is the server's own answer.
+    </p>
+  </div>
+  <button hlmBtn variant="outline" [disabled]="running()" (click)="run()">
+    <ng-icon name="lucideRefreshCw" />
+    {{ running() ? 'Checking…' : 'Run again' }}
+  </button>
+</div>
+
+<section class="grid gap-4 lg:grid-cols-3">
+  <div hlmCard class="lg:col-span-2">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>What this role can reach</h2>
+      <p hlmCardDescription>Blocked means the server answered 401 or 403</p>
+    </div>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Data</th>
+              <th hlmTableHead>Meant for</th>
+              <th hlmTableHead>Server said</th>
+              <th hlmTableHead class="text-right">Expected?</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (r of results(); track r.path) {
+              <tr hlmTableRow>
+                <td hlmTableCell>
+                  <div class="font-medium">{{ r.label }}</div>
+                  <div class="text-muted-foreground font-mono text-xs">{{ r.method }} {{ r.path }}</div>
+                  @if (r.notBuilt) {
+                    <div class="text-muted-foreground text-xs italic">Endpoint not built yet, only the role rule is tested</div>
+                  }
+                </td>
+                <td hlmTableCell class="text-muted-foreground text-xs">{{ allowedLabels(r.allowed) }}</td>
+                <td hlmTableCell>
+                  @if (r.passed) {
+                    <span hlmBadge variant="default"><ng-icon name="lucideShieldCheck" /> Allowed</span>
+                  } @else {
+                    <span hlmBadge variant="destructive"><ng-icon name="lucideShieldX" /> Blocked</span>
+                  }
+                  <span class="text-muted-foreground ml-1 text-xs tabular-nums">HTTP {{ r.status }}</span>
+                </td>
+                <td hlmTableCell class="text-right">
+                  @if (r.expected) {
+                    <ng-icon name="lucideCircleCheck" class="text-primary text-lg" aria-label="As expected" />
+                  } @else {
+                    <span hlmBadge variant="destructive"><ng-icon name="lucideTriangleAlert" /> Unexpected</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="4" class="text-muted-foreground py-6 text-center">Checking…</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Your session token</h2>
+      <p hlmCardDescription>What the server reads from every request</p>
+    </div>
+    <dl hlmCardContent class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+      @if (claims; as c) {
+        <dt class="text-muted-foreground">Role</dt>
+        <dd><span hlmBadge variant="secondary">{{ c.role }}</span></dd>
+        <dt class="text-muted-foreground">User id</dt>
+        <dd class="tabular-nums">{{ c.userId }}</dd>
+        <dt class="text-muted-foreground">Client id</dt>
+        <dd class="tabular-nums">{{ c.clientId ?? 'None (internal staff)' }}</dd>
+        <dt class="text-muted-foreground">Issued</dt>
+        <dd class="tabular-nums">{{ (c.iat ?? 0) * 1000 | date: 'HH:mm:ss' }}</dd>
+        <dt class="text-muted-foreground">Expires</dt>
+        <dd class="tabular-nums">{{ (c.exp ?? 0) * 1000 | date: 'HH:mm:ss' }}</dd>
+      } @else {
+        <dd class="text-muted-foreground col-span-2">No token found.</dd>
+      }
+    </dl>
+  </div>
+</section>

@@ -17,6 +17,7 @@ import {
   PortfolioHistoryResult
 } from '../../services/history.service';
 import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../services/instrument-search.service';
+import { AccountResponse, AccountService } from '../../services/account.service';
 
 interface ActivityItem {
   date: string;
@@ -37,20 +38,21 @@ interface ActivityItem {
 export class DashboardComponent {
   private readonly history = inject(HistoryService);
   private readonly instruments = inject(InstrumentSearchService);
+  private readonly accountService = inject(AccountService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly balanceHidden = signal(false);
 
+  protected readonly accounts = signal<AccountResponse[]>([]);
   protected readonly cashTransactions = signal<CashTransactionResult[]>([]);
   protected readonly holdings = signal<PortfolioHistoryResult[]>([]);
   protected readonly orders = signal<OrderHistoryResult[]>([]);
   protected readonly watchlist = signal<PriceQuoteResult[]>([]);
 
-  // Cash is summed from the transaction history until GET /accounts arrives (S2.2)
+  // The account balance already includes filled trades, unlike the deposit/withdrawal history
   protected readonly cash = computed(() =>
-    this.cashTransactions().reduce(
-      (total, t) => total + (t.transactionType === 'WITHDRAWAL' ? -t.amount : t.amount), 0));
+    this.accounts().reduce((total, a) => total + a.balance, 0));
 
   protected readonly holdingsValue = computed(() =>
     this.holdings().reduce((total, h) => total + h.totalValue, 0));
@@ -72,11 +74,14 @@ export class DashboardComponent {
 
   constructor() {
     forkJoin({
+      accounts: this.accountService.getAccounts(),
       cash: this.history.getCashHistory('past-year'),
-      holdings: this.history.getPortfolioHistory('today'),
+      // 'today' would only list positions that changed today; past-year returns every current position
+      holdings: this.history.getPortfolioHistory('past-year'),
       orders: this.history.getOrderHistory('past-month')
     }).subscribe({
-      next: ({ cash, holdings, orders }) => {
+      next: ({ accounts, cash, holdings, orders }) => {
+        this.accounts.set(accounts);
         this.cashTransactions.set(cash);
         this.holdings.set(holdings);
         this.orders.set(orders);

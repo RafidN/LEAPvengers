@@ -1,0 +1,120 @@
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Reporting</p>
+    <h1 class="text-3xl font-medium tracking-tight">Client insights</h1>
+    <p class="text-muted-foreground mt-1 text-sm">
+      Portfolio value and filled orders by client segment. Clients are shown by id only.
+    </p>
+  </div>
+
+  <div class="flex items-center gap-1">
+    <span class="text-muted-foreground mr-1 text-sm">Activity window</span>
+    @for (days of lookbacks; track days) {
+      <button hlmBtn size="sm" [variant]="lookbackDays() === days ? 'default' : 'outline'" (click)="lookbackDays.set(days)">
+        {{ days }}d
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <div hlmAlert variant="destructive" class="mb-6">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+}
+
+<!-- Headline numbers -->
+<section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Clients</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tabular-nums">{{ loading() ? '…' : clients().length }}</p>
+  </div>
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Invested value</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tabular-nums">
+      {{ loading() ? '…' : (totalValue() | currency: 'USD' : 'symbol' : '1.0-0') }}
+    </p>
+  </div>
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Filled orders, last {{ lookbackDays() }} days</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tabular-nums">{{ loading() ? '…' : (totalOrders() | number) }}</p>
+  </div>
+  <div hlmCard>
+    <div hlmCardHeader><p hlmCardDescription>Clients who traded</p></div>
+    <p hlmCardContent class="text-3xl font-semibold tabular-nums">{{ loading() ? '…' : (activeShare() | percent) }}</p>
+  </div>
+</section>
+
+<section class="grid gap-4 lg:grid-cols-5">
+  <!-- By segment: chart and the same numbers as a table -->
+  <div hlmCard class="lg:col-span-3">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Invested value by segment</h2>
+      <p hlmCardDescription>Holdings valued at the latest price</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="relative h-48 w-full">
+        <canvas baseChart type="bar" [data]="chartData()" [options]="chartOptions"></canvas>
+      </div>
+
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Segment</th>
+              <th hlmTableHead class="text-right">Clients</th>
+              <th hlmTableHead class="text-right">Invested value</th>
+              <th hlmTableHead class="text-right">Filled orders</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (s of summary(); track s.segment) {
+              <tr hlmTableRow>
+                <td hlmTableCell class="font-medium">{{ s.segment }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ s.clients }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ s.portfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ s.filledOrders }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Most active clients, anonymised -->
+  <div hlmCard class="lg:col-span-2">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Most active clients</h2>
+      <p hlmCardDescription>By filled orders in the window</p>
+    </div>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Client</th>
+              <th hlmTableHead>Segment</th>
+              <th hlmTableHead class="text-right">Orders</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (c of topClients(); track c.clientId) {
+              <tr hlmTableRow>
+                <td hlmTableCell class="font-medium tabular-nums">#{{ c.clientId }}</td>
+                <td hlmTableCell><span hlmBadge variant="secondary">{{ c.segment }}</span></td>
+                <td hlmTableCell class="text-right tabular-nums">{{ c.recentFilledOrderCount }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="3" class="text-muted-foreground py-6 text-center">
+                  {{ loading() ? 'Loading…' : 'No clients.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

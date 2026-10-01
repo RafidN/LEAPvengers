@@ -1,8 +1,8 @@
 <header class="bg-card/80 sticky top-0 z-10 border-b backdrop-blur">
-  <nav class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
-    <a routerLink="/dashboard" class="mr-4 flex items-center gap-2 font-semibold">
+  <nav class="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4">
+    <a [routerLink]="homePage" class="mr-4 flex items-center gap-2 font-semibold">
       <ng-icon name="lucideShield" class="text-primary text-xl" />
-      <span class="font-[family-name:var(--font-heading)] tracking-tight">S.H.I.E.L.D.</span>
+      <span class="hidden font-[family-name:var(--font-heading)] tracking-tight lg:inline">S.H.I.E.L.D.</span>
     </a>
 
     @for (link of links; track link.path) {
@@ -15,7 +15,10 @@
 
     <div class="ml-auto flex items-center gap-3">
       @if (username) {
-        <span class="text-muted-foreground hidden text-sm md:inline">Signed in as <b class="text-foreground">{{ username }}</b></span>
+        <span class="hidden items-center gap-2 text-sm md:flex">
+          <b>{{ username }}</b>
+          <span hlmBadge variant="secondary">{{ roleLabel }}</span>
+        </span>
       }
       <button hlmBtn variant="outline" (click)="signOut()">
         <ng-icon name="lucideLogOut" />

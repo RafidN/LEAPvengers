@@ -93,10 +93,12 @@ def fetch_instruments(args: argparse.Namespace) -> list[InstrumentQuote]:
             i.instrument_id,
             i.ticker,
             i.asset_class,
-            COALESCE(lpq.price, 100.0) AS price,
+            lpq.price,
             COALESCE(lpq.volume, 1000000) AS volume
         FROM instruments i
-        LEFT JOIN LATERAL (
+        -- Only instruments that already have a quote: a made-up starting price (e.g. 100) would stick
+        -- forever, since every new quote is based on the previous one. Run yahoo_backfill.py first.
+        JOIN LATERAL (
             SELECT price, volume
             FROM price_quotes pq
             WHERE pq.instrument_id = i.instrument_id
@@ -176,7 +178,9 @@ def build_insert_sql(instruments: list[InstrumentQuote], quote_timestamp: str) -
     return """
     INSERT INTO price_quotes (instrument_id, price, volume, quote_timestamp)
     VALUES
-    {values};
+    {values}
+    -- Another generator may already have written a quote for this second; skip it rather than crash
+    ON CONFLICT (instrument_id, quote_timestamp) DO NOTHING;
 
     REFRESH MATERIALIZED VIEW latest_price_quotes;
     REFRESH MATERIALIZED VIEW account_valuations;
@@ -200,8 +204,13 @@ def main() -> int:
             if should_generate:
                 instruments = fetch_instruments(args)
                 if not instruments:
-                    print("No instruments found; stopping generator.", file=sys.stderr, flush=True)
-                    return 1
+                    print(
+                        "No instruments have price history yet (run yahoo_backfill.py first); waiting...",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    time.sleep(interval_seconds)
+                    continue
 
                 quote_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 run_psql(args, build_insert_sql(instruments, quote_timestamp), capture_output=False)
