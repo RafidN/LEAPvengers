@@ -34,7 +34,7 @@ public class InstrumentController {
      * @return List of all instruments
      */
     @GetMapping
-    public ResponseEntity<List<Instruments>> getInstruments(@RequestHeader("Authorization") String authorizationHeader) {
+    public ResponseEntity<List<Instruments>> getInstruments(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             throw new TokenValidationException("Invalid Authorization header");
         }
@@ -57,7 +57,7 @@ public class InstrumentController {
     @GetMapping("/quotes/{instrumentId}")
     public ResponseEntity<QuoteResponse> getQuote(
             @PathVariable Integer instrumentId,
-            @RequestHeader("Authorization") String authorizationHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             throw new TokenValidationException("Invalid Authorization header");
         }

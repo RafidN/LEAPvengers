@@ -53,7 +53,8 @@ class AuthControllerTest {
                 101,
                 "newuser",
                 42,
-                "newuser@example.com"
+            "newuser@example.com",
+            "USER"
         );
         //Performs a POST request to the /auth/register endpoint with the registration details and verifies the response
         mockMvc.perform(post("/auth/register")
@@ -89,7 +90,8 @@ class AuthControllerTest {
                 202,
                 "existinguser",
                 77,
-                "existinguser@example.com"
+            "existinguser@example.com",
+            "USER"
         );
 
         //Performs a POST request to the /auth/login endpoint with the login details and verifies the response
