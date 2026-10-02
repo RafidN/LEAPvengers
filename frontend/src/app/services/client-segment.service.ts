@@ -2,10 +2,11 @@
  * Service for querying client segmentation data.
  * Handles authenticated HTTP requests for analyst-facing client segment queries.
  */
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 export type ClientSegment = 'Dormant' | 'Core' | 'Active' | 'Premier';
 
@@ -32,34 +33,19 @@ export interface ClientSegmentResult {
   providedIn: 'root'
 })
 export class ClientSegmentService {
-
-  private readonly BASE_URL = '/api/clients';
-
-  constructor(private http: HttpClient) { }
-
-  private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('jwtToken');
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
-  }
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
 
   /**
    * Query client segments using optional threshold and segment filters.
    * Uses backend defaults when a field is omitted.
    */
   getClientSegments(request: ClientSegmentQueryRequest = {}): Observable<ClientSegmentResult[]> {
-    return this.http.post<ClientSegmentResult[]>(
-      `${this.BASE_URL}/segments`,
-      request,
-      { headers: this.getAuthHeaders() }
-    ).pipe(
+    return this.http.post<ClientSegmentResult[]>('/api/clients/segments', request).pipe(
       catchError(error => {
         if (error.status === 401) {
-          localStorage.removeItem('jwtToken');
+          this.authService.logout();
         }
-
         return throwError(() => error);
       })
     );
