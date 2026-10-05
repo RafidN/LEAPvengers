@@ -15,6 +15,9 @@ pipeline {
         stage('Database Setup') {
             steps {
                 sh '''
+                    # Clean up any existing container
+                    docker rm -f leapdb || true
+                    
                     # Start PostgreSQL container with health check
                     docker run -d --name leapdb \
                       -e POSTGRES_PASSWORD=n3u3d4! \
