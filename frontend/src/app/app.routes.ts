@@ -5,12 +5,6 @@ import { ShellComponent } from './layout/shell/shell.component';
 import { SignInComponent } from './pages/authentication/sign-in/sign-in.component';
 import { RegisterComponent } from './pages/authentication/register/register.component';
 import { ForgotPasswordComponent } from './pages/authentication/forgot-password/forgot-password.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { HistoryComponent } from './pages/history/history.component';
-import { MarketsComponent } from './pages/markets/markets.component';
-import { ClientsComponent } from './pages/clients/clients.component';
-import { InsightsComponent } from './pages/insights/insights.component';
-import { AccessComponent } from './pages/access/access.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'sign-in', pathMatch: 'full' },
@@ -26,12 +20,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     canActivateChild: [roleGuard],
     children: [
-      { path: 'dashboard', component: DashboardComponent, data: { roles: ['TRADER'] } },
-      { path: 'history', component: HistoryComponent, data: { roles: ['TRADER'] } },
-      { path: 'markets', component: MarketsComponent },
-      { path: 'clients', component: ClientsComponent, data: { roles: ['OPS'] } },
-      { path: 'insights', component: InsightsComponent, data: { roles: ['OPS', 'ANALYST'] } },
-      { path: 'access', component: AccessComponent }
+      { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent), data: { roles: ['TRADER'] } },
+      { path: 'history', loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent), data: { roles: ['TRADER'] } },
+      { path: 'markets', loadComponent: () => import('./pages/markets/markets.component').then(m => m.MarketsComponent) },
+      { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent), data: { roles: ['OPS'] } },
+      { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent), data: { roles: ['OPS', 'ANALYST'] } },
+      { path: 'access', loadComponent: () => import('./pages/access/access.component').then(m => m.AccessComponent) }
     ]
   },
 
