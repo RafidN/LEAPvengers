@@ -111,40 +111,66 @@ JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id;
 
 -- Orders. Filled orders move holdings through the orders_sync_holdings trigger.
--- Joanna's history covers every instrument class and every status, including a sell that was
--- rejected because she tried to sell more SHEL than she holds.
-INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, submitted_at, executed_at)
+-- Joanna's history covers every instrument class and every current status, including a sell that
+-- was rejected because she tried to sell more SHEL than she holds.
+INSERT INTO orders (
+    account_id,
+    instrument_id,
+    order_type,
+    quantity,
+    price,
+    order_date,
+    order_status,
+    rejection_reason,
+    execution_price,
+    submitted_at,
+    executed_at
+)
 SELECT a.account_id, i.instrument_id, v.side, v.quantity, v.price,
-       (now() - v.ago)::date, v.status, now() - v.ago,
-       CASE WHEN v.status = 'Filled' THEN now() - v.ago + interval '2 seconds' END
+       (now() - v.ago)::date, v.status, v.rejection_reason,
+       CASE WHEN v.status = 'FILLED' THEN v.price END,
+       now() - v.ago,
+       CASE WHEN v.status = 'FILLED' THEN now() - v.ago + interval '2 seconds' END
 FROM (VALUES
-    ('joanna.mitchell@example.com', 'NFLX',        'BUY',    40,      76.50, 'Filled',   interval '85 days 3 hours'),
-    ('joanna.mitchell@example.com', 'AMD',         'BUY',    10,     590.00, 'Filled',   interval '60 days 5 hours'),
-    ('joanna.mitchell@example.com', 'BTC-USD',     'BUY',     0.05, 91000.00, 'Filled',   interval '45 days 2 hours'),
-    ('joanna.mitchell@example.com', 'SHEL',        'BUY',    20,      96.10, 'Filled',   interval '30 days 4 hours'),
-    ('joanna.mitchell@example.com', 'RELIANCE.NS', 'BUY',     5,    1520.00, 'Filled',   interval '20 days 6 hours'),
-    ('joanna.mitchell@example.com', 'NFLX',        'SELL',   10,      79.20, 'Filled',   interval '10 days 1 hour'),
-    ('joanna.mitchell@example.com', 'SAP',         'BUY',     5,     224.00, 'Canceled', interval '7 days 2 hours'),
-    ('joanna.mitchell@example.com', 'ETH-USD',     'BUY',     1,    3120.00, 'Filled',   interval '5 days 3 hours'),
-    ('joanna.mitchell@example.com', 'EURUSD=X',    'BUY',  1000,       1.1310, 'Filled', interval '3 days 2 hours'),
-    ('joanna.mitchell@example.com', 'ASML',        'BUY',    20,    1850.00, 'Rejected', interval '2 days 1 hour'),
-    ('joanna.mitchell@example.com', 'SHEL',        'SELL',   30,      98.00, 'Rejected', interval '1 day 2 hours'),
-    ('joanna.mitchell@example.com', 'ORCL',        'BUY',     2,     158.00, 'Pending',  interval '20 minutes'),
+    ('joanna.mitchell@example.com', 'NFLX',        'BUY',    40,      76.50, 'FILLED',   NULL,                                      interval '85 days 3 hours'),
+    ('joanna.mitchell@example.com', 'AMD',         'BUY',    10,     590.00, 'FILLED',   NULL,                                      interval '60 days 5 hours'),
+    ('joanna.mitchell@example.com', 'BTC-USD',     'BUY',     0.05, 91000.00, 'FILLED',   NULL,                                      interval '45 days 2 hours'),
+    ('joanna.mitchell@example.com', 'SHEL',        'BUY',    20,      96.10, 'FILLED',   NULL,                                      interval '30 days 4 hours'),
+    ('joanna.mitchell@example.com', 'RELIANCE.NS', 'BUY',     5,    1520.00, 'FILLED',   NULL,                                      interval '20 days 6 hours'),
+    ('joanna.mitchell@example.com', 'NFLX',        'SELL',   10,      79.20, 'FILLED',   NULL,                                      interval '10 days 1 hour'),
+    ('joanna.mitchell@example.com', 'SAP',         'BUY',     5,     224.00, 'FAILED',   'Order canceled before execution',         interval '7 days 2 hours'),
+    ('joanna.mitchell@example.com', 'ETH-USD',     'BUY',     1,    3120.00, 'FILLED',   NULL,                                      interval '5 days 3 hours'),
+    ('joanna.mitchell@example.com', 'EURUSD=X',    'BUY',  1000,       1.1310, 'FILLED', NULL,                                      interval '3 days 2 hours'),
+    ('joanna.mitchell@example.com', 'ASML',        'BUY',    20,    1850.00, 'REJECTED', 'Insufficient buying power for the order', interval '2 days 1 hour'),
+    ('joanna.mitchell@example.com', 'SHEL',        'SELL',   30,      98.00, 'REJECTED', 'Insufficient holdings to complete sale',  interval '1 day 2 hours'),
+    ('joanna.mitchell@example.com', 'ORCL',        'BUY',     2,     158.00, 'PENDING',  NULL,                                      interval '20 minutes'),
     -- Sam: one large Bitcoin position -> Premier once he also has 12 recent fills (below)
-    ('sam.onukweme@lol.com',        'BTC-USD',     'BUY',     3,   90000.00, 'Filled',   interval '70 days'),
+    ('sam.onukweme@lol.com',        'BTC-USD',     'BUY',     3,   90000.00, 'FILLED',   NULL,                                      interval '70 days'),
     -- Bryan: a couple of trades -> Core
-    ('bryan.nguyen@lol.com',        'ASML',        'BUY',    15,    1800.00, 'Filled',   interval '50 days'),
-    ('bryan.nguyen@lol.com',        'TCS.NS',      'BUY',    10,    2250.00, 'Filled',   interval '15 days')
-) AS v(email, ticker, side, quantity, price, status, ago)
+    ('bryan.nguyen@lol.com',        'ASML',        'BUY',    15,    1800.00, 'FILLED',   NULL,                                      interval '50 days'),
+    ('bryan.nguyen@lol.com',        'TCS.NS',      'BUY',    10,    2250.00, 'FILLED',   NULL,                                      interval '15 days')
+) AS v(email, ticker, side, quantity, price, status, rejection_reason, ago)
 JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id
 JOIN instruments i ON i.ticker = v.ticker
 ORDER BY v.ago DESC;
 
 -- Frequent small traders: Paula (12 fills -> Active) and Sam (11 more fills -> Premier).
-INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, submitted_at, executed_at)
+INSERT INTO orders (
+    account_id,
+    instrument_id,
+    order_type,
+    quantity,
+    price,
+    order_date,
+    order_status,
+    rejection_reason,
+    execution_price,
+    submitted_at,
+    executed_at
+)
 SELECT a.account_id, i.instrument_id, 'BUY', v.quantity, v.base_price + g, (now() - g * interval '6 days')::date,
-       'Filled', now() - g * interval '6 days' - interval '1 hour',
+       'FILLED', NULL, v.base_price + g, now() - g * interval '6 days' - interval '1 hour',
        now() - g * interval '6 days' - interval '1 hour' + interval '2 seconds'
 FROM (VALUES
     ('paula.agyeman@lol.com', 'SOL-USD', 5,  145.00, 12),
@@ -162,7 +188,7 @@ SET balance =
     COALESCE((SELECT SUM(CASE WHEN ct.txn_type = 'DEPOSIT' THEN ct.amount ELSE -ct.amount END)
               FROM cash_transactions ct WHERE ct.account_id = a.account_id), 0)
   - COALESCE((SELECT SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity * o.price ELSE -o.quantity * o.price END)
-              FROM orders o WHERE o.account_id = a.account_id AND o.order_status = 'Filled'), 0);
+              FROM orders o WHERE o.account_id = a.account_id AND o.order_status = 'FILLED'), 0);
 
 -- Price quotes are backfilled from Yahoo Finance during setup, which also refreshes the
 -- latest_price_quotes and account_valuations views that value these holdings.
