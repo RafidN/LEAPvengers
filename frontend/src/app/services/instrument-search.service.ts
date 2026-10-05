@@ -3,9 +3,12 @@
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+
+/** A spread of seeded instruments (US, UK, Indian stocks, crypto, FX) shown on the dashboard and markets pages. */
+export const WATCHLIST = ['NFLX', 'AMD', 'SHEL', 'RELIANCE.NS', 'BTC-USD', 'EURUSD=X'];
 
 export interface TickerSearchResult {
   holdingId: number;
@@ -43,5 +46,17 @@ export class InstrumentSearchService {
 
   searchInstrumentPriceQuote(query: string): Observable<PriceQuoteResult[]> {
     return this.http.post<PriceQuoteResult[]>('/api/search/instrument-price-quote', { query });
+  }
+
+  /** Latest quote for each exact ticker, in the order given. Tickers with no quote are left out. */
+  getQuotes(tickers: string[]): Observable<PriceQuoteResult[]> {
+    return forkJoin(
+      tickers.map(ticker =>
+        this.searchInstrumentPriceQuote(ticker).pipe(
+          map(results => results.find(result => result.ticker === ticker)),
+          catchError(() => of(undefined))
+        )
+      )
+    ).pipe(map(quotes => quotes.filter((quote): quote is PriceQuoteResult => !!quote)));
   }
 }

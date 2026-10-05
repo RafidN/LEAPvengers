@@ -1,0 +1,86 @@
+<div class="mb-6">
+  <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Live prices</p>
+  <h1 class="text-3xl font-medium tracking-tight">Markets</h1>
+</div>
+
+<section class="grid gap-4 lg:grid-cols-5">
+  <!-- Chart for the selected instrument -->
+  <div hlmCard class="lg:col-span-3">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="text-xl">{{ selected() }}</h2>
+      <p hlmCardDescription>{{ selectedQuote()?.instrumentName ?? '' }}</p>
+      <div hlmCardAction class="flex gap-1">
+        @for (p of periods; track p.value) {
+          <button hlmBtn size="sm" [variant]="period() === p.value ? 'default' : 'ghost'" (click)="period.set(p.value)">
+            {{ p.label }}
+          </button>
+        }
+      </div>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="flex items-baseline gap-3">
+        <span class="text-3xl font-semibold tabular-nums">
+          {{ selectedQuote()?.currentPrice ?? points()[points().length - 1]?.value | number: '1.2-4' }}
+        </span>
+        @if (change(); as c) {
+          <span class="text-sm font-medium tabular-nums"
+            [style.color]="c.amount >= 0 ? 'var(--profit)' : 'var(--loss)'">
+            {{ c.amount >= 0 ? '+' : '' }}{{ c.amount | number: '1.2-4' }} ({{ c.ratio | percent: '1.2-2' }})
+          </span>
+        }
+      </div>
+
+      @if (points().length) {
+        <app-price-chart [points]="points()" [label]="selected()" />
+      } @else {
+        <div class="text-muted-foreground flex h-72 items-center justify-center rounded-lg border border-dashed text-sm">
+          {{ chartLoading() ? 'Loading prices…' : 'No prices for this period.' }}
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Search and results -->
+  <div hlmCard class="lg:col-span-2">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Instruments</h2>
+      <p hlmCardDescription>Search by ticker or name</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <div class="relative">
+        <ng-icon name="lucideSearch" class="text-muted-foreground absolute top-1/2 left-2.5 -translate-y-1/2" />
+        <input hlmInput class="h-9 pl-8" placeholder="e.g. Tata, ETH, GBP" aria-label="Search instruments"
+          [ngModel]="query()" (ngModelChange)="query.set($event)" />
+      </div>
+
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Ticker</th>
+              <th hlmTableHead>Class</th>
+              <th hlmTableHead class="text-right">Price</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (q of results(); track q.ticker) {
+              <tr hlmTableRow class="cursor-pointer" [class.bg-muted]="q.ticker === selected()"
+                (click)="selected.set(q.ticker)">
+                <td hlmTableCell>
+                  <div class="font-medium">{{ q.ticker }}</div>
+                  <div class="text-muted-foreground max-w-44 truncate text-xs">{{ q.instrumentName }}</div>
+                </td>
+                <td hlmTableCell><span hlmBadge variant="secondary">{{ q.assetClass }}</span></td>
+                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | number: '1.2-4' }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="3" class="text-muted-foreground py-6 text-center">No matching instruments.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
