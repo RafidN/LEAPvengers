@@ -48,8 +48,7 @@ pipeline {
 
             steps {
                 dir('frontend') {
-                   // sh 'npm test'
-                    echo 'Frontend tests are not configured yet.'
+                    sh 'npm test'
                 }
             }
         }
