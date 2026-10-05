@@ -41,6 +41,7 @@ export interface PortfolioHistoryResult {
   holdingId: number;
   ticker: string;
   instrumentName: string;
+  assetClass: string;
   quantity: number;
   price: number;
   totalValue: number;       // quantity × price
