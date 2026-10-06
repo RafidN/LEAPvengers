@@ -1,6 +1,6 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.exception.UserNotFoundException;
+import com.neueda.leap.exception.*;
 import com.neueda.leap.model.Accounts;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.AccountHoldingResponse;
@@ -8,6 +8,9 @@ import com.neueda.leap.model.dto.AccountPortfolioResponse;
 import com.neueda.leap.model.dto.AccountResponse;
 import com.neueda.leap.model.dto.OrderRequest;
 import com.neueda.leap.model.dto.OrderHistoryResult;
+import com.neueda.leap.model.dto.PriceQuoteResult;
+import com.neueda.leap.model.dto.InstrumentIdResult;
+
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.PortfolioRepository;
 import com.neueda.leap.repository.UserRepository;
@@ -30,12 +33,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 class OrderServiceTest {
 
     @Mock
@@ -63,6 +67,7 @@ class OrderServiceTest {
     private OwnershipService ownershipService;
 
     private OrderRequest orderRequest;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -71,9 +76,6 @@ class OrderServiceTest {
         orderService = new OrderService(userRepository, instrumentsRepository, orderRepository, holdingsRepository, accountRepository);
         accountService = new AccountService(accountRepository, currentUserService, portfolioRepository, ownershipService);
 
-        //ticker, quantity, orderType, accountIdz
-        orderRequest = new OrderRequest();
-
     }
 
     @AfterEach
@@ -81,18 +83,80 @@ class OrderServiceTest {
         SecurityContextHolder.clearContext();
     }
     @Test
-    void getAccountsForCurrentUserThrowsWhenUserMissing() {
-        setAuthenticatedUser(7);
-
-        when(userRepository.findById(7)).thenReturn(Optional.empty());
-
+    void testRequireExistingUser() {
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertThrows(UserNotFoundException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    @Test
+    void testRequireNotNullTicker() {
         Users testUser = new Users();
         testUser.setUserId(1);
         testUser.setClientId(1);
-        List<OrderHistoryResult> orderHistoryResult = orderService.placeOrder(1, orderRequest);
-        assertThrows(UserNotFoundException.class, () -> accountService.getAccountsForCurrentUser());
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        orderRequest = new OrderRequest("", new BigDecimal(5), "BUY", 67);
+        assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    @Test
+    void testRequirePositiveQuantity() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(-2), "BUY", 67);
+        assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    @Test
+    void testRequireBuySellOrderType() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(-2), "REIMU", 67);
+        assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    @Test
+    void testRequireExistingAccountNumber() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertThrows(InvalidCredentialsException.class, () -> orderService.placeOrder(1, orderRequest));
     }
 
+
+    @Test
+    void testRequireExistingTicker() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67))
+        .thenReturn(accountResponses);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertThrows(TickerNotFoundException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    @Test
+    void testRequireSufficientBalanceOnBuy() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        List<PriceQuoteResult> prices = new ArrayList<>();
+        List<InstrumentIdResult> instrumentIds = new ArrayList<>();
+        prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(670), "Equity", LocalDateTime.now()));
+        instrumentIds.add(new InstrumentIdResult(1));
+        when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
+        when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
     private void setAuthenticatedUser(Integer userId) {
         Map<String, Object> details = new HashMap<>();
         details.put("userId", userId);

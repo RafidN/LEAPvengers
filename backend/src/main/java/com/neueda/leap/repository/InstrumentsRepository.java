@@ -52,4 +52,14 @@ public interface InstrumentsRepository extends JpaRepository<Instruments, Intege
     """)
     List<PriceQuoteResult> findAllTradableInstruments();
 
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.InstrumentIdResult(
+            i.instrumentId
+        )
+        FROM Instruments i
+        WHERE UPPER(i.ticker) LIKE UPPER(CONCAT('%', :query, '%'))
+            OR UPPER(i.instrumentName) LIKE UPPER(CONCAT('%', :query, '%'))
+    """)
+    List<InstrumentIdResult> searchInstrumentId(@Param("query") String query);
+
 }
