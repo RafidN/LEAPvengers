@@ -26,6 +26,21 @@ public interface PriceQuotesRepository extends JpaRepository<PriceQuotes, Intege
         FROM PriceQuotes pq
         JOIN pq.instrument i
         WHERE UPPER(i.ticker) = UPPER(:ticker)
+        ORDER BY pq.quoteTimestamp DESC
+    """)
+    List<PriceHistoryResult> findAllPriceHistory(@Param("ticker") String ticker);
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.PriceHistoryResult(
+            i.ticker,
+            i.instrumentName,
+            pq.price,
+            pq.volume,
+            pq.quoteTimestamp
+        )
+        FROM PriceQuotes pq
+        JOIN pq.instrument i
+        WHERE UPPER(i.ticker) = UPPER(:ticker)
             AND pq.quoteTimestamp >= :startTimestamp
             AND pq.quoteTimestamp < :endTimestamp
         ORDER BY pq.quoteTimestamp DESC

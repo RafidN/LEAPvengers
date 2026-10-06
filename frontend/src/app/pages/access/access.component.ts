@@ -29,7 +29,7 @@ interface AccessResult extends AccessCheck {
 const CHECKS: AccessCheck[] = [
   { label: 'Market prices', method: 'POST', path: '/api/search/instrument-price-quote', body: { query: 'NFLX' }, allowed: ['TRADER', 'OPS', 'ANALYST'] },
   { label: 'My accounts and cash', method: 'GET', path: '/api/accounts', allowed: ['TRADER'] },
-  { label: 'My order history', method: 'POST', path: '/api/history/orders/past-month', allowed: ['TRADER', 'OPS', 'ANALYST'] },
+  { label: 'My order history', method: 'GET', path: '/api/history/orders?period=1m', allowed: ['TRADER', 'OPS', 'ANALYST'] },
   { label: 'Client segments', method: 'POST', path: '/api/clients/segments', body: {}, allowed: ['OPS', 'ANALYST'] },
   { label: 'Ops audit trail', method: 'GET', path: '/api/internal/audit/orders', allowed: ['OPS'], notBuilt: true },
   { label: 'Analyst reports', method: 'GET', path: '/api/internal/reports/activity', allowed: ['OPS', 'ANALYST'], notBuilt: true }

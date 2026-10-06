@@ -30,16 +30,16 @@ export class MarketsComponent {
   private readonly history = inject(HistoryService);
 
   protected readonly periods: { value: HistoryPeriod; label: string }[] = [
-    { value: 'past-day', label: '1D' },
-    { value: 'past-7-days', label: '7D' },
-    { value: 'past-month', label: '1M' },
-    { value: 'past-year', label: '1Y' }
+    { value: '1d', label: '1D' },
+    { value: '7d', label: '7D' },
+    { value: '1m', label: '1M' },
+    { value: '1y', label: '1Y' }
   ];
 
   protected readonly query = signal('');
   protected readonly results = signal<PriceQuoteResult[]>([]);
   protected readonly selected = signal(inject(ActivatedRoute).snapshot.queryParamMap.get('ticker') ?? WATCHLIST[0]);
-  protected readonly period = signal<HistoryPeriod>('past-7-days');
+  protected readonly period = signal<HistoryPeriod>('7d');
   protected readonly points = signal<PricePoint[]>([]);
   protected readonly chartLoading = signal(true);
 

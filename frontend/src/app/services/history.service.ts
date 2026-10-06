@@ -1,6 +1,6 @@
 /**
  * Historical data: orders, cash transactions, prices and portfolio snapshots.
- * Each call hits POST /api/history/{kind}/{period}.
+ * Each call hits GET /api/history/{kind}?period=1d|7d|1m|1y.
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -8,7 +8,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
-export type HistoryPeriod = 'past-year' | 'past-month' | 'past-7-days' | 'past-day' | 'today';
+export type HistoryPeriod = '1d' | '7d' | '1m' | '1y';
 
 export interface OrderHistoryResult {
   orderId: number;
@@ -55,25 +55,27 @@ export class HistoryService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
 
-  getOrderHistory(period: HistoryPeriod): Observable<OrderHistoryResult[]> {
-    return this.post<OrderHistoryResult[]>('orders', period);
+  getOrderHistory(period?: HistoryPeriod): Observable<OrderHistoryResult[]> {
+    return this.get<OrderHistoryResult[]>('orders', period);
   }
 
-  getCashHistory(period: HistoryPeriod): Observable<CashTransactionResult[]> {
-    return this.post<CashTransactionResult[]>('cash', period);
+  getCashHistory(period?: HistoryPeriod): Observable<CashTransactionResult[]> {
+    return this.get<CashTransactionResult[]>('cash', period);
   }
 
   /** Public endpoint, no sign-in needed. */
-  getPriceHistory(ticker: string, period: HistoryPeriod): Observable<PriceHistoryResult[]> {
-    return this.post<PriceHistoryResult[]>('prices', period, { ticker });
+  getPriceHistory(ticker: string, period?: HistoryPeriod): Observable<PriceHistoryResult[]> {
+    return this.get<PriceHistoryResult[]>('prices', period, { ticker });
   }
 
-  getPortfolioHistory(period: HistoryPeriod): Observable<PortfolioHistoryResult[]> {
-    return this.post<PortfolioHistoryResult[]>('portfolio', period);
+  getPortfolioHistory(period?: HistoryPeriod): Observable<PortfolioHistoryResult[]> {
+    return this.get<PortfolioHistoryResult[]>('portfolio', period);
   }
 
-  private post<T>(kind: string, period: HistoryPeriod, body: object = {}): Observable<T> {
-    return this.http.post<T>(`/api/history/${kind}/${period}`, body).pipe(
+  private get<T>(kind: string, period?: HistoryPeriod, params: Record<string, string> = {}): Observable<T> {
+    const requestParams = period ? { ...params, period } : params;
+
+    return this.http.get<T>(`/api/history/${kind}`, { params: requestParams }).pipe(
       catchError(error => {
         if (error.status === 401) {
           this.authService.logout();
