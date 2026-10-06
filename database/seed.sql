@@ -113,9 +113,11 @@ JOIN accounts a ON a.client_id = c.client_id;
 -- Orders. Filled orders move holdings through the orders_sync_holdings trigger.
 -- Joanna's history covers every instrument class and every status, including a sell that was
 -- rejected because she tried to sell more SHEL than she holds.
-INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, submitted_at, executed_at)
+INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, execution_price, submitted_at, executed_at)
 SELECT a.account_id, i.instrument_id, v.side, v.quantity, v.price,
-       (now() - v.ago)::date, v.status, now() - v.ago,
+       (now() - v.ago)::date, v.status,
+       CASE WHEN v.status = 'FILLED' THEN v.price END,
+       now() - v.ago,
        CASE WHEN v.status = 'FILLED' THEN now() - v.ago + interval '2 seconds' END
 FROM (VALUES
     ('joanna.mitchell@example.com', 'NFLX',        'BUY',    40,      76.50, 'FILLED',   interval '85 days 3 hours'),
@@ -142,9 +144,9 @@ JOIN instruments i ON i.ticker = v.ticker
 ORDER BY v.ago DESC;
 
 -- Frequent small traders: Paula (12 fills -> Active) and Sam (11 more fills -> Premier).
-INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, submitted_at, executed_at)
+INSERT INTO orders (account_id, instrument_id, order_type, quantity, price, order_date, order_status, execution_price, submitted_at, executed_at)
 SELECT a.account_id, i.instrument_id, 'BUY', v.quantity, v.base_price + g, (now() - g * interval '6 days')::date,
-       'FILLED', now() - g * interval '6 days' - interval '1 hour',
+       'FILLED', v.base_price + g, now() - g * interval '6 days' - interval '1 hour',
        now() - g * interval '6 days' - interval '1 hour' + interval '2 seconds'
 FROM (VALUES
     ('paula.agyeman@lol.com', 'SOL-USD', 5,  145.00, 12),
