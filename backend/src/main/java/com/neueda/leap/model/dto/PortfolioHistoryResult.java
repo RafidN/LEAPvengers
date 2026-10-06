@@ -11,6 +11,7 @@ public class PortfolioHistoryResult {
     private Integer holdingId;
     private String ticker;
     private String instrumentName;
+    private String assetClass;
     private BigDecimal quantity;
     private BigDecimal price;
     private BigDecimal totalValue;  // quantity * price
@@ -21,9 +22,16 @@ public class PortfolioHistoryResult {
 
     public PortfolioHistoryResult(Integer holdingId, String ticker, String instrumentName,
                                   BigDecimal quantity, BigDecimal price, BigDecimal totalValue, LocalDate asOfDate) {
+        this(holdingId, ticker, instrumentName, null, quantity, price, totalValue, asOfDate);
+    }
+
+    public PortfolioHistoryResult(Integer holdingId, String ticker, String instrumentName,
+                                  String assetClass, BigDecimal quantity, BigDecimal price,
+                                  BigDecimal totalValue, LocalDate asOfDate) {
         this.holdingId = holdingId;
         this.ticker = ticker;
         this.instrumentName = instrumentName;
+        this.assetClass = assetClass;
         this.quantity = quantity;
         this.price = price;
         this.totalValue = totalValue;
@@ -53,6 +61,14 @@ public class PortfolioHistoryResult {
 
     public void setInstrumentName(String instrumentName) {
         this.instrumentName = instrumentName;
+    }
+
+    public String getAssetClass() {
+        return assetClass;
+    }
+
+    public void setAssetClass(String assetClass) {
+        this.assetClass = assetClass;
     }
 
     public BigDecimal getQuantity() {
