@@ -4,6 +4,7 @@ pipeline {
     tools {
         maven 'Maven3'
         nodejs 'NodeJS20'
+        sonarqube 'LeapVengersSonar'
     }
 
     stages {
@@ -76,6 +77,23 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh 'npm test'
+                }
+            }
+        }
+
+        stage('Code Analysis') {
+            environment {
+                scannerHome = tool 'LeapVengersSonar'
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('LeapVengersSonar') {
+                        sh '''${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=leap \
+                            -Dsonar.projectName=LEAP \
+                            -Dsonar.projectVersion=${BUILD_NUMBER} \
+                            -Dsonar.sources=./backend/src,./frontend/src,./scripts'''
+                    }
                 }
             }
         }
