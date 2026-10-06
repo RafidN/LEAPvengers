@@ -32,7 +32,7 @@ const CHECKS: AccessCheck[] = [
   { label: 'My order history', method: 'POST', path: '/api/history/orders/past-month', allowed: ['TRADER', 'OPS', 'ANALYST'] },
   { label: 'Client segments', method: 'POST', path: '/api/clients/segments', body: {}, allowed: ['OPS', 'ANALYST'] },
   { label: 'Ops audit trail', method: 'GET', path: '/api/internal/audit/orders', allowed: ['OPS'], notBuilt: true },
-  { label: 'Analyst reports', method: 'GET', path: '/api/internal/reports/activity', allowed: ['OPS', 'ANALYST'], notBuilt: true }
+  { label: 'Analyst reports', method: 'GET', path: '/api/internal/reports/activity', allowed: ['ANALYST'], notBuilt: true }
 ];
 
 /**

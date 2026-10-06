@@ -24,7 +24,7 @@ export const routes: Routes = [
       { path: 'history', loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent), data: { roles: ['TRADER'] } },
       { path: 'markets', loadComponent: () => import('./pages/markets/markets.component').then(m => m.MarketsComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent), data: { roles: ['OPS'] } },
-      { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent), data: { roles: ['OPS', 'ANALYST'] } },
+      { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent), data: { roles: ['ANALYST'] } },
       { path: 'access', loadComponent: () => import('./pages/access/access.component').then(m => m.AccessComponent) }
     ]
   },
