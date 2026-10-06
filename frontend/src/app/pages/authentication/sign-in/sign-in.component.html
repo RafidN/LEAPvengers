@@ -7,7 +7,7 @@
   <form hlmCardContent class="flex flex-col gap-3 text-left" (ngSubmit)="onSubmit()">
     <div class="flex flex-col gap-1.5">
       <label hlmLabel for="username">Username</label>
-      <input hlmInput id="username" name="username" class="h-11 bg-input" placeholder="Enter your username" autocomplete="username"
+      <input hlmInput id="username" name="username" class="h-11 bg-input" placeholder="username" autocomplete="username"
         required [(ngModel)]="username" [disabled]="isLoading()" />
     </div>
     <div class="flex flex-col gap-1.5">
