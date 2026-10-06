@@ -4,7 +4,6 @@ pipeline {
     tools {
         maven 'Maven3'
         nodejs 'NodeJS20'
-        sonarqube 'LeapVengersSonar'
     }
 
     stages {
