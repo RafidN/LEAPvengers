@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TokenValidationException.class)
     public ResponseEntity<Map<String, Object>> handleTokenValidation(TokenValidationException ex) {
-        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
     }
 
     @ExceptionHandler(InvalidInputException.class)

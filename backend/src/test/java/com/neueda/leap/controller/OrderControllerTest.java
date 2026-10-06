@@ -34,64 +34,70 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.test.web.servlet.MvcResult;
-
-@WebMvcTest(controllers={AuthController.class})
+import org.springframework.boot.test.mock.mockito.MockBean;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+@WebMvcTest(controllers={AuthController.class, OrderController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class OrderControllerTest {
-
+    @Autowired
     private MockMvc mockMvc;
-    private MockMvc registerMockMvc;
+
+    @MockBean
+    private OrderService orderService;
+    
+    @MockBean
+    private AuthService authService;
 
     @Autowired
     private ObjectMapper objectMapper; //Turns Java objects into JSON and vice versa
 
-    @Autowired
+    @MockBean
     private JwtUtil jwtUtil;
 
     @BeforeEach
     void setUp(){
+        AuthenticationResponse ar = new AuthenticationResponse();
+        ar.setToken("fdjskal");
+        when(authService.register(any(RegisterRequest.class))).thenReturn(ar);
     }
-    // @Test
-    // void placingCorrectOrderTest() throws Exception { 
-    //     // orderService.orderHistoryResult = new OrderHistoryResult(
-    //     //         67,
-    //     //         "NFLX",
-    //     //         "BUY",
-    //     //         67,
-    //     //         67,
-    //     //         "ACCEPTED",
-    //     //         "2026-10-01",
-    //     //         "2026-10-01T11:53:28.5576925"
-    //     // );
-    //     // MvcResult mvcResult = registerMockMvc.perform(post("/auth/register")
-    //     //                 .contentType(MediaType.APPLICATION_JSON)
-    //     //                 .content("""
-    //     //                         {
-    //     //                             "firstName":"fjekl",
-    //     //                             "lastName":"jefklfe",
-    //     //                             "email":"jfkelajfkle@gmail.com",
-    //     //                             "username":"feafd",
-    //     //                             "password":"fdsjaklfdsal"
+    @Test
+    void placingCorrectOrderTest() throws Exception { 
+        // orderService.orderHistoryResult = new OrderHistoryResult(
+        //         67,
+        //         "NFLX",
+        //         "BUY",
+        //         67,
+        //         67,
+        //         "ACCEPTED",
+        //         "2026-10-01",
+        //         "2026-10-01T11:53:28.5576925"
+        // );
+        // when(authService.register(any(RegisterRequest)))
+       RegisterRequest registerRequest = new RegisterRequest();
+       registerRequest.setUsername("a");
+       registerRequest.setPassword("b");
+       registerRequest.setEmail("fdsa@gmail.com");
+       registerRequest.setFirstName("fdsa");
+       registerRequest.setLastName("fsda");
+       mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                        .andExpect(status().isCreated())
+                        .andDo(print());
+        // mockMvc.perform(post("/order/placed")
+        //                 .contentType(MediaType.APPLICATION_JSON)
+        //                 .header("Authorization", "BEARER JKLFD")
+        //                 .content("""
+        //                         {
+        //                             "ticker":"NFLX",
+        //                             "quantity":7,
+        //                             "orderType":"BUY",
+        //                             "accountId":5
+        //                         }
+        //                         """))
+        //         .andExpect(status().isCreated())
+        //         .andReturn();
 
-    //     //                         }
-    //     //                         """))
-    //     //         .andExpect(status().isCreated())
-    //     //         .andReturn();
-    //     // String resultString = mvcResult.getResponse().getContentAsString();
-    //     // System.out.println("THE RESULT\n" + resultString);
-    //     mockMvc.perform(post("/order/placed")
-    //                     .contentType(MediaType.APPLICATION_JSON)
-    //                     .header("Authorization", "BEARER JKLFD")
-    //                     .content("""
-    //                             {
-    //                                 "ticker":"NFLX",
-    //                                 "quantity":7,
-    //                                 "orderType":"BUY",
-    //                                 "accountId":5
-    //                             }
-    //                             """))
-    //             .andExpect(status().isCreated())
-    //             .andReturn();
-
-    // }
+    }
 }
