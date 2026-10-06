@@ -10,9 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+
 @RestController
 @RequestMapping("/order")
 public class OrderController {
+        @Autowired
         private final OrderService orderService;
         private final JwtUtil jwtUtil;
         private static final String BEARER_PREFIX = "Bearer ";

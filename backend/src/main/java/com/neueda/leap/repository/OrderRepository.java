@@ -141,39 +141,4 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersToday(@Param("clientId") Integer clientId);
-
-    @Modifying
-    @Query(value = """
-        INSERT INTO Orders(
-            account_id,
-            instrument_id,
-            order_type,
-            quantity,
-            price,
-            CAST(order_date) as date,
-            CAST(order_status) datetime,
-            submitted_at
-        )
-        VALUES(
-            :accountId,
-            :instrumentId,
-            :orderType,
-            :quantity,
-            :price,
-            :orderStatus,
-            :orderDate,
-            :submittedAt
-        )
-    """,
-    nativeQuery = true)
-    List<OrderHistoryResult> placeOrder(
-    @Param("accountId") Integer accountId,
-    @Param("instrumentId") Integer instrumentId,
-    @Param("orderType") String orderType,
-    @Param("quantity") BigDecimal quantity,
-    @Param("price") BigDecimal price,
-    @Param("orderStatus") String orderStatus,
-    @Param("orderDate") LocalDate orderDate,
-    @Param("submittedAt") LocalDateTime submittedAt
-    );
 }

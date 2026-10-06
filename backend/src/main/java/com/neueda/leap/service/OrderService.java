@@ -7,6 +7,7 @@ import com.neueda.leap.exception.TickerNotFoundException;
 import com.neueda.leap.model.Clients;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.model.Accounts;
+import com.neueda.leap.model.Orders;
 
 import com.neueda.leap.model.dto.AuthenticationResponse;
 import com.neueda.leap.model.dto.ForgotPasswordResponse;
@@ -51,7 +52,7 @@ public class OrderService {
     }
 
 
-    @Transactional(readOnly = true)
+    @Transactional()
     public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) 
             throws UserNotFoundException, InvalidInputException {
         
@@ -103,8 +104,18 @@ public class OrderService {
         if(new BigDecimal(tickerStock).compareTo(quantity) < 0 && orderType.toUpperCase().equals("SELL")){
             throw new InvalidInputException("Not enough holding inventory in account to sell");
         }
-        List<OrderHistoryResult> result = orderRepository.placeOrder(accountId, instrumentIds.get(0).getInstrumentId(), orderType, quantity, 
-            prices.get(0).getCurrentPrice(), "ACCEPTED", LocalDate.now(), LocalDateTime.now());
+        Orders order = new Orders(accountId, instrumentIds.get(0).getInstrumentId(), orderType, quantity, 
+            prices.get(0).getCurrentPrice(), LocalDate.now());
+        Orders savedOrder = orderRepository.save(order);
+        savedOrder.setOrderStatus("ACCEPTED");
+        orderRepository.save(savedOrder);
+        List<OrderHistoryResult> result = new ArrayList<>();
+        result.add(new OrderHistoryResult(savedOrder.getOrderId(), ticker, savedOrder.getOrderType(), savedOrder.getQuantity(), 
+            savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(), savedOrder.getSubmittedAt()));
+
+        // Integer orderId, String ticker, String orderType,
+        //                      BigDecimal quantity, BigDecimal price, String orderStatus,
+        //                      LocalDate orderDate, LocalDateTime submittedAt) {
         return result;
     }
 }
