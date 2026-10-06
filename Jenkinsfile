@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         maven 'Maven3'
+        nodejs 'NodeJS20'
     }
 
     stages {
@@ -32,10 +33,8 @@ pipeline {
                     
                     # Create and seed database
                     docker exec leapdb psql -U postgres -c "CREATE DATABASE leapvengersdb;"
-                    docker cp database/enterprise-schema.sql leapdb:/schema.sql
-                    docker exec leapdb psql -U postgres -d leapvengersdb -f /schema.sql
-                    docker cp database/seed.sql leapdb:/seed.sql
-                    docker exec leapdb psql -U postgres -d leapvengersdb -f /seed.sql
+                    cat database/enterprise-schema.sql | docker exec -i leapdb psql -U postgres -d leapvengersdb
+                    cat database/seed.sql | docker exec -i leapdb psql -U postgres -d leapvengersdb
                 '''
             }
         }
@@ -77,6 +76,24 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh 'npm test'
+                }
+            }
+        }
+
+        stage('Code Analysis') {
+            environment {
+                scannerHome = tool 'LeapVengersSonar'
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('LeapVengersSonar') {
+                        sh '''${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=leap \
+                            -Dsonar.projectName=LEAP \
+                            -Dsonar.projectVersion=${BUILD_NUMBER} \
+                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
+                            -Dsonar.host.url=http://localhost:9000'''
+                    }
                 }
             }
         }
