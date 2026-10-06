@@ -19,7 +19,7 @@ interface SegmentSummary {
 }
 
 /**
- * Analyst (and Ops) insights: trading activity and portfolio value by client segment.
+ * Analyst insights: trading activity and portfolio value by client segment.
  * Clients are shown by id only; analysts don't need names or emails (BRS 9.3).
  */
 @Component({

@@ -113,7 +113,7 @@ How it fits together:
 4. **Backend:** `JwtAuthenticationFilter` turns that claim into a Spring authority (`ROLE_TRADER` and so on). `SecurityConfig` then protects whole URL groups in a few lines:
    - `/accounts/**` and `/orders/**`: `hasRole("TRADER")`
    - `/internal/audit/**`: `hasRole("OPS")`
-   - `/internal/reports/**`: `hasAnyRole("ANALYST", "OPS")`
+   - `/internal/reports/**`: `hasRole("ANALYST")`
 5. **Frontend:** the login response includes the role. A role guard on each route sends users to their own landing page, and the top bar shows only the links their role can use.
 
 Roles and ownership are two separate checks, and you need both. The role check says "Traders may call `/accounts/{id}`". The ownership check (`OwnershipService`, Milestone 1) says "but only for their own account ids".

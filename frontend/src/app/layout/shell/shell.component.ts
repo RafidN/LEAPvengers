@@ -21,7 +21,7 @@ const NAV_LINKS: NavLink[] = [
   { path: '/dashboard', label: 'Portfolio', icon: 'lucideLayoutDashboard', roles: ['TRADER'] },
   { path: '/history', label: 'History', icon: 'lucideHistory', roles: ['TRADER'] },
   { path: '/clients', label: 'Clients', icon: 'lucideUsers', roles: ['OPS'] },
-  { path: '/insights', label: 'Insights', icon: 'lucideChartPie', roles: ['OPS', 'ANALYST'] },
+  { path: '/insights', label: 'Insights', icon: 'lucideChartPie', roles: ['ANALYST'] },
   { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] },
   { path: '/access', label: 'Access', icon: 'lucideShieldCheck', roles: ['TRADER', 'OPS', 'ANALYST'] }
 ];

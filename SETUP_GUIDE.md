@@ -92,7 +92,7 @@ The sign-in page has one-click buttons for the three personas from the business 
 | Username | Role | Lands on | What to show |
 |----------|------|----------|--------------|
 | `joanna` | Trader | `/dashboard` | Cash, holdings across US/UK/Indian stocks, crypto and FX; order history with filled, pending, rejected and canceled orders |
-| `david` | Ops | `/clients` | Every client with their segment; insights |
+| `david` | Ops | `/clients` | Every client with their segment |
 | `priya` | Analyst | `/insights` | Activity and value by segment, clients shown by id only |
 
 Every role also has `/markets` and `/access`. The Access page calls the real API and shows which requests the server blocks for the signed-in role.
