@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         maven 'Maven3'
+        nodejs 'NodeJS20'
     }
 
     stages {
