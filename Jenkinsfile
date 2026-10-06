@@ -91,7 +91,8 @@ pipeline {
                             -Dsonar.projectKey=leap \
                             -Dsonar.projectName=LEAP \
                             -Dsonar.projectVersion=${BUILD_NUMBER} \
-                            -Dsonar.sources=./backend/src,./frontend/src,./scripts'''
+                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
+                            -Dsonar.host.url=http://localhost:9000'''
                     }
                 }
             }
