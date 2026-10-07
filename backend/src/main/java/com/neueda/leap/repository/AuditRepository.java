@@ -11,10 +11,7 @@ import com.neueda.leap.model.Orders;
 
 import java.time.LocalDate;
 
-/**
- * Repository for audit queries across all orders
- * Returns order details with client and instrument information
- */
+
 @Repository
 public interface AuditRepository extends JpaRepository<Orders, Integer> {
 

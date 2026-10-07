@@ -1,8 +1,6 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.model.dto.AuditData;
 import com.neueda.leap.model.dto.AuditOrder;
-import com.neueda.leap.model.dto.AuditOrdersRequest;
 import com.neueda.leap.repository.AuditRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -13,8 +11,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 
 /**
- * Service for audit operations
- * Handles retrieval of cross-client order data with filtering and paging
+ * Service for audit order queries
+ * Handles pagination logic and parameter validation
  */
 @Service
 public class AuditService {
@@ -23,35 +21,19 @@ public class AuditService {
     private AuditRepository auditRepository;
 
     /**
-     * Get all orders with optional filtering and pagination
-     * 
-     * @param request Filter criteria and pagination info
-     * @return AuditData containing filtered orders and pagination metadata
+     * Get all orders with filtering and pagination
      */
-    public AuditData getAuditOrders(AuditOrdersRequest request) {
-        // Validate page number (1-based)
-        int pageNumber = Math.max(1, request.getPageNumber());
-        int pageSize = Math.max(1, Math.min(request.getPageSize(), 100)); // Cap at 100
+    public Page<AuditOrder> getAuditOrders(Integer clientId, String ticker, String orderStatus,
+                                           String startDate, String endDate, int page, int size) {
+        // Validate and cap page size
+        size = Math.max(1, Math.min(size, 100));
 
-        // Convert to 0-based for Spring Data
-        Pageable pageable = PageRequest.of(pageNumber - 1, pageSize);
+        // Parse dates
+        LocalDate start = startDate != null && !startDate.isEmpty() ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null && !endDate.isEmpty() ? LocalDate.parse(endDate) : null;
 
-        // Execute query with filters
-        Page<AuditOrder> page = auditRepository.findAuditOrders(
-            request.getClientId(),
-            request.getTicker(),
-            request.getOrderStatus(),
-            request.getStartDate(),
-            request.getEndDate(),
-            pageable
-        );
-
-        // Build response with pagination metadata
-        return new AuditData(
-            page.getContent(),
-            pageNumber,
-            pageSize,
-            page.getTotalElements()
-        );
+        // Execute query
+        Pageable pageable = PageRequest.of(page, size);
+        return auditRepository.findAuditOrders(clientId, ticker, orderStatus, start, end, pageable);
     }
 }
