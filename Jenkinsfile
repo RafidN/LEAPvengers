@@ -68,19 +68,8 @@ pipeline {
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh '''
-                    for i in {1..30}; do
-                        STATUS=$(docker inspect -f "{{.State.Health.Status}}" LeapVengersSonar 2>/dev/null || echo "starting")
-                        echo "Attempt $i: SonarQube status = $STATUS"
-                        if [ "$STATUS" = "healthy" ]; then
-                            echo "SonarQube is healthy"
-                            exit 0
-                        fi
-                        sleep 10
-                    done
-                    echo "ERROR: SonarQube did not become healthy"
-                    exit 1
-                '''
+                sh 'echo "Waiting for SonarQube to initialize (can take 3-5 minutes)..."'
+                sh 'sleep 180'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
