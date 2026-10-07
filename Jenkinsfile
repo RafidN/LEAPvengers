@@ -67,8 +67,7 @@ pipeline {
                 scannerHome = tool 'LeapVengersSonar'
             }
             steps {
-                sh 'docker-compose up -d leapsonar'
-                sh 'echo "Waiting for SonarQube to initialize (can take 3-5 minutes)..."'
+                sh 'docker-compose up -d LeapVengersSonar'
                 sh 'sleep 180'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
@@ -100,6 +99,7 @@ pipeline {
     post {
         always {
             sh 'docker rm -f leapdb || true'
+            sh 'docker rm -f LeapVengersSonar || true'
         }
     }
 }
