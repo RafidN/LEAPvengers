@@ -15,11 +15,11 @@ pipeline {
 
         stage('Database Setup') {
             steps {
-                sh 'docker compose down -v || true'
-                sh 'docker compose up -d leapdb'
+                sh 'docker-compose down -v || true'
+                sh 'docker-compose up -d leapdb'
                 sh 'timeout 60 bash -c "until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done"'
-                sh 'cat database/enterprise-schema.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb'
-                sh 'cat database/seed.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb'
+                sh 'cat database/enterprise-schema.sql | docker-compose exec -T leapdb psql -U postgres -d leapvengersdb'
+                sh 'cat database/seed.sql | docker-compose exec -T leapdb psql -U postgres -d leapvengersdb'
             }
         }
 
@@ -69,7 +69,7 @@ pipeline {
                 scannerHome = tool 'LeapVengersSonar'
             }
             steps {
-                sh 'docker compose up -d leapsonar'
+                sh 'docker-compose up -d leapsonar'
                 sh 'timeout 120 bash -c "until curl -s http://localhost:9000/api/system/health | grep -q UP; do sleep 5; done"'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
@@ -93,7 +93,7 @@ pipeline {
 
         stage('Cleanup') {
             steps {
-                sh 'docker compose down -v || true'
+                sh 'docker-compose down -v || true'
             }
         }
     }
