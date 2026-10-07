@@ -65,10 +65,11 @@ pipeline {
         stage('Code Analysis') {
             environment {
                 scannerHome = tool 'LeapVengersSonar'
+                SONAR_TOKEN = credentials('jenkins-sonar')
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh 'timeout 30 bash -c "until curl -f http://localhost:9000/api/system/health; do sleep 2; done"'
+                sh 'timeout 60 bash -c "until curl -s -u ${SONAR_TOKEN}: http://localhost:9000/api/system/health | grep -q UP; do sleep 3; done" || exit 1'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
