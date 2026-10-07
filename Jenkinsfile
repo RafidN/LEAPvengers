@@ -23,10 +23,6 @@ pipeline {
                     # Wait for PostgreSQL to be healthy (max 60 seconds)
                     timeout 60 bash -c 'until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done'
                     
-                    # Create database if it doesn't exist
-                    docker compose exec -T leapdb psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'leapvengersdb'" | grep -q 1 || \
-                    docker compose exec -T leapdb psql -U postgres -c "CREATE DATABASE leapvengersdb;"
-                    
                     # Apply schema and seed data
                     cat database/enterprise-schema.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
                     cat database/seed.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
