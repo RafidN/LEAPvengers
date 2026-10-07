@@ -68,7 +68,7 @@ pipeline {
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh 'timeout 120 bash -c "until curl -s http://localhost:9000/api/system/health | grep -q UP; do sleep 5; done"'
+                sh 'timeout 360 bash -c "until [ \"$(docker inspect -f {{.State.Health.Status}} LeapVengersSonar 2>/dev/null)\" = healthy ]; do sleep 5; done"'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
