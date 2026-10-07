@@ -69,7 +69,18 @@ pipeline {
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh 'echo "Token length: ${#SONAR_TOKEN}"'
+                sh '''
+                    for i in {1..10}; do
+                        if curl -f -s -H "Authorization: Bearer ${SONAR_TOKEN}" http://localhost:9000/api/v2/analysis/version > /dev/null 2>&1; then
+                            echo "SonarQube API is ready"
+                            exit 0
+                        fi
+                        echo "Attempt $i: SonarQube not ready, retrying in 5s..."
+                        sleep 5
+                    done
+                    echo "SonarQube failed to become ready"
+                    exit 1
+                '''
                 script {
                     sh '''${scannerHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=leap \
