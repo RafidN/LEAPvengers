@@ -17,9 +17,7 @@ pipeline {
             steps {
                 sh 'docker-compose down -v || true'
                 sh 'docker-compose up -d leapdb'
-                sh 'timeout 60 bash -c "until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done"'
-                sh 'cat database/enterprise-schema.sql | docker-compose exec -T leapdb psql -U postgres -d leapvengersdb'
-                sh 'cat database/seed.sql | docker-compose exec -T leapdb psql -U postgres -d leapvengersdb'
+                sh 'docker-compose exec -T leapdb pg_isready -U postgres'
             }
         }
 
