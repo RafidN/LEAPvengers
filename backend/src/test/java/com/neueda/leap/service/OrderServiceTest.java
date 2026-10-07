@@ -198,7 +198,7 @@ class OrderServiceTest {
             prices.get(0).getCurrentPrice(), LocalDate.now());
         when(orderRepository.save(any(Orders.class))).thenReturn(order);
         orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
-        assertDoesNotThrow(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+        assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
     }
     private void setAuthenticatedUser(Integer userId) {
         Map<String, Object> details = new HashMap<>();
