@@ -34,17 +34,19 @@ describe('authInterceptor', () => {
   it('attaches the bearer token to an outgoing request', () => {
     localStorage.setItem('authToken', 'test-token-123');
 
-    historyService.getOrderHistory('past-year').subscribe();
+    historyService.getOrderHistory('1y').subscribe();
 
-    const req = httpMock.expectOne('/api/history/orders/past-year');
+    const req = httpMock.expectOne('/api/history/orders?period=1y');
+    expect(req.request.method).toBe('GET');
     expect(req.request.headers.get('Authorization')).toBe('Bearer test-token-123');
     req.flush([]);
   });
 
   it('sends no Authorization header when signed out', () => {
-    historyService.getOrderHistory('past-year').subscribe();
+    historyService.getOrderHistory('1y').subscribe();
 
-    const req = httpMock.expectOne('/api/history/orders/past-year');
+    const req = httpMock.expectOne('/api/history/orders?period=1y');
+    expect(req.request.method).toBe('GET');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush([]);
   });
@@ -64,9 +66,10 @@ describe('authInterceptor', () => {
       email: 'trader@example.com'
     });
 
-    historyService.getOrderHistory('past-year').subscribe();
+    historyService.getOrderHistory('1y').subscribe();
 
-    const historyReq = httpMock.expectOne('/api/history/orders/past-year');
+    const historyReq = httpMock.expectOne('/api/history/orders?period=1y');
+    expect(historyReq.request.method).toBe('GET');
     expect(historyReq.request.headers.get('Authorization')).toBe('Bearer token-from-login');
     expect(historyReq.request.headers.get('Authorization')).not.toContain('null');
     historyReq.flush([]);

@@ -25,6 +25,26 @@ public interface PortfolioRepository extends JpaRepository<Holdings, Integer> {
             h.quantity,
             lpq.price,
             h.quantity * lpq.price,
+            h.asOfDate
+        )
+        FROM Holdings h
+        JOIN h.instrument i
+        JOIN h.account a
+        LEFT JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
+        WHERE a.clientId = :clientId
+        ORDER BY h.asOfDate DESC, i.ticker
+    """)
+    List<PortfolioHistoryResult> findAllPortfolioHistory(@Param("clientId") Integer clientId);
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.PortfolioHistoryResult(
+            h.holdingId,
+            i.ticker,
+            i.instrumentName,
+            i.assetClass,
+            h.quantity,
+            lpq.price,
+            h.quantity * lpq.price,
             :asOfDate
         )
         FROM Holdings h
