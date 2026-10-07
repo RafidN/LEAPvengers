@@ -3,52 +3,48 @@ package com.neueda.leap.controller;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.model.dto.*;
-import com.neueda.leap.security.JwtUtil;
+import com.neueda.leap.model.dto.CashTransactionResult;
+import com.neueda.leap.model.dto.OrderHistoryResult;
+import com.neueda.leap.model.dto.PortfolioHistoryResult;
+import com.neueda.leap.model.dto.PriceHistoryResult;
+import com.neueda.leap.security.SecurityContextHelper;
 import com.neueda.leap.service.HistoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import com.neueda.leap.security.SecurityContextHelper;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 
 /**
- * REST endpoints for historical data queries
- * Supports order history, cash transactions, price history, and portfolio
- * history
- * Time periods: past year, past month, past 7 days, past day, today
+ * REST endpoints for historical data queries.
+ * Periods are selected with ?period=1d|7d|1m|1y. Omitting period returns all data up to now.
  */
 @RestController
 @RequestMapping("/history")
 public class HistoryController {
 
     private final HistoryService historyService;
-    private final JwtUtil jwtUtil;
-    private static final String BEARER_PREFIX = "Bearer ";
     private final SecurityContextHelper securityContextHelper;
 
-    public HistoryController(HistoryService historyService, JwtUtil jwtUtil,
+    public HistoryController(HistoryService historyService,
             SecurityContextHelper securityContextHelper) {
         this.historyService = historyService;
-        this.jwtUtil = jwtUtil;
         this.securityContextHelper = securityContextHelper;
     }
 
-    // ===== ORDER HISTORY ENDPOINTS (AUTHENTICATED) =====
-
-    /**
-     * Get user's order history from past year
-     * 
-     * POST /api/history/orders/past-year
-     * Authorization: Bearer {JWT_TOKEN}
-     * Response: [ { "orderId": 1, "ticker": "AAPL", ... } ]
-     */
-    @PostMapping("/orders/past-year")
-    public ResponseEntity<?> getOrderHistoryPastYear() {
+    @GetMapping("/orders")
+    public ResponseEntity<?> getOrderHistory(
+            @RequestParam(value = "period", required = false) String period) {
         try {
             Integer userId = securityContextHelper.getUserIdFromContext();
-            List<OrderHistoryResult> results = historyService.getOrderHistoryPastYear(userId);
+            List<OrderHistoryResult> results = historyService.getOrderHistory(userId, period);
             return ResponseEntity.ok(results);
+        } catch (InvalidInputException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid input: " + e.getMessage());
         } catch (TokenValidationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Unauthorized: " + e.getMessage());
@@ -61,12 +57,16 @@ public class HistoryController {
         }
     }
 
-    @PostMapping("/orders/past-month")
-    public ResponseEntity<?> getOrderHistoryPastMonth() {
+    @GetMapping("/cash")
+    public ResponseEntity<?> getCashHistory(
+            @RequestParam(value = "period", required = false) String period) {
         try {
             Integer userId = securityContextHelper.getUserIdFromContext();
-            List<OrderHistoryResult> results = historyService.getOrderHistoryPastMonth(userId);
+            List<CashTransactionResult> results = historyService.getCashHistory(userId, period);
             return ResponseEntity.ok(results);
+        } catch (InvalidInputException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid input: " + e.getMessage());
         } catch (TokenValidationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Unauthorized: " + e.getMessage());
@@ -79,167 +79,13 @@ public class HistoryController {
         }
     }
 
-    @PostMapping("/orders/past-7-days")
-    public ResponseEntity<?> getOrderHistoryPast7Days() {
+    @GetMapping("/prices")
+    public ResponseEntity<?> getPriceHistory(
+            @RequestParam(value = "ticker", required = false) String ticker,
+            @RequestParam(value = "query", required = false) String query,
+            @RequestParam(value = "period", required = false) String period) {
         try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<OrderHistoryResult> results = historyService.getOrderHistoryPast7Days(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/orders/past-day")
-    public ResponseEntity<?> getOrderHistoryPastDay() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<OrderHistoryResult> results = historyService.getOrderHistoryPastDay(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/orders/today")
-    public ResponseEntity<?> getOrderHistoryToday() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<OrderHistoryResult> results = historyService.getOrderHistoryToday(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    // ===== CASH TRANSACTION HISTORY ENDPOINTS (AUTHENTICATED) =====
-
-    @PostMapping("/cash/past-year")
-    public ResponseEntity<?> getCashHistoryPastYear() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<CashTransactionResult> results = historyService.getCashHistoryPastYear(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/cash/past-month")
-    public ResponseEntity<?> getCashHistoryPastMonth() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<CashTransactionResult> results = historyService.getCashHistoryPastMonth(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/cash/past-7-days")
-    public ResponseEntity<?> getCashHistoryPast7Days() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<CashTransactionResult> results = historyService.getCashHistoryPast7Days(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/cash/past-day")
-    public ResponseEntity<?> getCashHistoryPastDay() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<CashTransactionResult> results = historyService.getCashHistoryPastDay(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/cash/today")
-    public ResponseEntity<?> getCashHistoryToday() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<CashTransactionResult> results = historyService.getCashHistoryToday(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    // ===== PRICE HISTORY ENDPOINTS (PUBLIC) =====
-
-    /**
-     * Get historical price data from past year
-     * 
-     * POST /api/history/prices/past-year
-     * No authorization required
-     * Request body: { "query": "AAPL" }
-     * Response: [ { "ticker": "AAPL", "price": 150.00, ... } ]
-     */
-    @PostMapping("/prices/past-year")
-    public ResponseEntity<?> getPriceHistoryPastYear(
-            @RequestBody InstrumentSearchRequest request) {
-        try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastYear(request.getQuery());
+            List<PriceHistoryResult> results = historyService.getPriceHistory(resolveQuery(ticker, query), period);
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -250,75 +96,16 @@ public class HistoryController {
         }
     }
 
-    @PostMapping("/prices/past-month")
-    public ResponseEntity<?> getPriceHistoryPastMonth(
-            @RequestBody InstrumentSearchRequest request) {
+    @GetMapping("/portfolio")
+    public ResponseEntity<?> getPortfolioHistory(
+            @RequestParam(value = "period", required = false) String period) {
         try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastMonth(request.getQuery());
+            Integer userId = securityContextHelper.getUserIdFromContext();
+            List<PortfolioHistoryResult> results = historyService.getPortfolioHistory(userId, period);
             return ResponseEntity.ok(results);
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Invalid input: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/prices/past-7-days")
-    public ResponseEntity<?> getPriceHistoryPast7Days(
-            @RequestBody InstrumentSearchRequest request) {
-        try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPast7Days(request.getQuery());
-            return ResponseEntity.ok(results);
-        } catch (InvalidInputException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid input: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/prices/past-day")
-    public ResponseEntity<?> getPriceHistoryPastDay(
-            @RequestBody InstrumentSearchRequest request) {
-        try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryPastDay(request.getQuery());
-            return ResponseEntity.ok(results);
-        } catch (InvalidInputException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid input: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/prices/today")
-    public ResponseEntity<?> getPriceHistoryToday(
-            @RequestBody InstrumentSearchRequest request) {
-        try {
-            List<PriceHistoryResult> results = historyService.getPriceHistoryToday(request.getQuery());
-            return ResponseEntity.ok(results);
-        } catch (InvalidInputException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid input: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    // ===== PORTFOLIO HISTORY ENDPOINTS (AUTHENTICATED) =====
-
-    @PostMapping("/portfolio/past-year")
-    public ResponseEntity<?> getPortfolioHistoryPastYear(
-            String authHeader) {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastYear(userId);
-            return ResponseEntity.ok(results);
         } catch (TokenValidationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Unauthorized: " + e.getMessage());
@@ -331,102 +118,10 @@ public class HistoryController {
         }
     }
 
-    @PostMapping("/portfolio/past-month")
-    public ResponseEntity<?> getPortfolioHistoryPastMonth() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastMonth(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
+    private String resolveQuery(String ticker, String query) {
+        if (ticker != null && !ticker.isBlank()) {
+            return ticker;
         }
-    }
-
-    @PostMapping("/portfolio/past-7-days")
-    public ResponseEntity<?> getPortfolioHistoryPast7Days() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPast7Days(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/portfolio/past-day")
-    public ResponseEntity<?> getPortfolioHistoryPastDay() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryPastDay(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    @PostMapping("/portfolio/today")
-    public ResponseEntity<?> getPortfolioHistoryToday() {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            List<PortfolioHistoryResult> results = historyService.getPortfolioHistoryToday(userId);
-            return ResponseEntity.ok(results);
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
-    }
-
-    /**
-     * Extract userId from JWT token
-     * Validates token signature and expiration
-     */
-    private Integer extractUserIdFromToken(String authHeader) throws TokenValidationException {
-
-        if (authHeader == null || authHeader.isEmpty()) {
-            throw new TokenValidationException("Missing Authorization header");
-        }
-
-        if (!authHeader.startsWith(BEARER_PREFIX)) {
-            throw new TokenValidationException("Invalid Authorization format");
-        }
-
-        String token = authHeader.substring(BEARER_PREFIX.length());
-
-        if (!jwtUtil.validateToken(token)) {
-            throw new TokenValidationException("Invalid or expired token");
-        }
-
-        try {
-            return jwtUtil.extractUserId(token);
-        } catch (Exception e) {
-            throw new TokenValidationException("Failed to extract userId from token");
-        }
+        return query;
     }
 }

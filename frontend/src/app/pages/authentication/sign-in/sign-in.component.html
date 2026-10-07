@@ -1,13 +1,13 @@
 <section hlmCard class="w-[340px] text-center shadow-[0_0_30px_#0a230f] ring-0">
   <div hlmCardHeader>
-    <h1 hlmCardTitle class="text-2xl">Welcome to S.H.I.E.L.D.</h1>
+    <h1 hlmCardTitle class="text-3xl">Welcome to S.H.I.E.L.D.</h1>
     <p hlmCardDescription>Sign in to manage your digital portfolio.</p>
   </div>
 
   <form hlmCardContent class="flex flex-col gap-3 text-left" (ngSubmit)="onSubmit()">
     <div class="flex flex-col gap-1.5">
       <label hlmLabel for="username">Username</label>
-      <input hlmInput id="username" name="username" class="h-11 bg-input" autocomplete="username"
+      <input hlmInput id="username" name="username" class="h-11 bg-input" placeholder="username" autocomplete="username"
         required [(ngModel)]="username" [disabled]="isLoading()" />
     </div>
     <div class="flex flex-col gap-1.5">

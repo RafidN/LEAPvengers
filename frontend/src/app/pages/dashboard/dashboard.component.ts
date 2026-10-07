@@ -75,10 +75,9 @@ export class DashboardComponent {
   constructor() {
     forkJoin({
       accounts: this.accountService.getAccounts(),
-      cash: this.history.getCashHistory('past-year'),
-      // 'today' would only list positions that changed today; past-year returns every current position
-      holdings: this.history.getPortfolioHistory('past-year'),
-      orders: this.history.getOrderHistory('past-month')
+      cash: this.history.getCashHistory('1y'),
+      holdings: this.history.getPortfolioHistory('1y'),
+      orders: this.history.getOrderHistory('1m')
     }).subscribe({
       next: ({ accounts, cash, holdings, orders }) => {
         this.accounts.set(accounts);
