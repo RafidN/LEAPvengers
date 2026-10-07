@@ -16,25 +16,20 @@ pipeline {
         stage('Database Setup') {
             steps {
                 sh '''
-                    # Clean up any existing container
-                    docker rm -f leapdb || true
+                    # Start services using docker-compose
+                    docker compose down -v || true
+                    docker compose up -d leapdb
                     
-                    # Start PostgreSQL container with health check
-                    docker run -d --name leapdb \
-                      -e POSTGRES_PASSWORD=n3u3d4! \
-                      -p 5432:5432 \
-                      --health-cmd="pg_isready -U postgres" \
-                      --health-interval=2s \
-                      --health-retries=10 \
-                      postgres:15
+                    # Wait for PostgreSQL to be healthy (max 60 seconds)
+                    timeout 60 bash -c 'until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done'
                     
-                    # Wait for container to be healthy
-                    timeout 30 bash -c 'until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done'
+                    # Create database if it doesn't exist
+                    docker compose exec -T leapdb psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'leapvengersdb'" | grep -q 1 || \
+                    docker compose exec -T leapdb psql -U postgres -c "CREATE DATABASE leapvengersdb;"
                     
-                    # Create and seed database
-                    docker exec leapdb psql -U postgres -c "CREATE DATABASE leapvengersdb;"
-                    cat database/enterprise-schema.sql | docker exec -i leapdb psql -U postgres -d leapvengersdb
-                    cat database/seed.sql | docker exec -i leapdb psql -U postgres -d leapvengersdb
+                    # Apply schema and seed data
+                    cat database/enterprise-schema.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
+                    cat database/seed.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
                 '''
             }
         }
@@ -85,6 +80,13 @@ pipeline {
                 scannerHome = tool 'LeapVengersSonar'
             }
             steps {
+                sh '''
+                    # Start SonarQube if not running
+                    docker compose up -d leapsonar
+                    
+                    # Wait for SonarQube to be ready (max 2 minutes)
+                    timeout 120 bash -c 'until curl -s http://localhost:9000/api/system/health | grep -q "UP"; do sleep 5; done'
+                '''
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
@@ -107,7 +109,7 @@ pipeline {
 
         stage('Cleanup') {
             steps {
-                sh 'docker rm -f leapdb || true'
+                sh 'docker compose down -v || true'
             }
         }
     }
