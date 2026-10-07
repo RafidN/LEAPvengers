@@ -70,8 +70,8 @@ pipeline {
             steps {
                 sh 'docker-compose up -d leapsonar'
                 sh 'sleep 15'
-                sh 'curl -s -u ${SONAR_TOKEN}: http://localhost:9000/api/system/health | head -50'
-                sh 'docker logs leapsonar | tail -30 || true'
+                sh 'curl -s http://localhost:9000/api/system/health'
+                sh 'docker logs LeapVengersSonar | tail -30 || true'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
