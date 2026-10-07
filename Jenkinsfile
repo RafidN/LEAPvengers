@@ -67,7 +67,7 @@ pipeline {
                 scannerHome = tool 'LeapVengersSonar'
             }
             steps {
-                sh 'docker-compose up -d LeapVengersSonar'
+                sh 'docker-compose up -d leapsonar'
                 sh 'sleep 180'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
