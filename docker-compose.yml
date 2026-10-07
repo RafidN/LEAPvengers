@@ -27,12 +27,6 @@ services:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
     ports:
       - "9000:9000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
-      interval: 10s
-      timeout: 3s
-      retries: 20
-      start_period: 60s
     networks:
       - leapvengers
 
