@@ -19,7 +19,7 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
         SELECT new com.neueda.leap.model.dto.AuditOrder(
             o.orderId,
             c.clientId,
-            c.clientName,
+            CONCAT(c.firstName, ' ', c.lastName),
             i.ticker,
             i.instrumentName,
             o.orderType,
