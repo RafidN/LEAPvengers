@@ -41,15 +41,15 @@ export class HistoryComponent {
   private readonly history = inject(HistoryService);
 
   protected readonly periods: { value: HistoryPeriod; label: string }[] = [
-    { value: 'today', label: 'Today' },
-    { value: 'past-7-days', label: '7 days' },
-    { value: 'past-month', label: '1 month' },
-    { value: 'past-year', label: '1 year' }
+    { value: '1d', label: '1 day' },
+    { value: '7d', label: '7 days' },
+    { value: '1m', label: '1 month' },
+    { value: '1y', label: '1 year' }
   ];
   protected readonly statuses: OrderStatus[] = ['Filled', 'Pending', 'Rejected', 'Canceled'];
 
   protected readonly tab = signal('orders');
-  protected readonly period = signal<HistoryPeriod>('past-month');
+  protected readonly period = signal<HistoryPeriod>('1m');
   protected readonly statusFilter = signal<OrderStatus | null>(null);
 
   protected readonly orders = signal<OrderHistoryResult[]>([]);
