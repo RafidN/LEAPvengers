@@ -69,7 +69,9 @@ pipeline {
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh 'timeout 60 bash -c "until curl -s -u ${SONAR_TOKEN}: http://localhost:9000/api/system/health | grep -q UP; do sleep 3; done" || exit 1'
+                sh 'sleep 15'
+                sh 'curl -s -u ${SONAR_TOKEN}: http://localhost:9000/api/system/health | head -50'
+                sh 'docker logs leapsonar | tail -30 || true'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
