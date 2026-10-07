@@ -15,18 +15,11 @@ pipeline {
 
         stage('Database Setup') {
             steps {
-                sh '''
-                    # Start services using docker-compose
-                    docker compose down -v || true
-                    docker compose up -d leapdb
-                    
-                    # Wait for PostgreSQL to be healthy (max 60 seconds)
-                    timeout 60 bash -c 'until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done'
-                    
-                    # Apply schema and seed data
-                    cat database/enterprise-schema.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
-                    cat database/seed.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb
-                '''
+                sh 'docker compose down -v || true'
+                sh 'docker compose up -d leapdb'
+                sh 'timeout 60 bash -c "until docker exec leapdb pg_isready -U postgres > /dev/null 2>&1; do sleep 2; done"'
+                sh 'cat database/enterprise-schema.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb'
+                sh 'cat database/seed.sql | docker compose exec -T leapdb psql -U postgres -d leapvengersdb'
             }
         }
 
@@ -76,13 +69,8 @@ pipeline {
                 scannerHome = tool 'LeapVengersSonar'
             }
             steps {
-                sh '''
-                    # Start SonarQube if not running
-                    docker compose up -d leapsonar
-                    
-                    # Wait for SonarQube to be ready (max 2 minutes)
-                    timeout 120 bash -c 'until curl -s http://localhost:9000/api/system/health | grep -q "UP"; do sleep 5; done'
-                '''
+                sh 'docker compose up -d leapsonar'
+                sh 'timeout 120 bash -c "until curl -s http://localhost:9000/api/system/health | grep -q UP; do sleep 5; done"'
                 script {
                     withSonarQubeEnv('LeapVengersSonar') {
                         sh '''${scannerHome}/bin/sonar-scanner \
