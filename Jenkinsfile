@@ -65,19 +65,19 @@ pipeline {
         stage('Code Analysis') {
             environment {
                 scannerHome = tool 'LeapVengersSonar'
+                SONAR_TOKEN = credentials('jenkins-sonar')
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
                 sh 'sleep 180'
                 script {
-                    withSonarQubeEnv('LeapVengersSonar') {
-                        sh '''${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=leap \
-                            -Dsonar.projectName=LEAP \
-                            -Dsonar.projectVersion=${BUILD_NUMBER} \
-                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
-                            -Dsonar.host.url=http://localhost:9000'''
-                    }
+                    sh '''${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=leap \
+                        -Dsonar.projectName=LEAP \
+                        -Dsonar.projectVersion=${BUILD_NUMBER} \
+                        -Dsonar.sources=./backend/src,./frontend/src,./scripts \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=${SONAR_TOKEN}'''
                 }
             }
         }
