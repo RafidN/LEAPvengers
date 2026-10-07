@@ -69,7 +69,7 @@ pipeline {
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh 'sleep 180'
+                sh 'echo "Token length: ${#SONAR_TOKEN}"'
                 script {
                     sh '''${scannerHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=leap \
