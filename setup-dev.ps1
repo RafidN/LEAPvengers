@@ -45,9 +45,10 @@ function Wait-ForHttpEndpoint {
         [int]$retryDelaySeconds = 2
     )
 
-    $deadline = (Get-Date).AddSeconds($timeoutSeconds)
+    $maxAttempts = [Math]::Ceiling($timeoutSeconds / $retryDelaySeconds)
+    $attempt = 0
 
-    while ((Get-Date) -lt $deadline) {
+    while ($attempt -lt $maxAttempts) {
         try {
             $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
@@ -58,6 +59,7 @@ function Wait-ForHttpEndpoint {
             # Service not ready yet. Keep polling until timeout.
         }
 
+        $attempt++
         Start-Sleep -Seconds $retryDelaySeconds
     }
 

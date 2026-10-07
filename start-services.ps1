@@ -76,8 +76,10 @@ function Wait-ForPostgres {
 
 function Wait-ForSonarQube {
     Write-Info "Waiting for SonarQube (leapsonar)..."
-    $timeout = 0
-    while ($timeout -lt 60) {
+    $maxAttempts = 30
+    $attempt = 0
+    
+    while ($attempt -lt $maxAttempts) {
         try {
             $response = Invoke-WebRequest -Uri "http://localhost:9000/api/system/health" -UseBasicParsing -ErrorAction Stop
             if ($response.StatusCode -eq 200) {
@@ -86,13 +88,14 @@ function Wait-ForSonarQube {
             }
         }
         catch {
+            # Service not ready yet
         }
 
+        $attempt++
         Start-Sleep -Seconds 2
-        $timeout += 2
     }
 
-    Write-WarningCustom "WARN - SonarQube did not report ready status within 60 seconds"
+    Write-WarningCustom "WARN - SonarQube did not report ready status within 60 seconds (after $maxAttempts attempts)"
 }
 
 function Start-Services {
