@@ -65,30 +65,19 @@ pipeline {
         stage('Code Analysis') {
             environment {
                 scannerHome = tool 'LeapVengersSonar'
-                SONAR_TOKEN = credentials('jenkins-sonar')
             }
             steps {
                 sh 'docker-compose up -d leapsonar'
-                sh '''
-                    for i in {1..10}; do
-                        if curl -f -s -H "Authorization: Bearer ${SONAR_TOKEN}" http://localhost:9000/api/v2/analysis/version > /dev/null 2>&1; then
-                            echo "SonarQube API is ready"
-                            exit 0
-                        fi
-                        echo "Attempt $i: SonarQube not ready, retrying in 5s..."
-                        sleep 5
-                    done
-                    echo "SonarQube failed to become ready"
-                    exit 1
-                '''
+                sh 'sleep 30'
                 script {
-                    sh '''${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=leap \
-                        -Dsonar.projectName=LEAP \
-                        -Dsonar.projectVersion=${BUILD_NUMBER} \
-                        -Dsonar.sources=./backend/src,./frontend/src,./scripts \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.token=${SONAR_TOKEN}'''
+                    withSonarQubeEnv('LeapVengersSonar') {
+                        sh '''${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=leap \
+                            -Dsonar.projectName=LEAP \
+                            -Dsonar.projectVersion=${BUILD_NUMBER} \
+                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
+                            -Dsonar.host.url=http://localhost:9000'''
+                    }
                 }
             }
         }

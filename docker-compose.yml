@@ -21,7 +21,7 @@ services:
       - leapvengers
 
   leapsonar:
-    image: sonarqube:10.0-community
+    image: sonarqube:latest
     container_name: LeapVengersSonar
     environment:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
