@@ -2,6 +2,7 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.exception.*;
 import com.neueda.leap.model.Accounts;
+import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.AccountHoldingResponse;
 import com.neueda.leap.model.dto.AccountPortfolioResponse;
@@ -40,6 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
+
 class OrderServiceTest {
 
     @Mock
@@ -143,7 +146,6 @@ class OrderServiceTest {
         Users testUser = new Users();
         testUser.setUserId(1);
         testUser.setClientId(1);
-
         List<AccountResponse> accountResponses = new ArrayList<>();
         accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
         when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
@@ -156,6 +158,47 @@ class OrderServiceTest {
         when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
         orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
         assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
+    // @Test
+    // void testRequireSufficientHoldingOnSell() {
+    //     Users testUser = new Users();
+    //     testUser.setUserId(1);
+    //     testUser.setClientId(1);
+    //     List<AccountResponse> accountResponses = new ArrayList<>();
+    //     accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+    //     when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+    //     when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+    //     List<PriceQuoteResult> prices = new ArrayList<>();
+    //     List<InstrumentIdResult> instrumentIds = new ArrayList<>();
+    //     prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
+    //     instrumentIds.add(new InstrumentIdResult(1));
+    //     when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
+    //     when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
+    //     orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "SELL", 67);
+    //     List<TickerSearchResult> instrumentIds = new ArrayList<>();
+    //     when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), instrumentIds.get(0).getInstrumentId)).thenReturn
+    //     assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    // }
+    @Test
+    void testValidBuy() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        List<PriceQuoteResult> prices = new ArrayList<>();
+        List<InstrumentIdResult> instrumentIds = new ArrayList<>();
+        prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
+        instrumentIds.add(new InstrumentIdResult(1));
+        when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
+        when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
+        Orders order = new Orders(67, instrumentIds.get(0).getInstrumentId(), "BUY", new BigDecimal(67), 
+            prices.get(0).getCurrentPrice(), LocalDate.now());
+        when(orderRepository.save(any(Orders.class))).thenReturn(order);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertDoesNotThrow(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
     }
     private void setAuthenticatedUser(Integer userId) {
         Map<String, Object> details = new HashMap<>();
