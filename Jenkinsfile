@@ -17,7 +17,7 @@ pipeline {
             steps {
                 sh 'docker-compose down -v || true'
                 sh 'docker-compose up -d leapdb'
-                sh 'docker-compose exec -T leapdb pg_isready -U postgres'
+                sh 'sleep 10 && docker-compose exec -T leapdb pg_isready -U postgres'
             }
         }
 
