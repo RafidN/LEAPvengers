@@ -24,6 +24,7 @@ public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.
     @Query("""
         SELECT new com.neueda.leap.model.dto.TickerSearchResult(
             h.holdingId,
+            a.accountId,
             i.ticker,
             i.instrumentName,
             CAST(h.quantity AS java.lang.Long),
@@ -42,4 +43,6 @@ public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.
         @Param("clientId") Integer clientId,
         @Param("query") String query
     );
+
+
 }

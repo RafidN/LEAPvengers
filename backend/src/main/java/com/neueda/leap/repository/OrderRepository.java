@@ -4,10 +4,13 @@ import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
-
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 /**
  * Repository for user order history by time period
  * User-specific: only returns orders for authenticated user's accounts

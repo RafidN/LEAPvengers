@@ -21,4 +21,16 @@ public interface AccountRepository extends JpaRepository<Accounts, Integer> {
             ORDER BY a.openedDate ASC, a.accountId ASC
             """)
     List<AccountResponse> findAccountResponsesByClientId(Integer clientId);
+
+   @Query("""
+            SELECT new com.neueda.leap.model.dto.AccountResponse(
+                a.accountId,
+                a.openedDate,
+                a.balance
+            )
+            FROM Accounts a
+            WHERE a.accountId = :accountId
+            ORDER BY a.openedDate ASC, a.accountId ASC
+            """)
+    List<AccountResponse> findAccountResponsesByAccountId(Integer accountId);
 }

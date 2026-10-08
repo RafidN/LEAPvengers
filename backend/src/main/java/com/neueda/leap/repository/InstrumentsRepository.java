@@ -2,6 +2,8 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.dto.PriceQuoteResult;
+import com.neueda.leap.model.dto.InstrumentIdResult;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -49,5 +51,15 @@ public interface InstrumentsRepository extends JpaRepository<Instruments, Intege
         JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
     """)
     List<PriceQuoteResult> findAllTradableInstruments();
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.InstrumentIdResult(
+            i.instrumentId
+        )
+        FROM Instruments i
+        WHERE UPPER(i.ticker) LIKE UPPER(CONCAT('%', :query, '%'))
+            OR UPPER(i.instrumentName) LIKE UPPER(CONCAT('%', :query, '%'))
+    """)
+    List<InstrumentIdResult> searchInstrumentId(@Param("query") String query);
 
 }

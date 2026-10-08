@@ -135,15 +135,21 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
 CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
 DECLARE
     signed_quantity NUMERIC(14,4);
+    signed_cost NUMERIC(14, 4);
 BEGIN
     IF NEW.order_status = 'FILLED' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'FILLED') THEN
         signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
-
+        signed_cost := CASE WHEN NEW.order_type = 'BUY' THEN -NEW.quantity * NEW.price ELSE NEW.quantity * NEW.price END;
         INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
         VALUES (NEW.account_id, NEW.instrument_id, signed_quantity, CURRENT_DATE)
         ON CONFLICT (account_id, instrument_id) DO UPDATE
             SET quantity = holdings.quantity + EXCLUDED.quantity,
                 as_of_date = EXCLUDED.as_of_date;
+        -- INSERT INTO accounts (account_id, client_id, opened_date, balance)
+        -- VALUES
+        -- ON CONFLICT (account_id, client_id) DO UPDATE
+        --     SET balance = holdings.balance + EXCLUDED.balance,
+        --         as_of_date = EXCLUDED.as_of_date;
     END IF;
     RETURN NEW;
 END;

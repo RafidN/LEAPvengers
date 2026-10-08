@@ -25,7 +25,6 @@ import java.util.Map;
 public class AuthController {
 
     private static final String BEARER_PREFIX = "Bearer ";
-
     private final AuthService authService;
     private final JwtUtil jwtUtil;
 
