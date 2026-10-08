@@ -70,14 +70,14 @@ pipeline {
                 sh 'docker-compose up -d leapsonar || true'
                 sh 'sleep 30'
                 script {
-                    withSonarQubeEnv('LeapVengersSonar') {
-                        sh '''${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=leap \
-                            -Dsonar.projectName=LEAP \
-                            -Dsonar.projectVersion=${BUILD_NUMBER} \
-                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
-                            -Dsonar.host.url=http://localhost:9000'''
-                    }
+                    sh '''${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=leap \
+                        -Dsonar.projectName=LEAP \
+                        -Dsonar.projectVersion=${BUILD_NUMBER} \
+                        -Dsonar.sources=./backend/src,./frontend/src,./scripts \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=admin \
+                        -Dsonar.password=admin'''
                 }
             }
         }
