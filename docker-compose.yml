@@ -25,6 +25,8 @@ services:
     container_name: LeapVengersSonar
     environment:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
+      SONAR_ADMIN_USERNAME: "admin"
+      SONAR_ADMIN_PASSWORD: "admin"
     ports:
       - "9000:9000"
     networks:
