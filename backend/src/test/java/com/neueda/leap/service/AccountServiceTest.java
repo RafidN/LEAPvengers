@@ -157,7 +157,7 @@ class AccountServiceTest {
 
     private static class StubOwnershipService extends OwnershipService {
         StubOwnershipService() {
-            super(null, null);
+            super(null, null, null);
         }
 
         @Override

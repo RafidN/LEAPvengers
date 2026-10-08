@@ -4,6 +4,7 @@ import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.repository.AccountRepository;
+import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,9 @@ class OwnershipServiceTest {
     @Mock
     private AccountRepository accountRepository;
 
+    @Mock
+    private OrderRepository orderRepository;
+
     private CurrentUserService currentUserService;
 
     private OwnershipService ownershipService;
@@ -39,7 +43,7 @@ class OwnershipServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         currentUserService = new CurrentUserService(userRepository);
-        ownershipService = new OwnershipService(accountRepository, currentUserService);
+        ownershipService = new OwnershipService(accountRepository, orderRepository, currentUserService);
     }
 
     @AfterEach
@@ -113,6 +117,39 @@ class OwnershipServiceTest {
         when(userRepository.findById(5)).thenReturn(Optional.of(user));
 
         assertThrows(UserNotFoundException.class, () -> ownershipService.requireAccount(1));
+    }
+
+    @Test
+    void testRequireOrderAllowsOwnedOrder() {
+        setAuthenticatedUser(10);
+
+        Users user = new Users();
+        user.setUserId(10);
+        user.setClientId(99);
+
+        when(userRepository.findById(10)).thenReturn(Optional.of(user));
+        when(orderRepository.existsByOrderIdAndClientId(555, 99)).thenReturn(true);
+
+        assertDoesNotThrow(() -> ownershipService.requireOrder(555));
+    }
+
+    @Test
+    void testRequireOrderForbiddenWhenOrderOwnedByDifferentClient() {
+        setAuthenticatedUser(10);
+
+        Users user = new Users();
+        user.setUserId(10);
+        user.setClientId(99);
+
+        when(userRepository.findById(10)).thenReturn(Optional.of(user));
+        when(orderRepository.existsByOrderIdAndClientId(555, 99)).thenReturn(false);
+
+        assertThrows(ForbiddenException.class, () -> ownershipService.requireOrder(555));
+    }
+
+    @Test
+    void testRequireOrderForbiddenWhenAuthenticationMissing() {
+        assertThrows(ForbiddenException.class, () -> ownershipService.requireOrder(1));
     }
 
     private void setAuthenticatedUser(Integer userId) {
