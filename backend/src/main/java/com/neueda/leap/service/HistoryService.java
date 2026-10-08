@@ -3,20 +3,30 @@ package com.neueda.leap.service;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.model.Users;
-import com.neueda.leap.model.dto.*;
-import com.neueda.leap.repository.*;
+import com.neueda.leap.model.dto.CashTransactionResult;
+import com.neueda.leap.model.dto.OrderHistoryResult;
+import com.neueda.leap.model.dto.PortfolioHistoryResult;
+import com.neueda.leap.model.dto.PriceHistoryResult;
+import com.neueda.leap.repository.CashTransactionRepository;
+import com.neueda.leap.repository.OrderRepository;
+import com.neueda.leap.repository.PortfolioRepository;
+import com.neueda.leap.repository.PriceQuotesRepository;
+import com.neueda.leap.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
- * Service for historical data queries
- * Handles order history, cash transaction history, price history, and portfolio history
- * All time-period calculations are centralized here
+ * Service for historical data queries.
+ * Periods are selected with 1d, 7d, 1m, or 1y. Omitting the period returns all data up to now.
  */
 @Service
 public class HistoryService {
+    private static final String PERIOD_1D = "1d";
+    private static final String PERIOD_7D = "7d";
+    private static final String PERIOD_1M = "1m";
+    private static final String PERIOD_1Y = "1y";
 
     private final OrderRepository orderHistoryRepository;
     private final CashTransactionRepository cashTransactionHistoryRepository;
@@ -25,10 +35,10 @@ public class HistoryService {
     private final UserRepository userRepository;
 
     public HistoryService(OrderRepository orderHistoryRepository,
-                         CashTransactionRepository cashTransactionHistoryRepository,
-                         PriceQuotesRepository priceHistoryRepository,
-                         PortfolioRepository portfolioHistoryRepository,
-                         UserRepository userRepository) {
+            CashTransactionRepository cashTransactionHistoryRepository,
+            PriceQuotesRepository priceHistoryRepository,
+            PortfolioRepository portfolioHistoryRepository,
+            UserRepository userRepository) {
         this.orderHistoryRepository = orderHistoryRepository;
         this.cashTransactionHistoryRepository = cashTransactionHistoryRepository;
         this.priceHistoryRepository = priceHistoryRepository;
@@ -36,239 +46,79 @@ public class HistoryService {
         this.userRepository = userRepository;
     }
 
-    // ===== ORDER HISTORY METHODS =====
-
-    /**
-     * Get user's order history from past year
-     * 
-     * @param userId From JWT token
-     * @return List of orders from past year
-     */
     @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistoryPastYear(Integer userId) 
-            throws UserNotFoundException {
+    public List<OrderHistoryResult> getOrderHistory(Integer userId, String period)
+            throws UserNotFoundException, InvalidInputException {
         Users user = validateUser(userId);
-        return orderHistoryRepository.findOrdersPastYear(user.getClientId());
+        return switch (normalizePeriod(period)) {
+            case null -> orderHistoryRepository.findAllOrderHistory(user.getClientId());
+            case PERIOD_1D -> orderHistoryRepository.findOrdersPastDay(user.getClientId());
+            case PERIOD_7D -> orderHistoryRepository.findOrdersPast7Days(user.getClientId());
+            case PERIOD_1M -> orderHistoryRepository.findOrdersPastMonth(user.getClientId());
+            case PERIOD_1Y -> orderHistoryRepository.findOrdersPastYear(user.getClientId());
+            default -> throw new InvalidInputException("Unsupported period: " + period);
+        };
     }
 
-    /**
-     * Get user's order history from past month
-     */
     @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistoryPastMonth(Integer userId) 
-            throws UserNotFoundException {
+    public List<CashTransactionResult> getCashHistory(Integer userId, String period)
+            throws UserNotFoundException, InvalidInputException {
         Users user = validateUser(userId);
-        return orderHistoryRepository.findOrdersPastMonth(user.getClientId());
+        return switch (normalizePeriod(period)) {
+            case null -> cashTransactionHistoryRepository.findAllTransactionHistory(user.getClientId());
+            case PERIOD_1D -> cashTransactionHistoryRepository.findTransactionsPastDay(user.getClientId());
+            case PERIOD_7D -> cashTransactionHistoryRepository.findTransactionsPast7Days(user.getClientId());
+            case PERIOD_1M -> cashTransactionHistoryRepository.findTransactionsPastMonth(user.getClientId());
+            case PERIOD_1Y -> cashTransactionHistoryRepository.findTransactionsPastYear(user.getClientId());
+            default -> throw new InvalidInputException("Unsupported period: " + period);
+        };
     }
 
-    /**
-     * Get user's order history from past 7 days
-     */
     @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistoryPast7Days(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return orderHistoryRepository.findOrdersPast7Days(user.getClientId());
-    }
-
-    /**
-     * Get user's order history from past day
-     */
-    @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistoryPastDay(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return orderHistoryRepository.findOrdersPastDay(user.getClientId());
-    }
-
-    /**
-     * Get user's order history from today only
-     */
-    @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistoryToday(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return orderHistoryRepository.findOrdersToday(user.getClientId());
-    }
-
-    // ===== CASH TRANSACTION HISTORY METHODS =====
-
-    /**
-     * Get user's cash transaction history from past year
-     * 
-     * @param userId From JWT token
-     * @return List of cash transactions from past year
-     */
-    @Transactional(readOnly = true)
-    public List<CashTransactionResult> getCashHistoryPastYear(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return cashTransactionHistoryRepository.findTransactionsPastYear(user.getClientId());
-    }
-
-    /**
-     * Get user's cash transaction history from past month
-     */
-    @Transactional(readOnly = true)
-    public List<CashTransactionResult> getCashHistoryPastMonth(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return cashTransactionHistoryRepository.findTransactionsPastMonth(user.getClientId());
-    }
-
-    /**
-     * Get user's cash transaction history from past 7 days
-     */
-    @Transactional(readOnly = true)
-    public List<CashTransactionResult> getCashHistoryPast7Days(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return cashTransactionHistoryRepository.findTransactionsPast7Days(user.getClientId());
-    }
-
-    /**
-     * Get user's cash transaction history from past day
-     */
-    @Transactional(readOnly = true)
-    public List<CashTransactionResult> getCashHistoryPastDay(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return cashTransactionHistoryRepository.findTransactionsPastDay(user.getClientId());
-    }
-
-    /**
-     * Get user's cash transaction history from today only
-     */
-    @Transactional(readOnly = true)
-    public List<CashTransactionResult> getCashHistoryToday(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return cashTransactionHistoryRepository.findTransactionsToday(user.getClientId());
-    }
-
-    // ===== PRICE HISTORY METHODS (PUBLIC) =====
-
-    /**
-     * Get price history from past year (no auth required)
-     * 
-     * @param ticker The ticker symbol
-     * @return List of price quotes from past year
-     */
-    @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastYear(String query) 
+    public List<PriceHistoryResult> getPriceHistory(String query, String period)
             throws InvalidInputException {
         validateInstrumentQuery(query);
-        return priceHistoryRepository.findPricesPastYear(query);
+        return switch (normalizePeriod(period)) {
+            case null -> priceHistoryRepository.findAllPriceHistory(query);
+            case PERIOD_1D -> priceHistoryRepository.findPricesPastDay(query);
+            case PERIOD_7D -> priceHistoryRepository.findPricesPast7Days(query);
+            case PERIOD_1M -> priceHistoryRepository.findPricesPastMonth(query);
+            case PERIOD_1Y -> priceHistoryRepository.findPricesPastYear(query);
+            default -> throw new InvalidInputException("Unsupported period: " + period);
+        };
     }
 
-    /**
-     * Get price history from past month
-     */
     @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastMonth(String query) 
-            throws InvalidInputException {
-        validateInstrumentQuery(query);
-        return priceHistoryRepository.findPricesPastMonth(query);
-    }
-
-    /**
-     * Get price history from past 7 days
-     */
-    @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPast7Days(String query) 
-            throws InvalidInputException {
-        validateInstrumentQuery(query);
-        return priceHistoryRepository.findPricesPast7Days(query);
-    }
-
-    /**
-     * Get price history from past day
-     */
-    @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryPastDay(String query) 
-            throws InvalidInputException {
-        validateInstrumentQuery(query);
-        return priceHistoryRepository.findPricesPastDay(query);
-    }
-
-    /**
-     * Get price history from today only
-     */
-    @Transactional(readOnly = true)
-    public List<PriceHistoryResult> getPriceHistoryToday(String query) 
-            throws InvalidInputException {
-        validateInstrumentQuery(query);
-        return priceHistoryRepository.findPricesToday(query);
-    }
-
-    // ===== PORTFOLIO HISTORY METHODS =====
-
-    /**
-     * Get portfolio holdings from past year
-     * 
-     * @param userId From JWT token
-     * @return List of portfolio snapshots from past year
-     */
-    @Transactional(readOnly = true)
-    public List<PortfolioHistoryResult> getPortfolioHistoryPastYear(Integer userId) 
-            throws UserNotFoundException {
+    public List<PortfolioHistoryResult> getPortfolioHistory(Integer userId, String period)
+            throws UserNotFoundException, InvalidInputException {
         Users user = validateUser(userId);
-        return portfolioHistoryRepository.findPortfolioPastYear(user.getClientId());
+        return switch (normalizePeriod(period)) {
+            case null -> portfolioHistoryRepository.findAllPortfolioHistory(user.getClientId());
+            case PERIOD_1D -> portfolioHistoryRepository.findPortfolioPastDay(user.getClientId());
+            case PERIOD_7D -> portfolioHistoryRepository.findPortfolioPast7Days(user.getClientId());
+            case PERIOD_1M -> portfolioHistoryRepository.findPortfolioPastMonth(user.getClientId());
+            case PERIOD_1Y -> portfolioHistoryRepository.findPortfolioPastYear(user.getClientId());
+            default -> throw new InvalidInputException("Unsupported period: " + period);
+        };
     }
 
-    /**
-     * Get portfolio holdings from past month
-     */
-    @Transactional(readOnly = true)
-    public List<PortfolioHistoryResult> getPortfolioHistoryPastMonth(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return portfolioHistoryRepository.findPortfolioPastMonth(user.getClientId());
-    }
-
-    /**
-     * Get portfolio holdings from past 7 days
-     */
-    @Transactional(readOnly = true)
-    public List<PortfolioHistoryResult> getPortfolioHistoryPast7Days(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return portfolioHistoryRepository.findPortfolioPast7Days(user.getClientId());
-    }
-
-    /**
-     * Get portfolio holdings from past day
-     */
-    @Transactional(readOnly = true)
-    public List<PortfolioHistoryResult> getPortfolioHistoryPastDay(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return portfolioHistoryRepository.findPortfolioPastDay(user.getClientId());
-    }
-
-    /**
-     * Get portfolio holdings from today only
-     */
-    @Transactional(readOnly = true)
-    public List<PortfolioHistoryResult> getPortfolioHistoryToday(Integer userId) 
-            throws UserNotFoundException {
-        Users user = validateUser(userId);
-        return portfolioHistoryRepository.findPortfolioToday(user.getClientId());
-    }
-
-    // ===== HELPER METHODS =====
-
-    /**
-     * Validate user exists and return user object
-     */
     private Users validateUser(Integer userId) throws UserNotFoundException {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
-    /**
-     * Validate instrument query input.
-     */
+    private String normalizePeriod(String period) throws InvalidInputException {
+        if (period == null || period.isBlank()) {
+            return null;
+        }
+
+        String normalized = period.trim().toLowerCase();
+        return switch (normalized) {
+            case PERIOD_1D, PERIOD_7D, PERIOD_1M, PERIOD_1Y -> normalized;
+            default -> throw new InvalidInputException("Unsupported period: " + period);
+        };
+    }
+
     private void validateInstrumentQuery(String query) throws InvalidInputException {
         if (query == null || query.trim().isEmpty()) {
             throw new InvalidInputException("Search query cannot be empty");

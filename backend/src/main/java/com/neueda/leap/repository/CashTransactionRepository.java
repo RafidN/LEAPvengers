@@ -25,6 +25,20 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
+        ORDER BY ct.txnDate DESC
+    """)
+    List<CashTransactionResult> findAllTransactionHistory(@Param("clientId") Integer clientId);
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.CashTransactionResult(
+            ct.cashTransactionId,
+            ct.txnType,
+            ct.amount,
+            ct.txnDate
+        )
+        FROM CashTransactions ct
+        JOIN ct.account a
+        WHERE a.clientId = :clientId
             AND ct.txnDate BETWEEN :startDate AND :endDate
         ORDER BY ct.txnDate DESC
     """)

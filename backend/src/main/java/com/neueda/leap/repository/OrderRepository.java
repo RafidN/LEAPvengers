@@ -33,6 +33,25 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
         JOIN o.instrument i
         JOIN o.account a
         WHERE a.clientId = :clientId
+        ORDER BY o.submittedAt DESC
+    """)
+    List<OrderHistoryResult> findAllOrderHistory(@Param("clientId") Integer clientId);
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.OrderHistoryResult(
+            o.orderId,
+            i.ticker,
+            o.orderType,
+            o.quantity,
+            o.price,
+            o.orderStatus,
+            o.orderDate,
+            o.submittedAt
+        )
+        FROM Orders o
+        JOIN o.instrument i
+        JOIN o.account a
+        WHERE a.clientId = :clientId
             AND o.orderDate BETWEEN :startDate AND :endDate
         ORDER BY o.submittedAt DESC
     """)
