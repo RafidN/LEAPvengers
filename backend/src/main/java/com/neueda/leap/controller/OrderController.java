@@ -3,6 +3,8 @@ package com.neueda.leap.controller;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
+import com.neueda.leap.exception.InvalidCredentialsException;
+import com.neueda.leap.exception.TickerNotFoundException;
 import com.neueda.leap.model.dto.*;
 import com.neueda.leap.security.JwtUtil;
 import com.neueda.leap.service.OrderService;
@@ -43,6 +45,12 @@ public class OrderController {
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Invalid input: " + e.getMessage());
+        } catch (InvalidCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid account: " + e.getMessage());
+        } catch (TickerNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Invalid ticker: " + e.getMessage());   
         } catch (UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("User not found");

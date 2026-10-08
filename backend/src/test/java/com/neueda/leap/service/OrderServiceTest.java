@@ -11,6 +11,7 @@ import com.neueda.leap.model.dto.OrderRequest;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import com.neueda.leap.model.dto.PriceQuoteResult;
 import com.neueda.leap.model.dto.InstrumentIdResult;
+import com.neueda.leap.model.dto.TickerSearchResult;
 
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.PortfolioRepository;
@@ -159,26 +160,27 @@ class OrderServiceTest {
         orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
         assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
     }
-    // @Test
-    // void testRequireSufficientHoldingOnSell() {
-    //     Users testUser = new Users();
-    //     testUser.setUserId(1);
-    //     testUser.setClientId(1);
-    //     List<AccountResponse> accountResponses = new ArrayList<>();
-    //     accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
-    //     when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-    //     when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
-    //     List<PriceQuoteResult> prices = new ArrayList<>();
-    //     List<InstrumentIdResult> instrumentIds = new ArrayList<>();
-    //     prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
-    //     instrumentIds.add(new InstrumentIdResult(1));
-    //     when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
-    //     when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
-    //     orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "SELL", 67);
-    //     List<TickerSearchResult> instrumentIds = new ArrayList<>();
-    //     when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), instrumentIds.get(0).getInstrumentId)).thenReturn
-    //     assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
-    // }
+    @Test
+    void testRequireSufficientHoldingOnSell() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        List<PriceQuoteResult> prices = new ArrayList<>();
+        List<InstrumentIdResult> instrumentIds = new ArrayList<>();
+        prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
+        instrumentIds.add(new InstrumentIdResult(1));
+        when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
+        when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
+        List<TickerSearchResult> holdingInventory = new ArrayList<>();
+        holdingInventory.add(new TickerSearchResult(1, 67, "NFLX", "Netflix", 6l, 6.7));
+        when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), "NFLX")).thenReturn(holdingInventory);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(670), "SELL", 67);
+        assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
+    }
     @Test
     void testValidBuy() {
         Users testUser = new Users();
@@ -198,6 +200,31 @@ class OrderServiceTest {
             prices.get(0).getCurrentPrice(), LocalDate.now());
         when(orderRepository.save(any(Orders.class))).thenReturn(order);
         orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
+    }
+
+    @Test
+    void testValidSell() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        List<PriceQuoteResult> prices = new ArrayList<>();
+        List<InstrumentIdResult> instrumentIds = new ArrayList<>();
+        prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
+        instrumentIds.add(new InstrumentIdResult(1));
+        when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
+        when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
+        List<TickerSearchResult> holdingInventory = new ArrayList<>();
+        holdingInventory.add(new TickerSearchResult(1, 67, "NFLX", "Netflix", 6l, 6.7));
+        when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), "NFLX")).thenReturn(holdingInventory);
+        Orders order = new Orders(67, instrumentIds.get(0).getInstrumentId(), "SELL", new BigDecimal(67), 
+            prices.get(0).getCurrentPrice(), LocalDate.now());
+        when(orderRepository.save(any(Orders.class))).thenReturn(order);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "SELL", 67);
         assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
     }
     private void setAuthenticatedUser(Integer userId) {

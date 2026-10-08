@@ -37,7 +37,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleInvalidInput(InvalidInputException ex) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
     }
-
+    
+    @ExceptionHandler(TickerNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidTicker(TickerNotFoundException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), ex);
+    }
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), ex);

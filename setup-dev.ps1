@@ -69,7 +69,7 @@ function Wait-ForHttpEndpoint {
 $pgHost = "localhost"
 $pgPort = "5432"
 $pgUser = "postgres"
-$pgPassword = "Bryboy1234"
+$pgPassword = "n3u3d4!"
 $dbName = "leapvengersdb"
 $dbSchemaFile = "$scriptPath\database\enterprise-schema.sql"
 $dbSeedFile = "$scriptPath\database\seed.sql"

@@ -8,7 +8,7 @@ import com.neueda.leap.model.Clients;
 import com.neueda.leap.model.Users;
 import com.neueda.leap.model.Accounts;
 import com.neueda.leap.model.Orders;
-
+import com.neueda.leap.model.Holdings;
 import com.neueda.leap.model.dto.AuthenticationResponse;
 import com.neueda.leap.model.dto.ForgotPasswordResponse;
 import com.neueda.leap.model.dto.AccountResponse;
@@ -54,7 +54,7 @@ public class OrderService {
 
     @Transactional()
     public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) 
-            throws UserNotFoundException, InvalidInputException {
+            throws UserNotFoundException, InvalidInputException, InvalidCredentialsException, TickerNotFoundException {
         
         // Validate user exists and get their clientId
         Users user = userRepository.findById(userId)
@@ -68,7 +68,7 @@ public class OrderService {
         {
             throw new InvalidInputException("Order quantity must be greater than 0");
         }
-        if (request.getOrderType() == null || (!request.getOrderType().trim().equals("BUY") && !request.getOrderType().trim().equals("SELL"))) {
+        if (request.getOrderType() == null || (!request.getOrderType().trim().toUpperCase().equals("BUY") && !request.getOrderType().trim().toUpperCase().equals("SELL"))) {
             throw new InvalidInputException("Order type must be BUY or SELL");
         }
         int clientId = user.getClientId();
@@ -96,26 +96,35 @@ public class OrderService {
         }
         List<TickerSearchResult> holdingInventory = holdingsRepository.searchByInstrumentQuery(clientId, ticker);
         Long tickerStock = 0l;
+        int holdingId = -1;
+        System.out.println(holdingInventory.size());
         for(TickerSearchResult tickerSearchResult : holdingInventory){
             if(tickerSearchResult.getAccountId() == accountId){
-                tickerStock += tickerSearchResult.getQuantity();
+                tickerStock = tickerSearchResult.getQuantity();
+                holdingId = tickerSearchResult.getHoldingId();
             }
         }
         if(new BigDecimal(tickerStock).compareTo(quantity) < 0 && orderType.toUpperCase().equals("SELL")){
-            throw new InvalidInputException("Not enough holding inventory in account to sell");
+            throw new InvalidInputException("Not enough holding inventory in account to sell ");
         }
         Orders order = new Orders(accountId, instrumentIds.get(0).getInstrumentId(), orderType, quantity, 
             prices.get(0).getCurrentPrice(), LocalDate.now());
         Orders savedOrder = orderRepository.save(order);
-        savedOrder.setOrderStatus("ACCEPTED");
+        savedOrder.setOrderStatus("FILLED");
+        savedOrder.setExecutionPrice(savedOrder.getPrice());
         orderRepository.save(savedOrder);
         List<OrderHistoryResult> result = new ArrayList<>();
         result.add(new OrderHistoryResult(savedOrder.getOrderId(), ticker, savedOrder.getOrderType(), savedOrder.getQuantity(), 
             savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(), savedOrder.getSubmittedAt()));
-
-        // Integer orderId, String ticker, String orderType,
-        //                      BigDecimal quantity, BigDecimal price, String orderStatus,
-        //                      LocalDate orderDate, LocalDateTime submittedAt) {
+        
+        // Holdings holding = new Holdings(holdingId, accountId, instrumentIds.get(0).getInstrumentId(), savedOrder.getQuantity(), savedOrder.getOrderDate());
+        // if(request.getOrderType().trim().toUpperCase().equals("BUY")) {
+        //     holding.setQuantity(holding.getQuantity().add(savedOrder.getQuantity()));
+        // }
+        // else if(request.getOrderType().trim().toUpperCase().equals("SELL")) {
+        //     holding.setQuantity(holding.getQuantity().subtract(savedOrder.getQuantity()));
+        // }
+        // holdingsRepository.save(holding);
         return result;
     }
 }
