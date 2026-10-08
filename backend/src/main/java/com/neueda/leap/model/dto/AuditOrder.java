@@ -18,6 +18,7 @@ public class AuditOrder {
     private BigDecimal quantity;
     private BigDecimal price;
     private String orderStatus;
+    private String rejectionReason;
     private LocalDate orderDate;
     private LocalDateTime submittedAt;
     private LocalDateTime executedAt;
@@ -27,7 +28,7 @@ public class AuditOrder {
 
     public AuditOrder(Integer orderId, Integer clientId, String clientName, String ticker, 
                       String instrumentName, String orderType, BigDecimal quantity, 
-                      BigDecimal price, String orderStatus, LocalDate orderDate, 
+                      BigDecimal price, String orderStatus, String rejectionReason, LocalDate orderDate, 
                       LocalDateTime submittedAt, LocalDateTime executedAt) {
         this.orderId = orderId;
         this.clientId = clientId;
@@ -38,6 +39,7 @@ public class AuditOrder {
         this.quantity = quantity;
         this.price = price;
         this.orderStatus = orderStatus;
+        this.rejectionReason = rejectionReason;
         this.orderDate = orderDate;
         this.submittedAt = submittedAt;
         this.executedAt = executedAt;
@@ -114,6 +116,14 @@ public class AuditOrder {
 
     public void setOrderStatus(String orderStatus) {
         this.orderStatus = orderStatus;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public LocalDate getOrderDate() {

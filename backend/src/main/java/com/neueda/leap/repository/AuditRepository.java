@@ -26,6 +26,7 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
             o.quantity,
             o.price,
             o.orderStatus,
+            o.rejectionReason,
             o.orderDate,
             o.submittedAt,
             o.executedAt
@@ -37,6 +38,7 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
         WHERE (:clientId IS NULL OR c.clientId = :clientId)
             AND (:ticker IS NULL OR i.ticker = :ticker)
             AND (:orderStatus IS NULL OR o.orderStatus = :orderStatus)
+            AND (:rejectionReason IS NULL OR o.rejectionReason = :rejectionReason)
             AND (:startDate IS NULL OR o.orderDate >= :startDate)
             AND (:endDate IS NULL OR o.orderDate <= :endDate)
         ORDER BY o.submittedAt DESC
@@ -45,6 +47,7 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
         @Param("clientId") Integer clientId,
         @Param("ticker") String ticker,
         @Param("orderStatus") String orderStatus,
+        @Param("rejectionReason") String rejectionReason,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate,
         Pageable pageable

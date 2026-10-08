@@ -26,10 +26,11 @@ public class AuditController {
             @RequestParam(required = false) Integer clientId,
             @RequestParam(required = false) String ticker,
             @RequestParam(required = false) String orderStatus,
+            @RequestParam(required = false) String rejection_reason,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return auditService.getAuditOrders(clientId, ticker, orderStatus, startDate, endDate, page, size);
+        return auditService.getAuditOrders(clientId, ticker, orderStatus, rejection_reason, startDate, endDate, page, size);
     }
 }

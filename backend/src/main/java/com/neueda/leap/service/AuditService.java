@@ -24,7 +24,7 @@ public class AuditService {
      * Get all orders with filtering and pagination
      */
     public Page<AuditOrder> getAuditOrders(Integer clientId, String ticker, String orderStatus,
-                                           String startDate, String endDate, int page, int size) {
+                                           String rejectionReason, String startDate, String endDate, int page, int size) {
         // Validate and cap page size
         size = Math.max(1, Math.min(size, 100));
 
@@ -34,6 +34,6 @@ public class AuditService {
 
         // Execute query
         Pageable pageable = PageRequest.of(page, size);
-        return auditRepository.findAuditOrders(clientId, ticker, orderStatus, start, end, pageable);
+        return auditRepository.findAuditOrders(clientId, ticker, orderStatus, rejectionReason, start, end, pageable);
     }
 }
