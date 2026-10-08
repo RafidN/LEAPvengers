@@ -23,9 +23,10 @@ services:
   leapsonar:
     image: sonarqube:9.9-community
     container_name: LeapVengersSonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
     environment:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
-      SONAR_ADMIN_USERNAME: "admin"
       SONAR_ADMIN_PASSWORD: "admin"
     ports:
       - "9000:9000"
@@ -34,6 +35,7 @@ services:
 
 volumes:
   postgres_data:
+  sonarqube_data:
 
 networks:
   leapvengers:
