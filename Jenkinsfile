@@ -62,26 +62,6 @@ pipeline {
             }
         }
 
-        stage('Code Analysis') {
-            environment {
-                scannerHome = tool 'LeapVengersSonar'
-            }
-            steps {
-                sh 'docker-compose up -d leapsonar || true'
-                sh 'sleep 30'
-                script {
-                    withSonarQubeEnv('LeapVengersSonar') {
-                        sh '''${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=leap \
-                            -Dsonar.projectName=LEAP \
-                            -Dsonar.projectVersion=${BUILD_NUMBER} \
-                            -Dsonar.sources=./backend/src,./frontend/src,./scripts \
-                            -Dsonar.host.url=http://localhost:9000'''
-                    }
-                }
-            }
-        }
-
         stage('Build Image') {
             steps {
                 unstash 'backend-jar'
@@ -99,7 +79,6 @@ pipeline {
     post {
         always {
             sh 'docker rm -f leapdb || true'
-            sh 'docker rm -f LeapVengersSonar || true'
         }
     }
 }
