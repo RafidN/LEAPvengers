@@ -33,17 +33,17 @@ public class AuditServiceTest {
     public void testGetAuditOrders_WithFilters() {
         Page<AuditOrder> mockPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
         when(auditRepository.findAuditOrders(
-                eq(1), eq("AAPL"), eq("FILLED"),
+                eq(1), eq("AAPL"), eq("FILLED"), eq(null),
                 eq(LocalDate.of(2024, 1, 1)), eq(LocalDate.of(2024, 12, 31)),
                 any())).thenReturn(mockPage);
 
         Page<AuditOrder> result = auditService.getAuditOrders(
-                1, "AAPL", "FILLED",
+                1, "AAPL", "FILLED", null,
                 "2024-01-01", "2024-12-31", 0, 20);
 
         assertNotNull(result);
         verify(auditRepository).findAuditOrders(
-                eq(1), eq("AAPL"), eq("FILLED"),
+                eq(1), eq("AAPL"), eq("FILLED"), eq(null),
                 eq(LocalDate.of(2024, 1, 1)), eq(LocalDate.of(2024, 12, 31)),
                 any());
     }
@@ -52,24 +52,24 @@ public class AuditServiceTest {
     public void testGetAuditOrders_PageSizeCapped() {
         Page<AuditOrder> mockPage = new PageImpl<>(List.of(), PageRequest.of(0, 100), 0);
         when(auditRepository.findAuditOrders(
-                eq(null), eq(null), eq(null), eq(null), eq(null), any()))
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any()))
                 .thenReturn(mockPage);
 
-        auditService.getAuditOrders(null, null, null, null, null, 0, 200);
+        auditService.getAuditOrders(null, null, null, null, null, null, 0, 200);
 
         verify(auditRepository).findAuditOrders(
-                eq(null), eq(null), eq(null), eq(null), eq(null), any());
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any());
     }
 
     @Test
     public void testGetAuditOrders_NoFilters() {
         Page<AuditOrder> mockPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
         when(auditRepository.findAuditOrders(
-                eq(null), eq(null), eq(null), eq(null), eq(null), any()))
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any()))
                 .thenReturn(mockPage);
 
         Page<AuditOrder> result = auditService.getAuditOrders(
-                null, null, null, null, null, 0, 20);
+                null, null, null, null, null, null, 0, 20);
 
         assertNotNull(result);
     }
