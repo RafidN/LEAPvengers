@@ -20,6 +20,9 @@ public class Clients {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    @Column(name = "segment", nullable = false)
+    private String segment;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Users> users;
 
@@ -34,6 +37,7 @@ public class Clients {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.segment = "Active";
     }
 
     public Clients(Integer clientId, String firstName, String lastName, String email) {
@@ -41,6 +45,15 @@ public class Clients {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.segment = "Active";
+    }
+
+    public Clients(Integer clientId, String firstName, String lastName, String email, String segment) {
+        this.clientId = clientId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.segment = segment;
     }
 
     // Getters and Setters
@@ -74,6 +87,14 @@ public class Clients {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getSegment() {
+        return segment;
+    }
+
+    public void setSegment(String segment) {
+        this.segment = segment;
     }
 
     public List<Users> getUsers() {
