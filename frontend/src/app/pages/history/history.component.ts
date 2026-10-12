@@ -17,14 +17,19 @@ import {
   OrderHistoryResult
 } from '../../services/history.service';
 
-type OrderStatus = 'Filled' | 'Pending' | 'Rejected' | 'Canceled';
+type OrderStatus = 'ACCEPTED' | 'FAILED' | 'FILLED' | 'PENDING' | 'REJECTED';
 
 /** Badge style and icon per order status, so a status reads the same everywhere on the page. */
-const STATUS_STYLE: Record<OrderStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: string }> = {
-  Filled: { variant: 'default', icon: 'lucideCircleCheck' },
-  Pending: { variant: 'secondary', icon: 'lucideClock' },
-  Rejected: { variant: 'destructive', icon: 'lucideCircleX' },
-  Canceled: { variant: 'outline', icon: 'lucideBan' }
+const STATUS_META: Record<OrderStatus, {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  icon: string;
+}> = {
+  ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
+  FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
+  FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
+  PENDING: { label: 'Pending', variant: 'secondary', icon: 'lucideClock' },
+  REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
 /** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
@@ -46,7 +51,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['Filled', 'Pending', 'Rejected', 'Canceled'];
+  protected readonly statuses: OrderStatus[] = ['PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');
@@ -67,8 +72,8 @@ export class HistoryComponent {
     return this.orders().filter(o => o.orderStatus === status).length;
   }
 
-  protected statusStyle(status: string) {
-    return STATUS_STYLE[status as OrderStatus] ?? STATUS_STYLE.Pending;
+  protected statusMeta(status: string) {
+    return STATUS_META[status as OrderStatus] ?? { label: status, variant: 'secondary', icon: 'lucideClock' };
   }
 
   constructor() {
