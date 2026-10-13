@@ -26,6 +26,7 @@ import com.neueda.leap.repository.HoldingsRepository;
 import com.neueda.leap.repository.AccountRepository;
 
 import com.neueda.leap.security.JwtUtil;
+import java.util.concurrent.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class OrderService {
     private final InstrumentsRepository instrumentsRepository;
     private final HoldingsRepository holdingsRepository;
     private final AccountRepository accountRepository;
+
     public OrderService(UserRepository userRepository, InstrumentsRepository instrumentsRepository, 
                         OrderRepository orderRepository, HoldingsRepository holdingsRepository,
                         AccountRepository accountRepository) {
@@ -54,7 +56,7 @@ public class OrderService {
 
     @Transactional()
     public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) 
-            throws UserNotFoundException, InvalidInputException, InvalidCredentialsException, TickerNotFoundException {
+            throws UserNotFoundException, InvalidInputException, InvalidCredentialsException, TickerNotFoundException, InterruptedException {
         
         // Validate user exists and get their clientId
         Users user = userRepository.findById(userId)
@@ -84,7 +86,6 @@ public class OrderService {
         BigDecimal balance = balances.get(0).getBalance();
         // Execute parameterized query with user's clientId
         //
-        OrderHistoryResult orderHistoryresult;
         List<PriceQuoteResult> prices = instrumentsRepository.searchInstrumentPrice(ticker);
         List<InstrumentIdResult> instrumentIds = instrumentsRepository.searchInstrumentId(ticker);
         if(prices.size() == 0){
@@ -97,7 +98,6 @@ public class OrderService {
         List<TickerSearchResult> holdingInventory = holdingsRepository.searchByInstrumentQuery(clientId, ticker);
         Long tickerStock = 0l;
         int holdingId = -1;
-        System.out.println(holdingInventory.size());
         for(TickerSearchResult tickerSearchResult : holdingInventory){
             if(tickerSearchResult.getAccountId() == accountId){
                 tickerStock = tickerSearchResult.getQuantity();
@@ -107,24 +107,52 @@ public class OrderService {
         if(new BigDecimal(tickerStock).compareTo(quantity) < 0 && orderType.toUpperCase().equals("SELL")){
             throw new InvalidInputException("Not enough holding inventory in account to sell ");
         }
+
+
         Orders order = new Orders(accountId, instrumentIds.get(0).getInstrumentId(), orderType, quantity, 
             prices.get(0).getCurrentPrice(), LocalDate.now());
-        Orders savedOrder = orderRepository.save(order);
-        savedOrder.setOrderStatus("FILLED");
-        savedOrder.setExecutionPrice(savedOrder.getPrice());
-        orderRepository.save(savedOrder);
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+        OrderDelay orderDelay = new OrderDelay(ticker, prices, order);
+        executorService.schedule(orderDelay, 5l, TimeUnit.SECONDS);
+
         List<OrderHistoryResult> result = new ArrayList<>();
-        result.add(new OrderHistoryResult(savedOrder.getOrderId(), ticker, savedOrder.getOrderType(), savedOrder.getQuantity(), 
-            savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(), savedOrder.getSubmittedAt()));
+        result.add(new OrderHistoryResult(order.getOrderId(), ticker, order.getOrderType(), order.getQuantity(), 
+            order.getPrice(), "PENDING", order.getOrderDate(), order.getSubmittedAt()));
         
-        // Holdings holding = new Holdings(holdingId, accountId, instrumentIds.get(0).getInstrumentId(), savedOrder.getQuantity(), savedOrder.getOrderDate());
-        // if(request.getOrderType().trim().toUpperCase().equals("BUY")) {
-        //     holding.setQuantity(holding.getQuantity().add(savedOrder.getQuantity()));
-        // }
-        // else if(request.getOrderType().trim().toUpperCase().equals("SELL")) {
-        //     holding.setQuantity(holding.getQuantity().subtract(savedOrder.getQuantity()));
-        // }
-        // holdingsRepository.save(holding);
         return result;
+    }
+    public class OrderDelay implements Runnable {
+        public String ticker;
+        public List<PriceQuoteResult> newPrices;
+        public List<PriceQuoteResult> oldPrices;
+        public Orders savedOrder;
+        // public List<PriceQuoteResult>
+        public OrderDelay(String ticker, List<PriceQuoteResult> prices, Orders savedOrder){
+            this.ticker = ticker;
+            this.oldPrices = prices;
+            this.savedOrder = savedOrder;
+        }
+        @Override
+        public void run(){
+            try{
+            newPrices = instrumentsRepository.searchInstrumentPrice(ticker);
+            if(oldPrices.get(0).getCurrentPrice().compareTo(newPrices.get(0).getCurrentPrice()) == 0) {
+                savedOrder.setOrderStatus("FILLED");
+                savedOrder.setExecutionPrice(savedOrder.getPrice());
+                System.out.println("FILLED");
+            }
+            else {
+                savedOrder.setOrderStatus("REJECTED");
+                savedOrder.setRejectionReason("Outdated order price from request");
+                System.out.println("REJECTED");
+            }
+            orderRepository.save(savedOrder);
+            }
+            catch(Exception e)
+            {
+                System.out.println("WHATT");
+                e.printStackTrace();
+            }
+        }
     }
 }
