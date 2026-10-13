@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class OrdersControllerTest {
+class OrderQueryControllerTest {
 
     private MockMvc mockMvc;
     private StubOrderQueryService stubOrderQueryService;
@@ -28,7 +28,7 @@ class OrdersControllerTest {
     @BeforeEach
     void setUp() {
         stubOrderQueryService = new StubOrderQueryService();
-        OrdersController controller = new OrdersController(stubOrderQueryService);
+        OrderQueryController controller = new OrderQueryController(stubOrderQueryService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
