@@ -110,7 +110,7 @@ FROM (VALUES
 JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id;
 
--- Orders. Filled orders move holdings through the orders_sync_holdings trigger.
+-- Orders. Holdings and cash balances are worked out from the filled ones further down.
 -- Joanna's history covers every instrument class and every current status, including a sell that
 -- was rejected because she tried to sell more SHEL than she holds.
 INSERT INTO orders (
@@ -207,6 +207,17 @@ SELECT o.order_id, NULL, 'ACCEPTED', o.order_status,
 FROM orders o
 WHERE o.order_status IN ('FILLED', 'FAILED')
 ORDER BY o.submitted_at;
+
+-- Holdings = filled buys - filled sells per account and instrument, the same way OrderService
+-- moves them for live trades. Fully sold positions are left out, as OrderService removes them.
+INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
+SELECT o.account_id, o.instrument_id,
+       SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END),
+       MAX(o.executed_at)::date
+FROM orders o
+WHERE o.order_status = 'FILLED'
+GROUP BY o.account_id, o.instrument_id
+HAVING SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END) <> 0;
 
 -- Cash balance = deposits - withdrawals - filled buys + filled sells, so balances always agree
 -- with the history the seed just wrote.

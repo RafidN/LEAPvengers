@@ -4,13 +4,12 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { catchError, combineLatest, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideBan,
   lucideCircleCheck,
-  lucideCircleDot,
   lucideCircleX,
   lucideChevronRight,
   lucideClock,
-  lucideRefreshCw,
-  lucideTriangleAlert
+  lucideRefreshCw
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
@@ -25,8 +24,7 @@ import {
   OrderHistoryResult,
   OrderStatus
 } from '../../services/history.service';
-
-type OrderStatus = 'ACCEPTED' | 'FAILED' | 'FILLED' | 'PENDING' | 'REJECTED';
+import { OrderEvent, OrderService } from '../../services/order.service';
 
 /** Badge style and icon per order status, so a status reads the same everywhere on the page. */
 const STATUS_META: Record<OrderStatus, {
@@ -50,7 +48,7 @@ const STATUS_META: Record<OrderStatus, {
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideCircleCheck, lucideCircleDot, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw, lucideTriangleAlert
+    lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw
   })]
 })
 export class HistoryComponent {
@@ -94,8 +92,13 @@ export class HistoryComponent {
     return this.orders().filter(o => o.orderStatus === status).length;
   }
 
-  protected statusMeta(status: string) {
-    return STATUS_META[status as OrderStatus] ?? { label: status, variant: 'secondary', icon: 'lucideClock' };
+  protected statusMeta(status: string | undefined) {
+    return STATUS_META[status as OrderStatus] ?? { label: status ?? '', variant: 'secondary', icon: 'lucideClock' };
+  }
+
+  /** Filled orders are valued at the price they actually executed at. */
+  protected effectivePrice(o: OrderHistoryResult): number {
+    return o.executionPrice ?? o.price;
   }
 
   constructor() {

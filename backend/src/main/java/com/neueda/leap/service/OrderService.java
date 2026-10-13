@@ -80,20 +80,21 @@ public class OrderService {
         LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
         tradingRules.checkPriceIsRecent(quote);
         BigDecimal price = quote.getPrice();
+        Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(account.getAccountId(), instrument.getInstrumentId())
+                .orElse(null);
         if (orderType.equals("BUY")) {
             tradingRules.checkSufficientCash(account.getBalance(), quantity, price);
         } else {
-            BigDecimal held = holdingsRepository.findByAccountIdAndInstrumentId(account.getAccountId(), instrument.getInstrumentId())
-                    .map(Holdings::getQuantity)
-                    .orElse(BigDecimal.ZERO);
-            tradingRules.checkSufficientHoldings(held, quantity);
+            tradingRules.checkSufficientHoldings(holding == null ? BigDecimal.ZERO : holding.getQuantity(), quantity);
         }
 
-        // Fill at the checked price. Holdings are updated by the orders_sync_holdings trigger;
-        // cash is moved here, in the same transaction as the order.
+        // Fill at the checked price. Cash, holdings and the order all change in this one transaction,
+        // so a failure part way through leaves none of them changed.
         BigDecimal amount = quantity.multiply(price);
         account.setBalance(orderType.equals("BUY") ? account.getBalance().subtract(amount) : account.getBalance().add(amount));
         accountRepository.save(account);
+        updateHolding(holding, account.getAccountId(), instrument.getInstrumentId(),
+                orderType.equals("BUY") ? quantity : quantity.negate());
 
         Orders order = new Orders(account.getAccountId(), instrument.getInstrumentId(), orderType, quantity, price, LocalDate.now());
         order.setOrderStatus("FILLED");
@@ -104,5 +105,24 @@ public class OrderService {
         return List.of(new OrderHistoryResult(savedOrder.getOrderId(), instrument.getTicker(), savedOrder.getOrderType(),
                 savedOrder.getQuantity(), savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(),
                 savedOrder.getSubmittedAt()));
+    }
+
+    /**
+     * Applies a filled order to the account's position: a buy adds to it (opening one if needed),
+     * a sell takes away from it, and a position sold down to zero is removed.
+     */
+    private void updateHolding(Holdings holding, Integer accountId, Integer instrumentId, BigDecimal change) {
+        if (holding == null) {
+            holdingsRepository.save(new Holdings(accountId, instrumentId, change, LocalDate.now()));
+            return;
+        }
+        BigDecimal newQuantity = holding.getQuantity().add(change);
+        if (newQuantity.signum() == 0) {
+            holdingsRepository.delete(holding);
+            return;
+        }
+        holding.setQuantity(newQuantity);
+        holding.setAsOfDate(LocalDate.now());
+        holdingsRepository.save(holding);
     }
 }

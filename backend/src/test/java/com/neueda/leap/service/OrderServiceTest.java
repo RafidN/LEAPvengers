@@ -106,12 +106,24 @@ class OrderServiceTest {
         return new OrderRequest(ticker, quantity == null ? null : new BigDecimal(quantity), side, ACCOUNT_ID);
     }
 
-    /** The order is rejected by the given rule, and neither cash nor orders were touched. */
+    /** The order is rejected by the given rule, and neither cash, holdings nor orders were touched. */
     private void assertRejectedBy(String code, Executable placeOrder) {
         TradingRuleException e = assertThrows(TradingRuleException.class, placeOrder);
         assertEquals(code, e.getCode());
         verify(orderRepository, never()).save(any());
         verify(accountRepository, never()).save(any());
+        verify(holdingsRepository, never()).save(any());
+        verify(holdingsRepository, never()).delete(any());
+    }
+
+    /** The holding last written for account 67 / NFLX. */
+    private Holdings savedHolding() {
+        ArgumentCaptor<Holdings> saved = ArgumentCaptor.forClass(Holdings.class);
+        verify(holdingsRepository).save(saved.capture());
+        Holdings holding = saved.getValue();
+        assertEquals(ACCOUNT_ID, holding.getAccountId());
+        assertEquals(INSTRUMENT_ID, holding.getInstrumentId());
+        return holding;
     }
 
     // Request checks
@@ -228,5 +240,42 @@ class OrderServiceTest {
         orderService.placeOrder(1, order("NFLX", "0.5", "SELL"));
 
         verify(orderRepository).save(any(Orders.class));
+    }
+
+    // Holdings move in Java, in the same transaction as the cash
+
+    @Test
+    void buyAddsToAnExistingHolding() {
+        orderService.placeOrder(1, order("NFLX", "5", "BUY"));
+
+        assertEquals(0, new BigDecimal("11").compareTo(savedHolding().getQuantity()));
+    }
+
+    @Test
+    void firstBuyOpensANewHolding() {
+        when(holdingsRepository.findByAccountIdAndInstrumentId(ACCOUNT_ID, INSTRUMENT_ID)).thenReturn(Optional.empty());
+
+        orderService.placeOrder(1, order("NFLX", "5", "BUY"));
+
+        Holdings holding = savedHolding();
+        assertEquals(null, holding.getHoldingId());
+        assertEquals(0, new BigDecimal("5").compareTo(holding.getQuantity()));
+        assertEquals(LocalDate.now(), holding.getAsOfDate());
+    }
+
+    @Test
+    void partialSellReducesTheHolding() {
+        orderService.placeOrder(1, order("NFLX", "4", "SELL"));
+
+        assertEquals(0, new BigDecimal("2").compareTo(savedHolding().getQuantity()));
+        verify(holdingsRepository, never()).delete(any());
+    }
+
+    @Test
+    void sellingTheWholePositionRemovesTheHolding() {
+        orderService.placeOrder(1, order("NFLX", "6", "SELL"));
+
+        verify(holdingsRepository).delete(any(Holdings.class));
+        verify(holdingsRepository, never()).save(any());
     }
 }

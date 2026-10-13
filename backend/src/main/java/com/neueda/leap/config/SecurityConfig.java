@@ -69,7 +69,7 @@ public class SecurityConfig {
                         // Paths are matched after the /api context path, so no /api prefix here
                         .requestMatchers("/accounts/**", "/orders/**", "/order/**").hasRole("TRADER")
                         .requestMatchers("/internal/audit/**").hasRole("OPS")
-                        .requestMatchers("/internal/reports/**").hasRole("ANALYST")
+                        .requestMatchers("/internal/reports/**").hasAnyRole("ANALYST", "OPS")
                         // Ops needs client segments for the Clients page; Analysts read them for Insights
                         .requestMatchers("/clients/**").hasAnyRole("OPS", "ANALYST")
                         .anyRequest().authenticated())

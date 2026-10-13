@@ -129,14 +129,14 @@
                             @for (e of events(); track e.eventId) {
                               <li class="relative pb-4 pl-6 last:pb-0">
                                 <span class="bg-background border-border absolute top-1 -left-[7px] h-3 w-3 rounded-full border-2"
-                                  [style.border-color]="statusStyle(e.toStatus).variant === 'destructive' ? 'var(--destructive)' : e.toStatus === 'FILLED' ? 'var(--primary)' : null"></span>
+                                  [style.border-color]="statusMeta(e.toStatus).variant === 'destructive' ? 'var(--destructive)' : e.toStatus === 'FILLED' ? 'var(--primary)' : null"></span>
                                 <div class="flex flex-wrap items-center gap-2">
-                                  <span hlmBadge [variant]="statusStyle(e.toStatus).variant">
-                                    <ng-icon [name]="statusStyle(e.toStatus).icon" />
-                                    {{ statusStyle(e.toStatus).label }}
+                                  <span hlmBadge [variant]="statusMeta(e.toStatus).variant">
+                                    <ng-icon [name]="statusMeta(e.toStatus).icon" />
+                                    {{ statusMeta(e.toStatus).label }}
                                   </span>
                                   @if (e.fromStatus) {
-                                    <span class="text-muted-foreground text-xs">from {{ statusStyle(e.fromStatus).label }}</span>
+                                    <span class="text-muted-foreground text-xs">from {{ statusMeta(e.fromStatus).label }}</span>
                                   }
                                   <time class="text-muted-foreground text-xs tabular-nums" [attr.datetime]="e.createdAt">
                                     {{ e.createdAt | date: 'MMM d, y, HH:mm:ss' }}
