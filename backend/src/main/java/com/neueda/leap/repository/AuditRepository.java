@@ -3,7 +3,6 @@ package com.neueda.leap.repository;
 import com.neueda.leap.model.dto.AuditOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Repository;
 import com.neueda.leap.model.Orders;
 
 import java.time.LocalDate;
-
 
 @Repository
 public interface AuditRepository extends JpaRepository<Orders, Integer> {
@@ -52,17 +50,6 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate,
         Pageable pageable
-    );
-
-    @Query("""
-        SELECT c.*, a.accountId, a.balance, 
-        FROM Orders o
-        JOIN o.account a
-        JOIN a.client c
-        WHERE (:clientId IS NULL OR c.clientId = :clientId)
-    """)
-    List<String> findClientNames(
-        @Param("clientId") Integer clientId
     );
 }
 
