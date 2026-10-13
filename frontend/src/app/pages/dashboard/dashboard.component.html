@@ -75,7 +75,7 @@
                   <td hlmTableCell class="font-medium">{{ h.ticker }}</td>
                   <td hlmTableCell>{{ h.instrumentName }}</td>
                   <td hlmTableCell class="text-right">{{ h.quantity | number }}</td>
-                  <td hlmTableCell class="text-right">{{ h.price | number: '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right">{{ h.price | number: '1.2-2' }}</td>
                   <td hlmTableCell class="text-right">{{ h.totalValue | currency }}</td>
                 </tr>
               }
@@ -142,7 +142,7 @@
                 </td>
                 <td hlmTableCell>{{ q.instrumentName }}</td>
                 <td hlmTableCell><span hlmBadge variant="secondary">{{ q.assetClass }}</span></td>
-                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | number: '1.2-4' }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | number: '1.2-2' }}</td>
                 <td hlmTableCell class="text-muted-foreground text-right">{{ q.quoteTimestamp | date: 'MMM d, HH:mm:ss' }}</td>
               </tr>
             }

@@ -25,15 +25,20 @@ import {
   OrderHistoryResult,
   OrderStatus
 } from '../../services/history.service';
-import { OrderEvent, OrderService } from '../../services/order.service';
 
-/** Badge style, icon and label per order status, so a status reads the same everywhere on the page. */
-const STATUS_STYLE: Record<OrderStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: string; label: string }> = {
-  FILLED: { variant: 'default', icon: 'lucideCircleCheck', label: 'Filled' },
-  ACCEPTED: { variant: 'secondary', icon: 'lucideCircleDot', label: 'Accepted' },
-  PENDING: { variant: 'outline', icon: 'lucideClock', label: 'Pending' },
-  REJECTED: { variant: 'destructive', icon: 'lucideCircleX', label: 'Rejected' },
-  FAILED: { variant: 'destructive', icon: 'lucideTriangleAlert', label: 'Failed' }
+type OrderStatus = 'ACCEPTED' | 'FAILED' | 'FILLED' | 'PENDING' | 'REJECTED';
+
+/** Badge style and icon per order status, so a status reads the same everywhere on the page. */
+const STATUS_META: Record<OrderStatus, {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  icon: string;
+}> = {
+  ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
+  FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
+  FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
+  PENDING: { label: 'Pending', variant: 'secondary', icon: 'lucideClock' },
+  REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
 /** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
@@ -59,7 +64,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['FILLED', 'ACCEPTED', 'PENDING', 'REJECTED', 'FAILED'];
+  protected readonly statuses: OrderStatus[] = ['PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');
@@ -89,13 +94,8 @@ export class HistoryComponent {
     return this.orders().filter(o => o.orderStatus === status).length;
   }
 
-  protected statusStyle(status: string | undefined) {
-    return STATUS_STYLE[status as OrderStatus] ?? STATUS_STYLE.PENDING;
-  }
-
-  /** Filled orders are valued at the price they actually executed at. */
-  protected effectivePrice(o: OrderHistoryResult): number {
-    return o.executionPrice ?? o.price;
+  protected statusMeta(status: string) {
+    return STATUS_META[status as OrderStatus] ?? { label: status, variant: 'secondary', icon: 'lucideClock' };
   }
 
   constructor() {

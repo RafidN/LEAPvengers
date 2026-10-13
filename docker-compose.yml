@@ -1,0 +1,28 @@
+services:
+  leapdb:
+    image: postgres:15
+    container_name: leapdb
+    environment:
+      POSTGRES_PASSWORD: n3u3d4!
+      POSTGRES_USER: postgres
+      POSTGRES_DB: leapvengersdb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/enterprise-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - leapvengers
+
+volumes:
+  postgres_data:
+
+networks:
+  leapvengers:
+    driver: bridge
