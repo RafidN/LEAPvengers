@@ -87,7 +87,7 @@ class OrdersControllerTest {
             }
             return List.of(
                 new OrderEventResult(1, orderId, 7, "joanna", null, "ACCEPTED", LocalDateTime.of(2026, 10, 1, 9, 0), null),
-                new OrderEventResult(2, orderId, null, null, "ACCEPTED", "FILLED", LocalDateTime.of(2026, 10, 1, 9, 0, 2), "Filled at 76.5000")
+                new OrderEventResult(2, orderId, null, null, "ACCEPTED", "FILLED", LocalDateTime.of(2026, 10, 1, 9, 0, 2), "Filled at $76.50")
             );
         }
     }

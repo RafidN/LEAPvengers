@@ -67,7 +67,7 @@ export class DashboardComponent {
     })),
     ...this.orders().map(o => ({
       date: o.submittedAt ?? o.orderDate,
-      text: `${o.orderType === 'SELL' ? 'Sold' : 'Bought'} ${o.quantity} ${o.ticker} at ${o.price} (${o.orderStatus})`,
+      text: `${o.orderType === 'SELL' ? 'Sold' : 'Bought'} ${o.quantity} ${o.ticker} at $${o.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} (${o.orderStatus})`,
       kind: 'order' as const
     }))
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6));

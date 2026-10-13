@@ -88,7 +88,7 @@
                   </td>
                   <td hlmTableCell class="font-medium">{{ o.ticker }}</td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-4' }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | number: '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * effectivePrice(o) | currency }}</td>
                   <td hlmTableCell>
                     <span hlmBadge [variant]="statusMeta(o.orderStatus).variant">
@@ -113,7 +113,7 @@
                             Submitted {{ o.submittedAt | date: 'MMM d, y, HH:mm:ss' }}
                             @if (o.executedAt) {
                               · Executed {{ o.executedAt | date: 'MMM d, y, HH:mm:ss' }}
-                              @if (o.executionPrice) { at {{ o.executionPrice | number: '1.2-4' }} }
+                              @if (o.executionPrice) { at {{ o.executionPrice | currency: 'USD' : 'symbol' : '1.2-4' }} }
                             }
                           </p>
                         </div>

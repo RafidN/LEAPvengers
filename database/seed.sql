@@ -203,7 +203,7 @@ ORDER BY o.submitted_at;
 INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
 SELECT o.order_id, NULL, 'ACCEPTED', o.order_status,
        COALESCE(o.executed_at, o.submitted_at + interval '2 seconds'),
-       CASE WHEN o.order_status = 'FILLED' THEN 'Filled at ' || o.execution_price ELSE o.rejection_reason END
+       CASE WHEN o.order_status = 'FILLED' THEN 'Filled at $' || to_char(o.execution_price, 'FM999,999,999,990.0099') ELSE o.rejection_reason END
 FROM orders o
 WHERE o.order_status IN ('FILLED', 'FAILED')
 ORDER BY o.submitted_at;

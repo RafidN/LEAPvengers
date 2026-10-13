@@ -74,7 +74,7 @@ class OrderQueryServiceTest {
     void testGetOrderEventsReturnsOwnedOrderTimeline() {
         List<OrderEventResult> events = List.of(
             new OrderEventResult(1, 42, USER_ID, "joanna", null, "ACCEPTED", LocalDateTime.of(2026, 10, 1, 9, 0), null),
-            new OrderEventResult(2, 42, null, null, "ACCEPTED", "FILLED", LocalDateTime.of(2026, 10, 1, 9, 0, 2), "Filled at 76.5000")
+            new OrderEventResult(2, 42, null, null, "ACCEPTED", "FILLED", LocalDateTime.of(2026, 10, 1, 9, 0, 2), "Filled at $76.50")
         );
         when(orderEventsRepository.findOrderEventsByOrderId(CLIENT_ID, 42)).thenReturn(events);
 
