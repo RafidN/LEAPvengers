@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/accounts/**", "/orders/**").hasRole("TRADER")
                         .requestMatchers("/internal/audit/**").hasRole("OPS")
                         .requestMatchers("/internal/reports/**").hasRole("ANALYST")
+                        .requestMatchers("/insights/**").hasRole("ANALYST")
                         // Ops needs client segments for the Clients page; Analysts read them for Insights
                         .requestMatchers("/clients/**").hasAnyRole("OPS", "ANALYST")
                         .anyRequest().authenticated())
