@@ -17,6 +17,7 @@ public class AuditOrder {
     private String orderType;
     private BigDecimal quantity;
     private BigDecimal price;
+    private BigDecimal executionPrice;
     private String orderStatus;
     private String rejectionReason;
     private LocalDate orderDate;
@@ -43,6 +44,15 @@ public class AuditOrder {
         this.orderDate = orderDate;
         this.submittedAt = submittedAt;
         this.executedAt = executedAt;
+    }
+
+    public AuditOrder(Integer orderId, Integer clientId, String clientName, String ticker,
+                      String instrumentName, String orderType, BigDecimal quantity,
+                      BigDecimal price, String orderStatus, String rejectionReason, LocalDate orderDate,
+                      LocalDateTime submittedAt, LocalDateTime executedAt, BigDecimal executionPrice) {
+        this(orderId, clientId, clientName, ticker, instrumentName, orderType, quantity, price,
+                orderStatus, rejectionReason, orderDate, submittedAt, executedAt);
+        this.executionPrice = executionPrice;
     }
 
     // Getters and Setters
@@ -108,6 +118,14 @@ public class AuditOrder {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public BigDecimal getExecutionPrice() {
+        return executionPrice;
+    }
+
+    public void setExecutionPrice(BigDecimal executionPrice) {
+        this.executionPrice = executionPrice;
     }
 
     public String getOrderStatus() {
