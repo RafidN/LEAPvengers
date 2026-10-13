@@ -15,6 +15,7 @@ pipeline {
 
         stage('Database Setup') {
             steps {
+                sh 'docker rm -f leapdb || true'
                 sh 'docker-compose down -v || true'
                 sh 'docker-compose up -d leapdb'
                 sh 'sleep 10 && docker-compose exec -T leapdb pg_isready -U postgres'
