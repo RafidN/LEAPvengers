@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
-import { catchError, of, switchMap, tap } from 'rxjs';
+import { catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
@@ -10,6 +10,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ClientSegment, ClientSegmentResult, ClientSegmentService } from '../../services/client-segment.service';
+import { InstrumentInsightsResult, InstrumentInsightsService } from '../../services/instrument-insights.service';
 
 interface SegmentSummary {
   segment: ClientSegment;
@@ -31,13 +32,17 @@ interface SegmentSummary {
   ]
 })
 export class InsightsComponent {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly segmentService = inject(ClientSegmentService);
+  private readonly instrumentInsightsService = inject(InstrumentInsightsService);
 
   protected readonly segments: ClientSegment[] = ['Premier', 'Active', 'Core', 'Dormant'];
   protected readonly lookbacks = [30, 90, 180, 365];
 
   protected readonly lookbackDays = signal(90);
+  protected readonly selectedInstrumentSegment = signal<ClientSegment | null>(null);
   protected readonly clients = signal<ClientSegmentResult[]>([]);
+  protected readonly instruments = signal<InstrumentInsightsResult[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
 
@@ -60,6 +65,11 @@ export class InsightsComponent {
 
   protected readonly topClients = computed(() =>
     [...this.clients()].sort((a, b) => b.recentFilledOrderCount - a.recentFilledOrderCount).slice(0, 5));
+
+  protected readonly topInstruments = computed(() =>
+    [...this.instruments()]
+      .sort((a, b) => b.currentPositionValue - a.currentPositionValue || b.recentFilledOrderCount - a.recentFilledOrderCount)
+      .slice(0, 5));
 
   // One series, one hue: no legend needed, the card title names it; the table beside it is the table view
   protected readonly chartData = computed<ChartConfiguration<'bar'>['data']>(() => ({
@@ -96,21 +106,70 @@ export class InsightsComponent {
     }
   };
 
+  protected readonly instrumentChartData = computed<ChartConfiguration<'bar'>['data']>(() => ({
+    labels: this.topInstruments().map(item => item.ticker),
+    datasets: [{
+      data: this.topInstruments().map(item => item.currentPositionValue),
+      label: 'Invested value',
+      backgroundColor: '#13315c',
+      hoverBackgroundColor: '#2b5f9e',
+      borderRadius: 4,
+      maxBarThickness: 28
+    }]
+  }));
+
+  protected readonly instrumentChartOptions: ChartConfiguration<'bar'>['options'] = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: item => ` ${Number(item.raw).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(0,0,0,0.06)' },
+        ticks: { maxTicksLimit: 5, callback: value => `$${Number(value) / 1000}k` }
+      },
+      y: { grid: { display: false } }
+    }
+  };
+
   constructor() {
-    // The backend classifies segments; the lookback window changes what counts as recent activity
-    toObservable(this.lookbackDays).pipe(
-      tap(() => this.loading.set(true)),
-      switchMap(lookbackDays => this.segmentService.getClientSegments({ lookbackDays }).pipe(
+    const insightQuery = computed(() => ({
+      lookbackDays: this.lookbackDays(),
+      segment: this.selectedInstrumentSegment() ?? undefined
+    }));
+
+    // The backend classifies segments; analysts can additionally focus the instrument view by segment.
+    toObservable(insightQuery).pipe(
+      tap(() => {
+        this.loading.set(true);
+        this.error.set('');
+      }),
+      switchMap(({ lookbackDays, segment }) => forkJoin({
+        clients: this.segmentService.getClientSegments({ lookbackDays }),
+        instruments: this.instrumentInsightsService.getInstrumentInsights({ lookbackDays, segment, limit: 10 })
+      }).pipe(
         catchError(err => {
-          this.error.set(err.status === 403
+          this.error.set(err.status === 401 || err.status === 403
             ? 'Your role is not allowed to view client insights.'
             : 'Could not load client insights. Is the backend running?');
-          return of([] as ClientSegmentResult[]);
+          return of({
+            clients: [] as ClientSegmentResult[],
+            instruments: [] as InstrumentInsightsResult[]
+          });
         })
       )),
-      takeUntilDestroyed(inject(DestroyRef))
-    ).subscribe(clients => {
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(({ clients, instruments }) => {
       this.clients.set(clients);
+      this.instruments.set(instruments);
       this.loading.set(false);
     });
   }
