@@ -3,6 +3,7 @@ package com.neueda.leap.controller;
 import com.neueda.leap.model.dto.AuditClientDetailsResponse;
 import com.neueda.leap.model.dto.AuditClientSummary;
 import com.neueda.leap.model.dto.AuditOrder;
+import com.neueda.leap.model.dto.AuditOrderDetailsResponse;
 import com.neueda.leap.service.AuditService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +42,11 @@ public class AuditController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return auditService.getAuditOrders(clientId, ticker, orderStatus, rejection_reason, startDate, endDate, page, size);
+    }
+
+    @GetMapping("/orders/{id}")
+    public AuditOrderDetailsResponse getAuditById(@PathVariable("id") Integer orderId) {
+        return auditService.getAuditById(orderId);
     }
 
     @GetMapping("/clients")
