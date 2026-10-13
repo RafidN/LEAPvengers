@@ -13,7 +13,7 @@ class LeapBackendApplicationTests {
 
     @Test
     void contextLoads() {
-        ass
+        // Test that the application context loads successfully
     }
 
 }
