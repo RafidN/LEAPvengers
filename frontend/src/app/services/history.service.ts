@@ -10,15 +10,21 @@ import { AuthService } from './auth.service';
 
 export type HistoryPeriod = '1d' | '7d' | '1m' | '1y';
 
+export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED';
+
 export interface OrderHistoryResult {
   orderId: number;
+  accountId?: number;
   ticker: string;
   orderType: string;        // BUY or SELL
   quantity: number;
   price: number;
-  orderStatus: string;      // Pending, Filled, Canceled, Rejected
+  orderStatus: OrderStatus;
   orderDate: string;
   submittedAt: string;
+  rejectionReason?: string; // REJECTED and FAILED orders only
+  executionPrice?: number;  // FILLED orders only
+  executedAt?: string;
 }
 
 export interface CashTransactionResult {

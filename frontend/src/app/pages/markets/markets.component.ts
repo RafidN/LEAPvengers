@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { DecimalPipe, PercentPipe } from '@angular/common';
+import { CurrencyPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, combineLatest, debounceTime, distinctUntilChanged, interval, of, startWith, switchMap } from 'rxjs';
@@ -20,7 +20,7 @@ import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../serv
   selector: 'app-markets',
   templateUrl: './markets.component.html',
   imports: [
-    DecimalPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent,
+    CurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent,
     HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
   ],
   providers: [provideIcons({ lucideSearch })]

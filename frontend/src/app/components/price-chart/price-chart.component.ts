@@ -7,6 +7,10 @@ export interface PricePoint {
   value: number;
 }
 
+/** $1,234.50 style, with up to 4 decimals for small prices such as FX rates. */
+const formatPrice = (value: number | null) =>
+  value === null ? '' : `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
 /** Line chart of prices over time. Green when the period ended up, red when it ended down. */
 @Component({
   selector: 'app-price-chart',
@@ -54,11 +58,16 @@ export class PriceChartComponent {
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { title: items => new Date(this.points()[items[0].dataIndex].time).toLocaleString() } }
+      tooltip: {
+        callbacks: {
+          title: items => new Date(this.points()[items[0].dataIndex].time).toLocaleString(),
+          label: item => `${item.dataset.label}: ${formatPrice(item.parsed.y)}`
+        }
+      }
     },
     scales: {
       x: { ticks: { maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } },
-      y: { ticks: { maxTicksLimit: 6 } }
+      y: { ticks: { maxTicksLimit: 6, callback: value => formatPrice(Number(value)) } }
     }
   };
 }

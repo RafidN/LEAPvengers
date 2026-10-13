@@ -1,7 +1,10 @@
 package com.neueda.leap.exception;
 
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -47,8 +50,22 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
     }
 
+    /** A path variable or parameter of the wrong type (e.g. /orders/abc/events), or an unreadable JSON body. */
+    @ExceptionHandler({TypeMismatchException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<Map<String, Object>> handleMalformedRequest(Exception ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Malformed request", ex);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(Exception ex) {
+        // Spring MVC's own errors (unknown path 404, wrong method 405, missing parameter 400...)
+        // carry their status; keep it instead of reporting them as server errors
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            if (status != null) {
+                return buildErrorResponse(status, ex.getMessage(), ex);
+            }
+        }
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
     }
 

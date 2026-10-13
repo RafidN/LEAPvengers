@@ -12,6 +12,7 @@ import java.util.List;
  * Repository for order event history queries.
  * User-specific: only returns events for orders owned by the authenticated user's client.
  * Custom @Query methods return DTOs instead of managed entities.
+ * Events come back oldest first so they read as a timeline.
  */
 public interface OrderEventsRepository extends JpaRepository<OrderEvents, Integer> {
 
@@ -32,7 +33,7 @@ public interface OrderEventsRepository extends JpaRepository<OrderEvents, Intege
 		LEFT JOIN oe.user u
 		WHERE a.clientId = :clientId
 			AND oe.orderId = :orderId
-		ORDER BY oe.createdAt DESC, oe.eventId DESC
+		ORDER BY oe.createdAt ASC, oe.eventId ASC
 	""")
 	List<OrderEventResult> findOrderEventsByOrderId(
 		@Param("clientId") Integer clientId,

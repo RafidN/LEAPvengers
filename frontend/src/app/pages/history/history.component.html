@@ -48,12 +48,15 @@
       }
     </div>
 
+    <p class="text-muted-foreground text-sm">Click an order to see each step it went through.</p>
+
     <div hlmCard class="py-2">
       <div hlmCardContent>
         <div hlmTableContainer>
           <table hlmTable>
             <thead hlmTableHeader>
               <tr hlmTableRow>
+                <th hlmTableHead class="w-8"><span class="sr-only">Timeline</span></th>
                 <th hlmTableHead>Submitted</th>
                 <th hlmTableHead>Order</th>
                 <th hlmTableHead>Instrument</th>
@@ -65,7 +68,17 @@
             </thead>
             <tbody hlmTableBody>
               @for (o of visibleOrders(); track o.orderId) {
-                <tr hlmTableRow>
+                <tr hlmTableRow class="cursor-pointer" (click)="toggleTimeline(o.orderId)">
+                  <td hlmTableCell>
+                    <button type="button" class="text-muted-foreground hover:text-foreground flex rounded p-0.5"
+                      [attr.aria-expanded]="selectedOrderId() === o.orderId"
+                      [attr.aria-controls]="'order-timeline-' + o.orderId"
+                      [attr.aria-label]="'Show timeline for order ' + o.orderId"
+                      (click)="$event.stopPropagation(); toggleTimeline(o.orderId)">
+                      <ng-icon name="lucideChevronRight" class="transition-transform"
+                        [class.rotate-90]="selectedOrderId() === o.orderId" />
+                    </button>
+                  </td>
                   <td hlmTableCell class="text-muted-foreground tabular-nums">{{ o.submittedAt | date: 'MMM d, HH:mm' }}</td>
                   <td hlmTableCell>
                     <span class="font-semibold" [style.color]="o.orderType === 'BUY' ? 'var(--profit)' : 'var(--loss)'">
@@ -75,18 +88,75 @@
                   </td>
                   <td hlmTableCell class="font-medium">{{ o.ticker }}</td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-4' }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ o.price | number: '1.2-4' }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * o.price | currency }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * effectivePrice(o) | currency }}</td>
                   <td hlmTableCell>
                     <span hlmBadge [variant]="statusMeta(o.orderStatus).variant">
                       <ng-icon [name]="statusMeta(o.orderStatus).icon" />
                       {{ statusMeta(o.orderStatus).label }}
                     </span>
+                    @if (o.rejectionReason) {
+                      <p class="text-muted-foreground mt-1 max-w-64 text-xs whitespace-normal">{{ o.rejectionReason }}</p>
+                    }
                   </td>
                 </tr>
+
+                @if (selectedOrderId() === o.orderId) {
+                  <tr hlmTableRow class="hover:bg-transparent">
+                    <td hlmTableCell colspan="8" class="bg-muted/40 p-0 whitespace-normal">
+                      <section [id]="'order-timeline-' + o.orderId" class="px-4 py-4 sm:px-10"
+                        [attr.aria-label]="'Timeline for order ' + o.orderId">
+                        <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                          <h2 class="font-medium">Order #{{ o.orderId }} timeline</h2>
+                          <p class="text-muted-foreground text-xs tabular-nums">
+                            @if (o.accountId) { Account #{{ o.accountId }} · }
+                            Submitted {{ o.submittedAt | date: 'MMM d, y, HH:mm:ss' }}
+                            @if (o.executedAt) {
+                              · Executed {{ o.executedAt | date: 'MMM d, y, HH:mm:ss' }}
+                              @if (o.executionPrice) { at {{ o.executionPrice | currency: 'USD' : 'symbol' : '1.2-4' }} }
+                            }
+                          </p>
+                        </div>
+
+                        @if (eventsError()) {
+                          <p class="text-destructive text-sm">{{ eventsError() }}</p>
+                        } @else if (eventsLoading() && events().length === 0) {
+                          <p class="text-muted-foreground text-sm">Loading timeline…</p>
+                        } @else if (events().length === 0) {
+                          <p class="text-muted-foreground text-sm">No steps have been recorded for this order yet.</p>
+                        } @else {
+                          <ol class="border-border ml-2 border-l">
+                            @for (e of events(); track e.eventId) {
+                              <li class="relative pb-4 pl-6 last:pb-0">
+                                <span class="bg-background border-border absolute top-1 -left-[7px] h-3 w-3 rounded-full border-2"
+                                  [style.border-color]="statusMeta(e.toStatus).variant === 'destructive' ? 'var(--destructive)' : e.toStatus === 'FILLED' ? 'var(--primary)' : null"></span>
+                                <div class="flex flex-wrap items-center gap-2">
+                                  <span hlmBadge [variant]="statusMeta(e.toStatus).variant">
+                                    <ng-icon [name]="statusMeta(e.toStatus).icon" />
+                                    {{ statusMeta(e.toStatus).label }}
+                                  </span>
+                                  @if (e.fromStatus) {
+                                    <span class="text-muted-foreground text-xs">from {{ statusMeta(e.fromStatus).label }}</span>
+                                  }
+                                  <time class="text-muted-foreground text-xs tabular-nums" [attr.datetime]="e.createdAt">
+                                    {{ e.createdAt | date: 'MMM d, y, HH:mm:ss' }}
+                                  </time>
+                                </div>
+                                @if (e.details) {
+                                  <p class="mt-1 text-sm">{{ e.details }}</p>
+                                }
+                                <p class="text-muted-foreground mt-0.5 text-xs">by {{ e.createdByUsername ?? 'system' }}</p>
+                              </li>
+                            }
+                          </ol>
+                        }
+                      </section>
+                    </td>
+                  </tr>
+                }
               } @empty {
                 <tr hlmTableRow>
-                  <td hlmTableCell colspan="7" class="text-muted-foreground py-8 text-center">
+                  <td hlmTableCell colspan="8" class="text-muted-foreground py-8 text-center">
                     {{ loading() ? 'Loading orders…' : 'No orders in this period.' }}
                   </td>
                 </tr>

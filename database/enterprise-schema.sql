@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS clients CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
+-- Removed trigger function; dropping it keeps databases built from older versions of this file in step
+DROP FUNCTION IF EXISTS sync_holdings_on_order_fill() CASCADE;
 --Clients have basic personal information and a unique email address
 CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
@@ -82,7 +84,7 @@ CREATE TABLE orders (
     rejection_reason TEXT,
     execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
-    executed_at      TIMESTAMP -- set by application/business logic when the order is executed
+    executed_at      TIMESTAMP, -- set by application/business logic when the order is executed
 
     CONSTRAINT rejection_reason_required CHECK (
         ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL)
@@ -130,36 +132,8 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
     account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
 );
 
--- Keeps holdings in sync when an order is filled, instead of relying on the app to remember to
--- update both tables. Only whole fills adjust holdings
-CREATE OR REPLACE FUNCTION sync_holdings_on_order_fill() RETURNS TRIGGER AS $$
-DECLARE
-    signed_quantity NUMERIC(14,4);
-    signed_cost NUMERIC(14, 4);
-BEGIN
-    IF NEW.order_status = 'FILLED' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'FILLED') THEN
-        signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
-        signed_cost := CASE WHEN NEW.order_type = 'BUY' THEN -NEW.quantity * NEW.price ELSE NEW.quantity * NEW.price END;
-        INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
-        VALUES (NEW.account_id, NEW.instrument_id, signed_quantity, CURRENT_DATE)
-        ON CONFLICT (account_id, instrument_id) DO UPDATE
-            SET quantity = holdings.quantity + EXCLUDED.quantity,
-                as_of_date = EXCLUDED.as_of_date;
-        -- INSERT INTO accounts (account_id, client_id, opened_date, balance)
-        -- VALUES
-        -- ON CONFLICT (account_id, client_id) DO UPDATE
-        --     SET balance = holdings.balance + EXCLUDED.balance,
-        --         as_of_date = EXCLUDED.as_of_date;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- When an order is made the database will automatically update the holdings if the order is filled, ensuring consistency between orders and holdings
-CREATE TRIGGER orders_sync_holdings
-    AFTER INSERT OR UPDATE OF order_status ON orders
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_holdings_on_order_fill();
+-- Holdings are not moved by a trigger: OrderService updates them in Java, in the same
+-- transaction as the cash and the order, so every fill is applied exactly once.
 
 -- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
