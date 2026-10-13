@@ -9,6 +9,7 @@ import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.AuditRepository;
 import com.neueda.leap.repository.ClientRepository;
 import com.neueda.leap.security.JwtAuthenticationFilter;
+import com.neueda.leap.security.JwtAuthenticationEntryPoint;
 import com.neueda.leap.security.JwtUtil;
 import com.neueda.leap.service.AuditService;
 import org.junit.jupiter.api.Test;
@@ -92,6 +93,11 @@ class AuditControllerSecurityTest {
                 @Bean
                 JwtUtil jwtUtil() {
                         return new JwtUtil();
+                }
+
+                @Bean
+                JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint() {
+                        return new JwtAuthenticationEntryPoint();
                 }
 
                 @Bean
