@@ -11,7 +11,6 @@ import com.neueda.leap.model.Orders;
 
 import java.time.LocalDate;
 
-
 @Repository
 public interface AuditRepository extends JpaRepository<Orders, Integer> {
 

@@ -17,7 +17,9 @@ CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
     first_name            TEXT NOT NULL,
     last_name             TEXT NOT NULL,
-    email                 TEXT NOT NULL UNIQUE
+    email                 TEXT NOT NULL UNIQUE,
+    segment               TEXT NOT NULL DEFAULT 'Active'
+                              CHECK (segment IN ('Dormant', 'Core', 'Active', 'Premier'))
 );
 
 -- Instruments are the financial products that can be traded, such as stocks, bonds, funds, cash equivalents, FX pairs and crypto. This table will store their basic details.
