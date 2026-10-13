@@ -1,9 +1,16 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { combineLatest, forkJoin, interval, startWith, switchMap } from 'rxjs';
+import { catchError, combineLatest, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideRefreshCw } from '@ng-icons/lucide';
+import {
+  lucideBan,
+  lucideCircleCheck,
+  lucideCircleX,
+  lucideChevronRight,
+  lucideClock,
+  lucideRefreshCw
+} from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -14,17 +21,22 @@ import {
   CashTransactionResult,
   HistoryPeriod,
   HistoryService,
-  OrderHistoryResult
+  OrderHistoryResult,
+  OrderStatus
 } from '../../services/history.service';
-
-type OrderStatus = 'Filled' | 'Pending' | 'Rejected' | 'Canceled';
+import { OrderEvent, OrderService } from '../../services/order.service';
 
 /** Badge style and icon per order status, so a status reads the same everywhere on the page. */
-const STATUS_STYLE: Record<OrderStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: string }> = {
-  Filled: { variant: 'default', icon: 'lucideCircleCheck' },
-  Pending: { variant: 'secondary', icon: 'lucideClock' },
-  Rejected: { variant: 'destructive', icon: 'lucideCircleX' },
-  Canceled: { variant: 'outline', icon: 'lucideBan' }
+const STATUS_META: Record<OrderStatus, {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  icon: string;
+}> = {
+  ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
+  FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
+  FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
+  PENDING: { label: 'Pending', variant: 'secondary', icon: 'lucideClock' },
+  REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
 /** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
@@ -35,10 +47,14 @@ const STATUS_STYLE: Record<OrderStatus, { variant: 'default' | 'secondary' | 'de
     CurrencyPipe, DatePipe, DecimalPipe, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports, HlmTabsImports
   ],
-  providers: [provideIcons({ lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideRefreshCw })]
+  providers: [provideIcons({
+    lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw
+  })]
 })
 export class HistoryComponent {
   private readonly history = inject(HistoryService);
+  private readonly orderService = inject(OrderService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly periods: { value: HistoryPeriod; label: string }[] = [
     { value: '1d', label: '1 day' },
@@ -46,7 +62,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['Filled', 'Pending', 'Rejected', 'Canceled'];
+  protected readonly statuses: OrderStatus[] = ['PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');
@@ -58,27 +74,41 @@ export class HistoryComponent {
   protected readonly error = signal('');
   protected readonly lastUpdated = signal<Date | null>(null);
 
+  /** The order whose timeline is open, if any. */
+  protected readonly selectedOrderId = signal<number | null>(null);
+  protected readonly events = signal<OrderEvent[]>([]);
+  protected readonly eventsLoading = signal(false);
+  protected readonly eventsError = signal('');
+
   protected readonly visibleOrders = computed(() => {
     const status = this.statusFilter();
     return status ? this.orders().filter(o => o.orderStatus === status) : this.orders();
   });
 
+  protected readonly selectedOrder = computed(() =>
+    this.orders().find(o => o.orderId === this.selectedOrderId()) ?? null);
+
   protected countFor(status: OrderStatus): number {
     return this.orders().filter(o => o.orderStatus === status).length;
   }
 
-  protected statusStyle(status: string) {
-    return STATUS_STYLE[status as OrderStatus] ?? STATUS_STYLE.Pending;
+  protected statusMeta(status: string | undefined) {
+    return STATUS_META[status as OrderStatus] ?? { label: status ?? '', variant: 'secondary', icon: 'lucideClock' };
+  }
+
+  /** Filled orders are valued at the price they actually executed at. */
+  protected effectivePrice(o: OrderHistoryResult): number {
+    return o.executionPrice ?? o.price;
   }
 
   constructor() {
     // Reload when the period changes, and every 15 seconds so status changes show without a refresh (BR-07)
     combineLatest([toObservable(this.period), interval(15_000).pipe(startWith(0))]).pipe(
       switchMap(([period]) => forkJoin({
-        orders: this.history.getOrderHistory(period),
+        orders: this.orderService.getOrders(period),
         cash: this.history.getCashHistory(period)
       })),
-      takeUntilDestroyed(inject(DestroyRef))
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: ({ orders, cash }) => {
         this.orders.set(orders);
@@ -92,6 +122,29 @@ export class HistoryComponent {
         this.loading.set(false);
       }
     });
+
+    // Load the open order's timeline, and reload it when the auto-refresh shows its status changed
+    const selectedKey = computed(() => {
+      const order = this.selectedOrder();
+      return order ? `${order.orderId}:${order.orderStatus}` : null;
+    });
+    toObservable(selectedKey).pipe(
+      switchMap(key => {
+        if (!key) {
+          return of(null);
+        }
+        this.eventsLoading.set(true);
+        return this.orderService.getOrderEvents(Number(key.split(':')[0])).pipe(
+          map(events => ({ events, failed: false })),
+          catchError(() => of({ events: [] as OrderEvent[], failed: true }))
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(result => {
+      this.events.set(result?.events ?? []);
+      this.eventsError.set(result?.failed ? 'Could not load this order\'s timeline.' : '');
+      this.eventsLoading.set(false);
+    });
   }
 
   protected setPeriod(period: HistoryPeriod): void {
@@ -99,5 +152,12 @@ export class HistoryComponent {
       this.loading.set(true);
       this.period.set(period);
     }
+  }
+
+  protected toggleTimeline(orderId: number): void {
+    // Clear the previous order's steps so they never show under a different order while loading
+    this.events.set([]);
+    this.eventsError.set('');
+    this.selectedOrderId.update(current => (current === orderId ? null : orderId));
   }
 }

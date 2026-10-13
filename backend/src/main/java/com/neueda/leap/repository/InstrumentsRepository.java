@@ -2,10 +2,12 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.dto.PriceQuoteResult;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for public ticker price quote data
@@ -49,5 +51,8 @@ public interface InstrumentsRepository extends JpaRepository<Instruments, Intege
         JOIN LatestPriceQuotes lpq ON i.instrumentId = lpq.instrumentId
     """)
     List<PriceQuoteResult> findAllTradableInstruments();
+
+    /** Exact, case-insensitive ticker match. Used when placing an order, where a partial match could pick the wrong instrument. */
+    Optional<Instruments> findByTickerIgnoreCase(String ticker);
 
 }

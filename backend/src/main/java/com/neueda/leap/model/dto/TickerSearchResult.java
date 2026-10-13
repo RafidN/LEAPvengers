@@ -5,6 +5,7 @@ package com.neueda.leap.model.dto;
  */
 public class TickerSearchResult {
     private Integer holdingId;
+    private Integer accountId;
     private String ticker;
     private String instrumentName;
     private Long quantity;
@@ -13,9 +14,10 @@ public class TickerSearchResult {
     public TickerSearchResult() {
     }
 
-    public TickerSearchResult(Integer holdingId, String ticker, String instrumentName, 
+    public TickerSearchResult(Integer holdingId, Integer accountId, String ticker, String instrumentName, 
                               Long quantity, Double marketValue) {
         this.holdingId = holdingId;
+        this.accountId = accountId;
         this.ticker = ticker;
         this.instrumentName = instrumentName;
         this.quantity = quantity;
@@ -29,6 +31,15 @@ public class TickerSearchResult {
     public void setHoldingId(Integer holdingId) {
         this.holdingId = holdingId;
     }
+
+    public Integer getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(Integer accountId) {
+        this.accountId = accountId;
+    }
+
 
     public String getTicker() {
         return ticker;

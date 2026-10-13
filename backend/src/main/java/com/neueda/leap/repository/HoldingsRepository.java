@@ -1,16 +1,18 @@
 package com.neueda.leap.repository;
 
+import com.neueda.leap.model.Holdings;
 import com.neueda.leap.model.dto.TickerSearchResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository with parameterized query for ticker search
  * All parameters are bound safely - prevents SQL injection
  */
-public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.Holdings, Integer> {
+public interface HoldingsRepository extends JpaRepository<Holdings, Integer> {
 
     /**
      * Search holdings by ticker symbol or instrument name with client isolation.
@@ -24,6 +26,7 @@ public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.
     @Query("""
         SELECT new com.neueda.leap.model.dto.TickerSearchResult(
             h.holdingId,
+            a.accountId,
             i.ticker,
             i.instrumentName,
             CAST(h.quantity AS java.lang.Long),
@@ -42,4 +45,7 @@ public interface HoldingsRepository extends JpaRepository<com.neueda.leap.model.
         @Param("clientId") Integer clientId,
         @Param("query") String query
     );
+
+    /** The position one account holds in one instrument, if any. */
+    Optional<Holdings> findByAccountIdAndInstrumentId(Integer accountId, Integer instrumentId);
 }
