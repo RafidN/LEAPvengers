@@ -21,7 +21,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Service for querying client segments using portfolio value and recent order activity.
+ * Service for querying client segments using portfolio value and recent order
+ * activity.
  */
 @Service
 public class ClientSegmentService {
@@ -31,7 +32,7 @@ public class ClientSegmentService {
     private final ClientSegmentRules clientSegmentRules;
 
     public ClientSegmentService(ClientRepository clientRepository, UserRepository userRepository,
-                                ClientSegmentRules clientSegmentRules) {
+            ClientSegmentRules clientSegmentRules) {
         this.clientRepository = clientRepository;
         this.userRepository = userRepository;
         this.clientSegmentRules = clientSegmentRules;
@@ -58,7 +59,33 @@ public class ClientSegmentService {
                 .toList();
     }
 
-    private ClientSegmentResult toResult(ClientSegmentMetricsProjection row, ClientSegmentRules.SegmentCriteria criteria) {
+    private void updateStoredSegments(List<ClientSegmentResult> results) {
+        if (results.isEmpty()) {
+            return;
+        }
+
+        Map<Integer, Clients> clientsById = new HashMap<>();
+        for (Clients client : clientRepository
+                .findAllById(results.stream().map(ClientSegmentResult::getClientId).toList())) {
+            clientsById.put(client.getClientId(), client);
+        }
+
+        List<Clients> clientsToUpdate = new ArrayList<>();
+        for (ClientSegmentResult result : results) {
+            Clients client = clientsById.get(result.getClientId());
+            if (client != null && !Objects.equals(client.getSegment(), result.getSegment())) {
+                client.setSegment(result.getSegment());
+                clientsToUpdate.add(client);
+            }
+        }
+
+        if (!clientsToUpdate.isEmpty()) {
+            clientRepository.saveAll(clientsToUpdate);
+        }
+    }
+
+    private ClientSegmentResult toResult(ClientSegmentMetricsProjection row,
+            ClientSegmentRules.SegmentCriteria criteria) {
         BigDecimal totalPortfolioValue = row.getTotalPortfolioValue() == null
                 ? BigDecimal.ZERO
                 : row.getTotalPortfolioValue();
@@ -76,8 +103,7 @@ public class ClientSegmentService {
                 row.getEmail(),
                 totalPortfolioValue,
                 recentFilledOrderCount,
-                segment
-        );
+                segment);
     }
 
     private boolean matchesSegmentFilter(ClientSegmentResult result, String segmentFilter) {

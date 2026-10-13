@@ -34,7 +34,7 @@ class ClientSegmentServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        clientSegmentService = new ClientSegmentService(clientRepository, userRepository);
+        clientSegmentService = new ClientSegmentService(clientRepository, userRepository, new ClientSegmentRules());
     }
 
     @Test
