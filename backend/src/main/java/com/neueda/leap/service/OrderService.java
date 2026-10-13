@@ -1,130 +1,108 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.exception.InvalidCredentialsException;
+import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.exception.TickerNotFoundException;
-import com.neueda.leap.model.Clients;
-import com.neueda.leap.model.Users;
 import com.neueda.leap.model.Accounts;
-import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.Holdings;
-import com.neueda.leap.model.dto.AuthenticationResponse;
-import com.neueda.leap.model.dto.ForgotPasswordResponse;
-import com.neueda.leap.model.dto.AccountResponse;
-import com.neueda.leap.model.dto.RegisterRequest;
-import com.neueda.leap.model.dto.OrderRequest;
+import com.neueda.leap.model.Instruments;
+import com.neueda.leap.model.LatestPriceQuotes;
+import com.neueda.leap.model.Orders;
+import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.OrderHistoryResult;
-import com.neueda.leap.model.dto.PriceQuoteResult;
-import com.neueda.leap.model.dto.TickerSearchResult;
-import com.neueda.leap.model.dto.InstrumentIdResult;
+import com.neueda.leap.model.dto.OrderRequest;
 
+import com.neueda.leap.repository.AccountRepository;
+import com.neueda.leap.repository.HoldingsRepository;
 import com.neueda.leap.repository.InstrumentsRepository;
+import com.neueda.leap.repository.LatestPriceQuotesRepository;
 import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.UserRepository;
-import com.neueda.leap.repository.HoldingsRepository;
-import com.neueda.leap.repository.AccountRepository;
 
-import com.neueda.leap.security.JwtUtil;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.ArrayList;
-import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Service
 public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final InstrumentsRepository instrumentsRepository;
+    private final LatestPriceQuotesRepository latestPriceQuotesRepository;
     private final HoldingsRepository holdingsRepository;
     private final AccountRepository accountRepository;
-    public OrderService(UserRepository userRepository, InstrumentsRepository instrumentsRepository, 
+    private final TradingRules tradingRules;
+
+    public OrderService(UserRepository userRepository, InstrumentsRepository instrumentsRepository,
+                        LatestPriceQuotesRepository latestPriceQuotesRepository,
                         OrderRepository orderRepository, HoldingsRepository holdingsRepository,
-                        AccountRepository accountRepository) {
+                        AccountRepository accountRepository, TradingRules tradingRules) {
         this.userRepository = userRepository;
         this.instrumentsRepository = instrumentsRepository;
+        this.latestPriceQuotesRepository = latestPriceQuotesRepository;
         this.orderRepository = orderRepository;
         this.holdingsRepository = holdingsRepository;
         this.accountRepository = accountRepository;
+        this.tradingRules = tradingRules;
     }
 
-
-    @Transactional()
-    public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) 
-            throws UserNotFoundException, InvalidInputException, InvalidCredentialsException, TickerNotFoundException {
-        
-        // Validate user exists and get their clientId
+    @Transactional
+    public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        // Validate input
+        // Validate the shape of the request
         if (request.getTicker() == null || request.getTicker().trim().isEmpty()) {
             throw new InvalidInputException("Order ticker cannot be empty");
         }
-        if (request.getQuantity().compareTo(new BigDecimal(0)) <= 0)
-        {
-            throw new InvalidInputException("Order quantity must be greater than 0");
+        if (request.getAccountId() == null) {
+            throw new InvalidInputException("Order account cannot be empty");
         }
-        if (request.getOrderType() == null || (!request.getOrderType().trim().toUpperCase().equals("BUY") && !request.getOrderType().trim().toUpperCase().equals("SELL"))) {
+        String orderType = request.getOrderType() == null ? "" : request.getOrderType().trim().toUpperCase();
+        if (!orderType.equals("BUY") && !orderType.equals("SELL")) {
             throw new InvalidInputException("Order type must be BUY or SELL");
         }
-        int clientId = user.getClientId();
         String ticker = request.getTicker().trim();
         BigDecimal quantity = request.getQuantity();
-        String orderType = request.getOrderType().trim();
-        int accountId = request.getAccountId();
-        List<AccountResponse> balances = accountRepository.findAccountResponsesByAccountId(accountId);
-        if(balances.size() == 0)
-        {
-            throw new InvalidCredentialsException("Account not found");
+
+        // The account must belong to the caller; a missing account gets the same answer so ids can't be probed
+        Accounts account = accountRepository.findById(request.getAccountId())
+                .filter(a -> a.getClientId().equals(user.getClientId()))
+                .orElseThrow(() -> new ForbiddenException("User does not own the specified account"));
+
+        // Trading rules
+        tradingRules.checkQuantity(quantity);
+        Instruments instrument = instrumentsRepository.findByTickerIgnoreCase(ticker).orElse(null);
+        tradingRules.checkInstrumentExists(instrument, ticker);
+        LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
+        tradingRules.checkPriceIsRecent(quote);
+        BigDecimal price = quote.getPrice();
+        if (orderType.equals("BUY")) {
+            tradingRules.checkSufficientCash(account.getBalance(), quantity, price);
+        } else {
+            BigDecimal held = holdingsRepository.findByAccountIdAndInstrumentId(account.getAccountId(), instrument.getInstrumentId())
+                    .map(Holdings::getQuantity)
+                    .orElse(BigDecimal.ZERO);
+            tradingRules.checkSufficientHoldings(held, quantity);
         }
-        BigDecimal balance = balances.get(0).getBalance();
-        // Execute parameterized query with user's clientId
-        //
-        OrderHistoryResult orderHistoryresult;
-        List<PriceQuoteResult> prices = instrumentsRepository.searchInstrumentPrice(ticker);
-        List<InstrumentIdResult> instrumentIds = instrumentsRepository.searchInstrumentId(ticker);
-        if(prices.size() == 0){
-            throw new TickerNotFoundException("Ticker not found");
-        }
-        BigDecimal cost = quantity.multiply(prices.get(0).getCurrentPrice());
-        if(balance.compareTo(cost) < 0){
-            throw new InvalidInputException("Cost too high for current balance");
-        }
-        List<TickerSearchResult> holdingInventory = holdingsRepository.searchByInstrumentQuery(clientId, ticker);
-        Long tickerStock = 0l;
-        int holdingId = -1;
-        System.out.println(holdingInventory.size());
-        for(TickerSearchResult tickerSearchResult : holdingInventory){
-            if(tickerSearchResult.getAccountId() == accountId){
-                tickerStock = tickerSearchResult.getQuantity();
-                holdingId = tickerSearchResult.getHoldingId();
-            }
-        }
-        if(new BigDecimal(tickerStock).compareTo(quantity) < 0 && orderType.toUpperCase().equals("SELL")){
-            throw new InvalidInputException("Not enough holding inventory in account to sell ");
-        }
-        Orders order = new Orders(accountId, instrumentIds.get(0).getInstrumentId(), orderType, quantity, 
-            prices.get(0).getCurrentPrice(), LocalDate.now());
+
+        // Fill at the checked price. Holdings are updated by the orders_sync_holdings trigger;
+        // cash is moved here, in the same transaction as the order.
+        BigDecimal amount = quantity.multiply(price);
+        account.setBalance(orderType.equals("BUY") ? account.getBalance().subtract(amount) : account.getBalance().add(amount));
+        accountRepository.save(account);
+
+        Orders order = new Orders(account.getAccountId(), instrument.getInstrumentId(), orderType, quantity, price, LocalDate.now());
+        order.setOrderStatus("FILLED");
+        order.setExecutionPrice(price);
+        order.setExecutedAt(LocalDateTime.now());
         Orders savedOrder = orderRepository.save(order);
-        savedOrder.setOrderStatus("FILLED");
-        savedOrder.setExecutionPrice(savedOrder.getPrice());
-        orderRepository.save(savedOrder);
-        List<OrderHistoryResult> result = new ArrayList<>();
-        result.add(new OrderHistoryResult(savedOrder.getOrderId(), ticker, savedOrder.getOrderType(), savedOrder.getQuantity(), 
-            savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(), savedOrder.getSubmittedAt()));
-        
-        // Holdings holding = new Holdings(holdingId, accountId, instrumentIds.get(0).getInstrumentId(), savedOrder.getQuantity(), savedOrder.getOrderDate());
-        // if(request.getOrderType().trim().toUpperCase().equals("BUY")) {
-        //     holding.setQuantity(holding.getQuantity().add(savedOrder.getQuantity()));
-        // }
-        // else if(request.getOrderType().trim().toUpperCase().equals("SELL")) {
-        //     holding.setQuantity(holding.getQuantity().subtract(savedOrder.getQuantity()));
-        // }
-        // holdingsRepository.save(holding);
-        return result;
+
+        return List.of(new OrderHistoryResult(savedOrder.getOrderId(), instrument.getTicker(), savedOrder.getOrderType(),
+                savedOrder.getQuantity(), savedOrder.getPrice(), savedOrder.getOrderStatus(), savedOrder.getOrderDate(),
+                savedOrder.getSubmittedAt()));
     }
 }
