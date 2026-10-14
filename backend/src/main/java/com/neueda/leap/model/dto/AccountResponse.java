@@ -7,7 +7,7 @@ public class AccountResponse {
     private Integer accountId;
     private LocalDate openedDate;
     private BigDecimal balance;
-    private Integer clientId;
+
 
     public AccountResponse(Integer accountId, LocalDate openedDate, BigDecimal balance) {
         this.accountId = accountId;
@@ -38,13 +38,4 @@ public class AccountResponse {
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
-
-    public Integer getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(Integer clientId) {
-        this.clientId = clientId;
-    }
-    
 }

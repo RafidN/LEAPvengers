@@ -82,7 +82,7 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'PENDING' CHECK (order_status IN ('PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
+    order_status     TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK (order_status IN ('SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
     rejection_reason TEXT,
     execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
@@ -101,8 +101,8 @@ CREATE TABLE order_events(
     event_id        SERIAL PRIMARY KEY,
     order_id        INTEGER NOT NULL REFERENCES orders(order_id),
     created_by      INTEGER REFERENCES users(user_id),
-    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
-    to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     details         TEXT, -- optional field to annotate the event with additional context
     CHECK (from_status IS DISTINCT FROM to_status)
@@ -134,44 +134,19 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
     account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
 );
 
--- Keeps holdings in sync when an order is filled, instead of relying on the app to remember to
--- update both tables. Only whole fills adjust holdings
--- Additionally adjusting balance to match
-CREATE OR REPLACE FUNCTION sync_holdings_and_balance_on_order_fill() RETURNS TRIGGER AS $$
-DECLARE
-    signed_quantity NUMERIC(14,4);
-    signed_cost NUMERIC(14, 4);
-BEGIN
-    IF NEW.order_status = 'FILLED' AND (TG_OP = 'INSERT' OR OLD.order_status IS DISTINCT FROM 'FILLED') THEN
-        signed_quantity := CASE WHEN NEW.order_type = 'BUY' THEN NEW.quantity ELSE -NEW.quantity END;
-        signed_cost := CASE WHEN NEW.order_type = 'BUY' THEN -NEW.quantity * NEW.price ELSE NEW.quantity * NEW.price END;
-        INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
-        VALUES (NEW.account_id, NEW.instrument_id, signed_quantity, CURRENT_DATE)
-        ON CONFLICT (account_id, instrument_id) DO UPDATE
-            SET quantity = holdings.quantity + EXCLUDED.quantity,
-                as_of_date = EXCLUDED.as_of_date;
-        --Accounts should already exist in the table if you want to make an order
-        UPDATE accounts
-        SET balance = balance + signed_cost
-        WHERE account_id = NEW.account_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Holdings and cash are not moved by a trigger: OrderExecutionService updates them in Java, in the
+-- same transaction as the order, so every fill is applied exactly once.
 
--- When an order is made the database will automatically update the holdings if the order is filled, ensuring consistency between orders and holdings
-CREATE TRIGGER orders_sync_holdings_and_balance
-    AFTER INSERT OR UPDATE OF order_status ON orders
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_holdings_and_balance_on_order_fill();
-
--- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
+-- This table records all cash movements for each account: deposits, withdrawals, and the cash paid for a
+-- filled buy or received for a filled sell. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
     account_id           INTEGER NOT NULL REFERENCES accounts(account_id),
-    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL')),
+    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL')),
     amount               NUMERIC(14,4) NOT NULL,
-    txn_date             DATE NOT NULL
+    txn_date             DATE NOT NULL,
+    order_id             INTEGER REFERENCES orders(order_id), -- the filled order, for BUY and SELL rows
+    CHECK ((txn_type IN ('BUY', 'SELL')) = (order_id IS NOT NULL))
 );
 -- Index to quickly look up cash transactions by account_id for faster queries on account cash flow
 CREATE INDEX cash_transactions_account_id_idx ON cash_transactions (account_id);

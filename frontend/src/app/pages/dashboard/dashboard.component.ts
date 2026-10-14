@@ -60,7 +60,8 @@ export class DashboardComponent {
   protected readonly totalValue = computed(() => this.cash() + this.holdingsValue());
 
   protected readonly activity = computed<ActivityItem[]>(() => [
-    ...this.cashTransactions().map(t => ({
+    // Trades already appear below as orders, so only deposits and withdrawals come from the cash history
+    ...this.cashTransactions().filter(t => t.transactionType === 'DEPOSIT' || t.transactionType === 'WITHDRAWAL').map(t => ({
       date: t.transactionDate,
       text: `${t.transactionType === 'WITHDRAWAL' ? 'Withdrew' : 'Deposited'} $${t.amount.toLocaleString()}`,
       kind: 'cash' as const

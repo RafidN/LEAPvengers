@@ -1,70 +1,109 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.InvalidInputException;
+import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.exception.InvalidCredentialsException;
-import com.neueda.leap.exception.TickerNotFoundException;
-
 import com.neueda.leap.model.Accounts;
 import com.neueda.leap.model.Holdings;
 import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.LatestPriceQuotes;
+import com.neueda.leap.model.OrderEvents;
 import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.Users;
-import com.neueda.leap.model.dto.AccountResponse;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import com.neueda.leap.model.dto.OrderRequest;
-import com.neueda.leap.model.dto.PriceQuoteResult;
-import com.neueda.leap.model.dto.TickerSearchResult;
+
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.HoldingsRepository;
 import com.neueda.leap.repository.InstrumentsRepository;
 import com.neueda.leap.repository.LatestPriceQuotesRepository;
+import com.neueda.leap.repository.OrderEventsRepository;
 import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.UserRepository;
 
-import com.neueda.leap.security.JwtUtil;
-import java.util.concurrent.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Takes in orders: saves the order as SUBMITTED, checks the trading rules, then moves it straight to
+ * ACCEPTED or REJECTED, with an order_events row for each step. After a short delay, OrderDelay has
+ * OrderExecutionService fill the order if its price has not moved, or mark it FAILED.
+ */
 @Service
 public class OrderService {
     private final OrderRepository orderRepository;
+    private final OrderEventsRepository orderEventsRepository;
     private final UserRepository userRepository;
     private final InstrumentsRepository instrumentsRepository;
     private final LatestPriceQuotesRepository latestPriceQuotesRepository;
     private final HoldingsRepository holdingsRepository;
     private final AccountRepository accountRepository;
+    private final OwnershipService ownershipService;
     private final TradingRules tradingRules;
+    private final OrderExecutionService orderExecutionService;
+    private final ScheduledExecutorService executorService;
+    private final Duration orderDelay;
+
+    private static final Logger logger = Logger.getLogger(OrderService.class.getName());
+
+    @Autowired
+    public OrderService(UserRepository userRepository, InstrumentsRepository instrumentsRepository,
+                        LatestPriceQuotesRepository latestPriceQuotesRepository,
+                        OrderRepository orderRepository, OrderEventsRepository orderEventsRepository,
+                        HoldingsRepository holdingsRepository, AccountRepository accountRepository,
+                        OwnershipService ownershipService, TradingRules tradingRules,
+                        OrderExecutionService orderExecutionService,
+                        @Value("${leap.trading.order-delay:PT3S}") Duration orderDelay) {
+        // One shared thread is plenty: each delayed step is a few quick queries
+        this(userRepository, instrumentsRepository, latestPriceQuotesRepository, orderRepository, orderEventsRepository,
+                holdingsRepository, accountRepository, ownershipService, tradingRules, orderExecutionService,
+                Executors.newSingleThreadScheduledExecutor(), orderDelay);
+    }
 
     public OrderService(UserRepository userRepository, InstrumentsRepository instrumentsRepository,
                         LatestPriceQuotesRepository latestPriceQuotesRepository,
-                        OrderRepository orderRepository, HoldingsRepository holdingsRepository,
-                        AccountRepository accountRepository, TradingRules tradingRules) {
+                        OrderRepository orderRepository, OrderEventsRepository orderEventsRepository,
+                        HoldingsRepository holdingsRepository, AccountRepository accountRepository,
+                        OwnershipService ownershipService, TradingRules tradingRules,
+                        OrderExecutionService orderExecutionService,
+                        ScheduledExecutorService executorService, Duration orderDelay) {
         this.userRepository = userRepository;
         this.instrumentsRepository = instrumentsRepository;
         this.latestPriceQuotesRepository = latestPriceQuotesRepository;
         this.orderRepository = orderRepository;
+        this.orderEventsRepository = orderEventsRepository;
         this.holdingsRepository = holdingsRepository;
         this.accountRepository = accountRepository;
+        this.ownershipService = ownershipService;
         this.tradingRules = tradingRules;
+        this.orderExecutionService = orderExecutionService;
+        this.executorService = executorService;
+        this.orderDelay = orderDelay;
     }
 
+    @PreDestroy
+    void shutdown() {
+        executorService.shutdownNow();
+    }
 
-    @Transactional()
-    public List<OrderHistoryResult> placeOrder(Integer userId, OrderRequest request) 
-            throws UserNotFoundException, InvalidInputException, InvalidCredentialsException, TickerNotFoundException, InterruptedException {
-        
-        // Validate user exists and get their clientId
+    /**
+     * Returns the saved ACCEPTED order. A rule failure is rethrown after the REJECTED order is saved;
+     * noRollbackFor keeps that record when the exception leaves this transaction.
+     */
+    @Transactional(noRollbackFor = TradingRuleException.class)
+    public OrderHistoryResult placeOrder(Integer userId, OrderRequest request) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
@@ -72,108 +111,103 @@ public class OrderService {
         if (request.getTicker() == null || request.getTicker().trim().isEmpty()) {
             throw new InvalidInputException("Order ticker cannot be empty");
         }
-        if (request.getQuantity().compareTo(new BigDecimal(0)) <= 0)
-        {
-            throw new InvalidInputException("Order quantity must be greater than 0");
+        if (request.getAccountId() == null) {
+            throw new InvalidInputException("Order account cannot be empty");
         }
         String orderType = request.getOrderType() == null ? "" : request.getOrderType().trim().toUpperCase();
         if (!orderType.equals("BUY") && !orderType.equals("SELL")) {
             throw new InvalidInputException("Order type must be BUY or SELL");
         }
-        int clientId = user.getClientId();
         String ticker = request.getTicker().trim();
         BigDecimal quantity = request.getQuantity();
-        int accountId = request.getAccountId();
-        List<AccountResponse> balances = accountRepository.findAccountResponsesByAccountId(accountId);
-        if(balances.size() == 0) {
-            throw new InvalidCredentialsException("Account not found");
-        }
-        // The account must belong to the caller; a missing account gets the same answer so ids can't be probed
-        // TODO: IF SOMEONE WANTS TO IMPLEMENT THIS THEY CAN
+        Integer accountId = request.getAccountId();
 
-        // System.out.println("BALANCE + " + balances.get(0).getBalance().toString());
-        // int clientId2 = balances.get(0).getClientId();
-        // if(clientId2 == user.getClientId()) {
-        //     throw new ForbiddenException("User does not own the specified account");
-        // }
-        // Trading rules
+        // The account must belong to the caller; a missing account gets the same answer so ids can't be probed
+        ownershipService.requireAccount(accountId);
+
+        // Without a valid quantity, a known instrument and a price there is no order to record,
+        // so these rules fail the request without saving anything
         tradingRules.checkQuantity(quantity);
         Instruments instrument = instrumentsRepository.findByTickerIgnoreCase(ticker).orElse(null);
         tradingRules.checkInstrumentExists(instrument, ticker);
         LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
-        tradingRules.checkPriceIsRecent(quote);
-        BigDecimal price = quote.getPrice();
-        BigDecimal balance = balances.get(0).getBalance();
-        Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(accountId, instrument.getInstrumentId())
-                .orElse(null);
-        if (orderType.equals("BUY")) {
-            tradingRules.checkSufficientCash(balance, quantity, price);
-        } else {
-            tradingRules.checkSufficientHoldings(holding == null ? BigDecimal.ZERO : holding.getQuantity(), quantity);
-        }
-        BigDecimal cost = quantity.multiply(price);
-        if(balance.compareTo(cost) < 0 && orderType.toUpperCase().equals("BUY")){
-            throw new InvalidInputException("Cost too high for current balance");
-        }
-        List<TickerSearchResult> holdingInventory = holdingsRepository.searchByInstrumentQuery(clientId, ticker);
-        Long tickerStock = 0l;
-        for(TickerSearchResult tickerSearchResult : holdingInventory){
-            if(tickerSearchResult.getAccountId() == accountId){
-                tickerStock = tickerSearchResult.getQuantity();
+        tradingRules.checkPriceExists(quote);
+
+        Orders order = orderRepository.save(
+                new Orders(accountId, instrument.getInstrumentId(), orderType, quantity, quote.getPrice(), LocalDate.now()));
+        recordEvent(order, user, null, "Order submitted");
+        try {
+            tradingRules.checkPriceIsRecent(quote);
+            if (orderType.equals("BUY")) {
+                Accounts account = accountRepository.findById(accountId).orElseThrow();
+                tradingRules.checkSufficientCash(account.getBalance(), quantity, quote.getPrice());
+            } else {
+                Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(accountId, instrument.getInstrumentId())
+                        .orElse(null);
+                tradingRules.checkSufficientHoldings(holding == null ? BigDecimal.ZERO : holding.getQuantity(), quantity);
             }
+        } catch (TradingRuleException e) {
+            order.setOrderStatus("REJECTED");
+            order.setRejectionReason(e.getMessage());
+            Orders rejected = orderRepository.save(order);
+            recordEvent(rejected, user, "SUBMITTED", e.getMessage());
+            throw e;
         }
-        if(new BigDecimal(tickerStock).compareTo(quantity) < 0 && orderType.toUpperCase().equals("SELL")){
-            throw new InvalidInputException("Not enough holding inventory in account to sell ");
-        }
 
+        order.setOrderStatus("ACCEPTED");
+        Orders accepted = orderRepository.save(order);
+        recordEvent(accepted, user, "SUBMITTED", "Passed trading checks");
+        scheduleAfterCommit(new OrderDelay(accepted.getOrderId()));
 
-        Orders order = new Orders(accountId, instrument.getInstrumentId(), orderType, quantity, 
-            price, LocalDate.now());
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-        OrderDelay orderDelay = new OrderDelay(ticker, price, instrument, order);
-        executorService.schedule(orderDelay, 5l, TimeUnit.SECONDS);
-
-        List<OrderHistoryResult> result = new ArrayList<>();
-        result.add(new OrderHistoryResult(order.getOrderId(), ticker, order.getOrderType(), order.getQuantity(), 
-            order.getPrice(), "SUBMITTED", order.getOrderDate(), order.getSubmittedAt()));
-        
-        return result;
+        return new OrderHistoryResult(accepted.getOrderId(), instrument.getTicker(), accepted.getOrderType(),
+                accepted.getQuantity(), accepted.getPrice(), accepted.getOrderStatus(), accepted.getOrderDate(),
+                accepted.getSubmittedAt(), accepted.getAccountId(), accepted.getRejectionReason(),
+                accepted.getExecutionPrice(), accepted.getExecutedAt());
     }
+
+    /** Starts the delay only once the ACCEPTED order is committed, so OrderDelay can always find it. */
+    private void scheduleAfterCommit(OrderDelay orderDelayTask) {
+        Runnable schedule = () -> executorService.schedule(orderDelayTask, orderDelay.toMillis(), TimeUnit.MILLISECONDS);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    schedule.run();
+                }
+            });
+        } else {
+            schedule.run();
+        }
+    }
+
+    /**
+     * Runs once the order's delay is up. The order is filled only if the price is still the one it
+     * was accepted at. If the fill throws, it was rolled back, and the order is marked FAILED with the reason.
+     */
     public class OrderDelay implements Runnable {
-        public String ticker;
-        public BigDecimal newPrice;
-        public BigDecimal oldPrice;
-        public Orders savedOrder;
-        public Instruments instrument;
-        // public List<PriceQuoteResult>
-        public OrderDelay(String ticker, BigDecimal price, Instruments instrument, Orders savedOrder){
-            this.ticker = ticker;
-            this.oldPrice = price;
-            this.savedOrder = savedOrder;
-            this.instrument = instrument;
+        private final Integer orderId;
+
+        public OrderDelay(Integer orderId) {
+            this.orderId = orderId;
         }
+
         @Override
-        public void run(){
-            try{
-            LatestPriceQuotes newQuote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
-            newPrice = newQuote.getPrice();
-            if(oldPrice.compareTo(newPrice) == 0) {
-                savedOrder.setOrderStatus("FILLED");
-                savedOrder.setExecutionPrice(savedOrder.getPrice());
-                System.out.println("FILLED");
-            }
-            else {
-                savedOrder.setOrderStatus("REJECTED");
-                savedOrder.setRejectionReason("Outdated order price from request");
-                System.out.println("REJECTED");
-            }
-            orderRepository.save(savedOrder);
-            }
-            catch(Exception e)
-            {
-                System.out.println("WHATT");
-                e.printStackTrace();
+        public void run() {
+            try {
+                orderExecutionService.execute(orderId);
+            } catch (Exception e) {
+                try {
+                    orderExecutionService.markFailed(orderId, e.getMessage());
+                } catch (Exception markFailedError) {
+                    logger.log(Level.SEVERE, "Could not mark order " + orderId + " as FAILED", markFailedError);
+                }
             }
         }
+    }
+
+    /** One step of the order, made by the trader who submitted it. */
+    private void recordEvent(Orders order, Users user, String fromStatus, String details) {
+        orderEventsRepository.save(new OrderEvents(order.getOrderId(), user.getUserId(), fromStatus,
+                order.getOrderStatus(), LocalDateTime.now(), details));
     }
 }

@@ -27,6 +27,7 @@ public class TradingRules {
     public static final String STALE_PRICE = "STALE_PRICE";
     public static final String INSUFFICIENT_CASH = "INSUFFICIENT_CASH";
     public static final String INSUFFICIENT_HOLDINGS = "INSUFFICIENT_HOLDINGS";
+    public static final String PRICE_CHANGED = "PRICE_CHANGED";
 
     private final Clock clock;
     private final Duration maxPriceAge;
@@ -54,15 +55,29 @@ public class TradingRules {
         }
     }
 
-    public void checkPriceIsRecent(LatestPriceQuotes quote) {
+    public void checkPriceExists(LatestPriceQuotes quote) {
         if (quote == null || quote.getPrice() == null || quote.getQuoteTimestamp() == null) {
             throw new TradingRuleException(NO_PRICE, "No price is available for this instrument");
         }
+    }
+
+    public void checkPriceIsRecent(LatestPriceQuotes quote) {
+        checkPriceExists(quote);
         LocalDateTime oldestAllowed = LocalDateTime.now(clock).minus(maxPriceAge);
         if (quote.getQuoteTimestamp().isBefore(oldestAllowed)) {
             throw new TradingRuleException(STALE_PRICE,
                     "The latest price is from " + quote.getQuoteTimestamp() + ", older than the "
                             + maxPriceAge.toMinutes() + " minute limit");
+        }
+    }
+
+    /** The order was submitted at one price; if the latest price differs, the order's price is out of date. */
+    public void checkPriceUnchanged(BigDecimal submittedPrice, LatestPriceQuotes quote) {
+        checkPriceExists(quote);
+        if (quote.getPrice().compareTo(submittedPrice) != 0) {
+            throw new TradingRuleException(PRICE_CHANGED,
+                    "The price moved from " + submittedPrice + " to " + quote.getPrice()
+                            + " while the order was waiting to be filled, so the order price is out of date");
         }
     }
 
