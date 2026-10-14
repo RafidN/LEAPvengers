@@ -10,7 +10,7 @@ import { AuthService } from './auth.service';
 
 export type HistoryPeriod = '1d' | '7d' | '1m' | '1y';
 
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED';
+export type OrderStatus = 'SUBMITTED' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED';
 
 export interface OrderHistoryResult {
   orderId: number;

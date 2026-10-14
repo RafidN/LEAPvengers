@@ -90,7 +90,7 @@ public class OrderService {
         }
         // The account must belong to the caller; a missing account gets the same answer so ids can't be probed
         // TODO: IF SOMEONE WANTS TO IMPLEMENT THIS THEY CAN
-        
+
         // System.out.println("BALANCE + " + balances.get(0).getBalance().toString());
         // int clientId2 = balances.get(0).getClientId();
         // if(clientId2 == user.getClientId()) {
@@ -135,7 +135,7 @@ public class OrderService {
 
         List<OrderHistoryResult> result = new ArrayList<>();
         result.add(new OrderHistoryResult(order.getOrderId(), ticker, order.getOrderType(), order.getQuantity(), 
-            order.getPrice(), "PENDING", order.getOrderDate(), order.getSubmittedAt()));
+            order.getPrice(), "SUBMITTED", order.getOrderDate(), order.getSubmittedAt()));
         
         return result;
     }
