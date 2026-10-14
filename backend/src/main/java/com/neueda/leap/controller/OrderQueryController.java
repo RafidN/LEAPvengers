@@ -13,16 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * The signed-in trader's orders and order timelines.
+ * Read side of the signed-in trader's orders: the order list and each order's timeline.
+ * Placing an order is in OrderController.
  * Errors (400 bad period/order, 403 someone else's order) are mapped by GlobalExceptionHandler.
  */
 @RestController
 @RequestMapping("/orders")
-public class OrdersController {
+public class OrderQueryController {
 
     private final OrderQueryService orderQueryService;
 
-    public OrdersController(OrderQueryService orderQueryService) {
+    public OrderQueryController(OrderQueryService orderQueryService) {
         this.orderQueryService = orderQueryService;
     }
 

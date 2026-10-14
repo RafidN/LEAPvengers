@@ -5,9 +5,12 @@ import com.neueda.leap.model.dto.AccountResponse;
 import com.neueda.leap.model.dto.AuditClientDetailsResponse;
 import com.neueda.leap.model.dto.AuditClientSummary;
 import com.neueda.leap.model.dto.AuditOrder;
+import com.neueda.leap.model.dto.AuditOrderDetailsResponse;
+import com.neueda.leap.model.dto.OrderEventResult;
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.AuditRepository;
 import com.neueda.leap.repository.ClientRepository;
+import com.neueda.leap.repository.OrderEventsRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,14 +30,28 @@ public class AuditService {
     private final AuditRepository auditRepository;
     private final ClientRepository clientRepository;
     private final AccountRepository accountRepository;
+    private final OrderEventsRepository orderEventsRepository;
 
     public AuditService(AuditRepository auditRepository,
                         ClientRepository clientRepository,
-                        AccountRepository accountRepository) {
+                        AccountRepository accountRepository,
+                        OrderEventsRepository orderEventsRepository) {
         this.auditRepository = auditRepository;
         this.clientRepository = clientRepository;
         this.accountRepository = accountRepository;
+        this.orderEventsRepository = orderEventsRepository;
     }
+
+        public AuditOrderDetailsResponse getAuditById(Integer orderId) {
+        AuditOrder order = auditRepository.findAuditOrderById(orderId)
+            .orElseThrow(() -> new UserNotFoundException("Order not found"));
+        AuditClientSummary client = clientRepository.findAuditClientSummaryByClientId(order.getClientId())
+            .orElseThrow(() -> new UserNotFoundException("Client not found"));
+        AccountResponse account = accountRepository.findAccountResponseByOrderId(orderId)
+            .orElseThrow(() -> new UserNotFoundException("Account not found"));
+        List<OrderEventResult> events = orderEventsRepository.findAuditOrderEventsByOrderId(orderId);
+        return new AuditOrderDetailsResponse(order, client, account, events);
+        }
 
     /**
      * Get all orders with filtering and pagination

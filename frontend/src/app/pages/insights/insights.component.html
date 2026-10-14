@@ -118,3 +118,106 @@
     </div>
   </div>
 </section>
+
+<section class="mt-6 grid gap-4 lg:grid-cols-5">
+  <div hlmCard class="lg:col-span-3">
+    <div hlmCardHeader>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 hlmCardTitle>Top instruments</h2>
+          <p hlmCardDescription>Current exposure and recent filled-order activity</p>
+        </div>
+
+        <div class="flex flex-wrap gap-1">
+          <button hlmBtn size="sm" [variant]="selectedInstrumentSegment() === null ? 'secondary' : 'outline'"
+            (click)="selectedInstrumentSegment.set(null)">
+            All segments
+          </button>
+          @for (segment of segments; track segment) {
+            <button hlmBtn size="sm" [variant]="selectedInstrumentSegment() === segment ? 'secondary' : 'outline'"
+              (click)="selectedInstrumentSegment.set(segment)">
+              {{ segment }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="relative h-48 w-full">
+        <canvas baseChart type="bar" [data]="instrumentChartData()" [options]="instrumentChartOptions"></canvas>
+      </div>
+
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Instrument</th>
+              <th hlmTableHead>Asset class</th>
+              <th hlmTableHead class="text-right">Invested value</th>
+              <th hlmTableHead class="text-right">Filled orders</th>
+              <th hlmTableHead class="text-right">Clients</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (instrument of topInstruments(); track instrument.ticker) {
+              <tr hlmTableRow>
+                <td hlmTableCell>
+                  <div class="font-medium">{{ instrument.ticker }}</div>
+                  <div class="text-muted-foreground text-xs">{{ instrument.instrumentName }}</div>
+                </td>
+                <td hlmTableCell>{{ instrument.assetClass }}</td>
+                <td hlmTableCell class="text-right tabular-nums">
+                  {{ instrument.currentPositionValue | currency: 'USD' : 'symbol' : '1.0-0' }}
+                </td>
+                <td hlmTableCell class="text-right tabular-nums">{{ instrument.recentFilledOrderCount }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ instrument.tradedClientCount }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="5" class="text-muted-foreground py-6 text-center">
+                  {{ loading() ? 'Loading instruments…' : 'No instruments in this window.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div hlmCard class="lg:col-span-2">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Order mix</h2>
+      <p hlmCardDescription>Buys and sells by top instrument exposure</p>
+    </div>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
+            <tr hlmTableRow>
+              <th hlmTableHead>Instrument</th>
+              <th hlmTableHead class="text-right">Buys</th>
+              <th hlmTableHead class="text-right">Sells</th>
+            </tr>
+          </thead>
+          <tbody hlmTableBody>
+            @for (instrument of topInstruments(); track instrument.ticker) {
+              <tr hlmTableRow>
+                <td hlmTableCell class="font-medium">{{ instrument.ticker }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ instrument.buyCount }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ instrument.sellCount }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="3" class="text-muted-foreground py-6 text-center">
+                  {{ loading() ? 'Loading order mix…' : 'No instrument activity.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

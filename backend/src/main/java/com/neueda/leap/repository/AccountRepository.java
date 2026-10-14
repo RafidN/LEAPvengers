@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Accounts, Integer> {
     boolean existsByAccountIdAndClientId(Integer accountId, Integer clientId);
@@ -34,5 +35,10 @@ public interface AccountRepository extends JpaRepository<Accounts, Integer> {
             """)
     List<AccountResponse> findAccountResponsesByAccountId(Integer accountId);
 
-
+    @Query("""
+            SELECT new com.neueda.leap.model.dto.AccountResponse(a.accountId, a.openedDate, a.balance)
+            FROM Accounts a JOIN Orders o ON o.accountId = a.accountId
+            WHERE o.orderId = :orderId
+            """)
+    Optional<AccountResponse> findAccountResponseByOrderId(Integer orderId);
 }

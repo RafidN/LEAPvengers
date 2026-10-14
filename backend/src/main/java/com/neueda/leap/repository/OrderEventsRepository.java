@@ -40,4 +40,14 @@ public interface OrderEventsRepository extends JpaRepository<OrderEvents, Intege
 		@Param("orderId") Integer orderId
 	);
 
+	@Query("""
+		SELECT new com.neueda.leap.model.dto.OrderEventResult(
+			oe.eventId, oe.orderId, oe.createdBy, u.username, oe.fromStatus,
+			oe.toStatus, oe.createdAt, oe.details)
+		FROM OrderEvents oe LEFT JOIN oe.user u
+		WHERE oe.orderId = :orderId
+		ORDER BY oe.createdAt ASC, oe.eventId ASC
+	""")
+	List<OrderEventResult> findAuditOrderEventsByOrderId(@Param("orderId") Integer orderId);
+
 }

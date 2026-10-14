@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 
+
+// Controller for placing order-related endpoints.
 @RestController
 @RequestMapping("/order")
 public class OrderController {

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import com.neueda.leap.model.Orders;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Repository
 public interface AuditRepository extends JpaRepository<Orders, Integer> {
@@ -28,7 +29,8 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
             o.rejectionReason,
             o.orderDate,
             o.submittedAt,
-            o.executedAt
+            o.executedAt,
+            o.executionPrice
         )
         FROM Orders o
         JOIN o.account a
@@ -51,5 +53,19 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
         @Param("endDate") LocalDate endDate,
         Pageable pageable
     );
+
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.AuditOrder(
+            o.orderId, c.clientId, CONCAT(c.firstName, ' ', c.lastName),
+            i.ticker, i.instrumentName, o.orderType, o.quantity, o.price,
+            o.orderStatus, o.rejectionReason, o.orderDate, o.submittedAt,
+            o.executedAt, o.executionPrice)
+        FROM Orders o
+        JOIN o.account a
+        JOIN a.client c
+        JOIN o.instrument i
+        WHERE o.orderId = :orderId
+    """)
+    Optional<AuditOrder> findAuditOrderById(@Param("orderId") Integer orderId);
 }
 
