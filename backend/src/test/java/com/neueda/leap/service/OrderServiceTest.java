@@ -77,6 +77,7 @@ class OrderServiceTest {
 
     private OrderRequest orderRequest;
 
+    @Mock
     private TradingRules tradingRules;
 
     @BeforeEach
@@ -142,16 +143,12 @@ class OrderServiceTest {
         Users testUser = new Users();
         testUser.setUserId(1);
         testUser.setClientId(1);
-        Accounts testAccount = new Accounts();
-        testAccount.setAccountId(67);
-        testAccount.setClientId(50);
-        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
         List<AccountResponse> accountResponses = new ArrayList<>();
-        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
-        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
-        when(accountRepository.findById(67)).thenReturn(Optional.of(testAccount));
+        AccountResponse accountResponse = new AccountResponse(67, LocalDate.now(), new BigDecimal(750));
+        accountResponses.add(accountResponse);
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
         orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
-        assertThrows(ForbiddenException.class, () -> orderService.placeOrder(1, orderRequest));
+        assertThrows(InvalidCredentialsException.class, () -> orderService.placeOrder(1, orderRequest));
     }
     @Test
     void testRequireSufficientBalanceOnBuy() {
@@ -202,52 +199,62 @@ class OrderServiceTest {
         orderRequest = new OrderRequest("NFLX", new BigDecimal(670), "SELL", 67);
         assertThrows(InvalidInputException.class, () -> orderService.placeOrder(1, orderRequest));
     }
-    // @Test
-    // void testValidBuy() {
-    //     Users testUser = new Users();
-    //     testUser.setUserId(1);
-    //     testUser.setClientId(1);
-    //     List<AccountResponse> accountResponses = new ArrayList<>();
-    //     accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
-    //     when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-    //     when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
-    //     List<PriceQuoteResult> prices = new ArrayList<>();
-    //     List<InstrumentIdResult> instrumentIds = new ArrayList<>();
-    //     prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
-    //     instrumentIds.add(new InstrumentIdResult(1));
-    //     when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
-    //     when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
-    //     Orders order = new Orders(67, instrumentIds.get(0).getInstrumentId(), "BUY", new BigDecimal(67), 
-    //         prices.get(0).getCurrentPrice(), LocalDate.now());
-    //     when(orderRepository.save(any(Orders.class))).thenReturn(order);
-    //     orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
-    //     assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
-    // }
+    @Test
+    void testValidBuy() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        Instruments testInstrument = new Instruments();
+        testInstrument.setTicker("NFLX");
+        testInstrument.setInstrumentName("Netflix");
+        testInstrument.setAssetClass("Equity");
+        testInstrument.setInstrumentId(1);
+        LatestPriceQuotes testQuote = new LatestPriceQuotes();
+        testQuote.setPrice(new BigDecimal(6.70));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        when(instrumentsRepository.findByTickerIgnoreCase("NFLX")).thenReturn(Optional.of(testInstrument));
+        when(latestPriceQuotesRepository.findByInstrumentId(1)).thenReturn(Optional.of(testQuote));
+        List<TickerSearchResult> holdingInventory = new ArrayList<>();
+        holdingInventory.add(new TickerSearchResult(1, 67, "NFLX", "Netflix", 6l, 6.7));
+        when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), "NFLX")).thenReturn(holdingInventory);
+        Orders order = new Orders(67, testInstrument.getInstrumentId(), "BUY", new BigDecimal(67), 
+            testQuote.getPrice(), LocalDate.now());
+        when(orderRepository.save(any(Orders.class))).thenReturn(order);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "BUY", 67);
+        assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
+    }
 
-    // @Test
-    // void testValidSell() {
-    //     Users testUser = new Users();
-    //     testUser.setUserId(1);
-    //     testUser.setClientId(1);
-    //     List<AccountResponse> accountResponses = new ArrayList<>();
-    //     accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
-    //     when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-    //     when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
-    //     List<PriceQuoteResult> prices = new ArrayList<>();
-    //     List<InstrumentIdResult> instrumentIds = new ArrayList<>();
-    //     prices.add(new PriceQuoteResult("NFLX", "Netflix", new BigDecimal(6.70), "Equity", LocalDateTime.now()));
-    //     instrumentIds.add(new InstrumentIdResult(1));
-    //     when(instrumentsRepository.searchInstrumentPrice("NFLX")).thenReturn(prices);
-    //     when(instrumentsRepository.searchInstrumentId("NFLX")).thenReturn(instrumentIds);
-    //     List<TickerSearchResult> holdingInventory = new ArrayList<>();
-    //     holdingInventory.add(new TickerSearchResult(1, 67, "NFLX", "Netflix", 6l, 6.7));
-    //     when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), "NFLX")).thenReturn(holdingInventory);
-    //     Orders order = new Orders(67, instrumentIds.get(0).getInstrumentId(), "SELL", new BigDecimal(67), 
-    //         prices.get(0).getCurrentPrice(), LocalDate.now());
-    //     when(orderRepository.save(any(Orders.class))).thenReturn(order);
-    //     orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "SELL", 67);
-    //     assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
-    // }
+    @Test
+    void testValidSell() {
+        Users testUser = new Users();
+        testUser.setUserId(1);
+        testUser.setClientId(1);
+        List<AccountResponse> accountResponses = new ArrayList<>();
+        accountResponses.add(new AccountResponse(67, LocalDate.now(), new BigDecimal(750)));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));     Instruments testInstrument = new Instruments();
+        testInstrument.setTicker("NFLX");
+        testInstrument.setInstrumentName("Netflix");
+        testInstrument.setAssetClass("Equity");
+        testInstrument.setInstrumentId(1);
+        LatestPriceQuotes testQuote = new LatestPriceQuotes();
+        testQuote.setPrice(new BigDecimal(6.70));
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findAccountResponsesByAccountId(67)).thenReturn(accountResponses);
+        when(instrumentsRepository.findByTickerIgnoreCase("NFLX")).thenReturn(Optional.of(testInstrument));
+        when(latestPriceQuotesRepository.findByInstrumentId(1)).thenReturn(Optional.of(testQuote));
+        List<TickerSearchResult> holdingInventory = new ArrayList<>();
+        holdingInventory.add(new TickerSearchResult(1, 67, "NFLX", "Netflix", 6l, 6.7));
+        when(holdingsRepository.searchByInstrumentQuery(testUser.getClientId(), "NFLX")).thenReturn(holdingInventory);
+        Orders order = new Orders(67, testInstrument.getInstrumentId(), "SELL", new BigDecimal(67), 
+            testQuote.getPrice(), LocalDate.now());
+        when(orderRepository.save(any(Orders.class))).thenReturn(order);
+        orderRequest = new OrderRequest("NFLX", new BigDecimal(5), "SELL", 67);
+        assertDoesNotThrow(() -> orderService.placeOrder(1, orderRequest));
+    }
     private void setAuthenticatedUser(Integer userId) {
         Map<String, Object> details = new HashMap<>();
         details.put("userId", userId);

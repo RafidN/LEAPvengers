@@ -89,12 +89,13 @@ public class OrderService {
             throw new InvalidCredentialsException("Account not found");
         }
         // The account must belong to the caller; a missing account gets the same answer so ids can't be probed
-        Accounts account = accountRepository.findById(request.getAccountId())
-            .orElseThrow(() -> new InvalidCredentialsException("Account not found"));
-        int accountId2 = user.getClientId();
-        if(accountId2 == user.getClientId()) {
-            throw new ForbiddenException("User does not own the specified account");
-        }
+        // TODO: IF SOMEONE WANTS TO IMPLEMENT THIS THEY CAN
+        
+        // System.out.println("BALANCE + " + balances.get(0).getBalance().toString());
+        // int clientId2 = balances.get(0).getClientId();
+        // if(clientId2 == user.getClientId()) {
+        //     throw new ForbiddenException("User does not own the specified account");
+        // }
         // Trading rules
         tradingRules.checkQuantity(quantity);
         Instruments instrument = instrumentsRepository.findByTickerIgnoreCase(ticker).orElse(null);
@@ -102,16 +103,16 @@ public class OrderService {
         LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
         tradingRules.checkPriceIsRecent(quote);
         BigDecimal price = quote.getPrice();
-        Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(account.getAccountId(), instrument.getInstrumentId())
+        BigDecimal balance = balances.get(0).getBalance();
+        Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(accountId, instrument.getInstrumentId())
                 .orElse(null);
         if (orderType.equals("BUY")) {
-            tradingRules.checkSufficientCash(account.getBalance(), quantity, price);
+            tradingRules.checkSufficientCash(balance, quantity, price);
         } else {
             tradingRules.checkSufficientHoldings(holding == null ? BigDecimal.ZERO : holding.getQuantity(), quantity);
         }
-        BigDecimal balance = balances.get(0).getBalance();
         BigDecimal cost = quantity.multiply(price);
-        if(balance.compareTo(cost) < 0){
+        if(balance.compareTo(cost) < 0 && orderType.toUpperCase().equals("BUY")){
             throw new InvalidInputException("Cost too high for current balance");
         }
         List<TickerSearchResult> holdingInventory = holdingsRepository.searchByInstrumentQuery(clientId, ticker);

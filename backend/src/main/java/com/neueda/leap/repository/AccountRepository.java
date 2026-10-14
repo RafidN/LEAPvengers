@@ -27,7 +27,8 @@ public interface AccountRepository extends JpaRepository<Accounts, Integer> {
             SELECT new com.neueda.leap.model.dto.AccountResponse(
                 a.accountId,
                 a.openedDate,
-                a.balance
+                a.balance,
+                a.clientId
             )
             FROM Accounts a
             WHERE a.accountId = :accountId
@@ -41,4 +42,5 @@ public interface AccountRepository extends JpaRepository<Accounts, Integer> {
             WHERE o.orderId = :orderId
             """)
     Optional<AccountResponse> findAccountResponseByOrderId(Integer orderId);
+    
 }
