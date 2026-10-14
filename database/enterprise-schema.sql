@@ -48,6 +48,8 @@ CREATE TABLE users (
     user_id               SERIAL PRIMARY KEY,
     client_id             INTEGER REFERENCES clients(client_id), -- NULL for internal (OPS/ANALYST) users
     username              TEXT NOT NULL UNIQUE,
+    first_name            TEXT,
+    last_name             TEXT,
     password              VARCHAR(255) NOT NULL,
     role                  TEXT NOT NULL DEFAULT 'TRADER' CHECK (role IN ('TRADER', 'OPS', 'ANALYST')),
     is_active             BOOLEAN DEFAULT true,
@@ -82,7 +84,7 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'PENDING' CHECK (order_status IN ('PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
+    order_status     TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK (order_status IN ('SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
     rejection_reason TEXT,
     execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
@@ -101,8 +103,8 @@ CREATE TABLE order_events(
     event_id        SERIAL PRIMARY KEY,
     order_id        INTEGER NOT NULL REFERENCES orders(order_id),
     created_by      INTEGER REFERENCES users(user_id),
-    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
-    to_status       TEXT NOT NULL CHECK (to_status IN ('PENDING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     details         TEXT, -- optional field to annotate the event with additional context
     CHECK (from_status IS DISTINCT FROM to_status)

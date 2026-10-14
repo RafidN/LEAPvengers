@@ -40,11 +40,27 @@ export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly username = this.authService.getUsername();
-  private readonly role = this.authService.getRole();
-  protected readonly roleLabel = this.role ? ROLE_LABEL[this.role] : '';
-  protected readonly homePage = this.authService.homePage();
-  protected readonly links = NAV_LINKS.filter(link => this.role && link.roles.includes(this.role));
+  protected get firstName(): string {
+    return this.authService.getFirstName() || this.authService.getUsername() || '';
+  }
+
+  protected get role(): Role | null {
+    return this.authService.getRole();
+  }
+
+  protected get roleLabel(): string {
+    const role = this.authService.getRole();
+    return role ? ROLE_LABEL[role] : '';
+  }
+
+  protected get homePage(): string {
+    return this.authService.homePage();
+  }
+
+  protected get links() {
+    const role = this.authService.getRole();
+    return NAV_LINKS.filter(link => role && link.roles.includes(role));
+  }
 
   protected signOut(): void {
     this.authService.logout();

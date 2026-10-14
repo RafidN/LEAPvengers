@@ -1,6 +1,6 @@
 <div class="mb-6">
   <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Operations</p>
-  <h1 class="text-3xl font-medium tracking-tight">Client lookup</h1>
+  <h1 class="text-3xl font-medium tracking-tight">Client Lookup</h1>
   <p class="text-muted-foreground mt-1 text-sm">
     Segments are calculated from each client's portfolio value and filled orders in the last 90 days.
   </p>
@@ -18,51 +18,129 @@
     <input hlmInput class="h-8 w-full pl-8" placeholder="Search name or email" aria-label="Search clients"
       [ngModel]="query()" (ngModelChange)="query.set($event)" />
   </div>
-  <button hlmBtn [variant]="filter() === null ? 'default' : 'outline'" (click)="filter.set(null)">
-    All <span class="opacity-70">{{ clients().length }}</span>
-  </button>
-  @for (s of segments; track s) {
-    <button hlmBtn [variant]="filter() === s ? 'default' : 'outline'" (click)="filter.set(s)">
-      {{ s }} <span class="opacity-70">{{ countFor(s) }}</span>
+  <div class="ml-auto flex flex-wrap gap-2">
+    <button hlmBtn size="sm" [variant]="statusFilter() === null ? 'default' : 'outline'" (click)="statusFilter.set(null)">
+      All <span class="opacity-70">{{ clientOrders().length }}</span>
     </button>
-  }
+    @for (status of statuses; track status) {
+      <button hlmBtn size="sm" [variant]="statusFilter() === status ? 'default' : 'outline'" (click)="statusFilter.set(status)">
+        <ng-icon [name]="statusMeta(status).icon" />
+        {{ statusMeta(status).label }} <span class="opacity-70">{{ countForStatus(status) }}</span>
+      </button>
+    }
+  </div>
 </div>
 
-<div hlmCard>
-  <div hlmCardContent>
-    <div hlmTableContainer>
-      <table hlmTable>
-        <thead hlmTableHeader>
-          <tr hlmTableRow>
-            <th hlmTableHead>Client</th>
-            <th hlmTableHead>Email</th>
-            <th hlmTableHead>Segment</th>
-            <th hlmTableHead class="text-right">Portfolio value</th>
-            <th hlmTableHead class="text-right">Filled orders (90 days)</th>
-          </tr>
-        </thead>
-        <tbody hlmTableBody>
-          @for (c of visibleClients(); track c.clientId) {
+<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+  <div hlmCard>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable>
+          <thead hlmTableHeader>
             <tr hlmTableRow>
-              <td hlmTableCell class="font-medium">{{ c.firstName }} {{ c.lastName }}</td>
-              <td hlmTableCell class="text-muted-foreground">{{ c.email }}</td>
-              <td hlmTableCell>
-                <span hlmBadge [variant]="c.segment === 'Premier' ? 'default' : c.segment === 'Dormant' ? 'outline' : 'secondary'">
-                  {{ c.segment }}
-                </span>
-              </td>
-              <td hlmTableCell class="text-right tabular-nums">{{ c.totalPortfolioValue | currency }}</td>
-              <td hlmTableCell class="text-right tabular-nums">{{ c.recentFilledOrderCount }}</td>
+              <th hlmTableHead>Client</th>
+              <th hlmTableHead>Email</th>
+              <th hlmTableHead>Segment</th>
+              <th hlmTableHead class="text-right">Portfolio value</th>
+              <th hlmTableHead class="text-right">Filled orders (90 days)</th>
             </tr>
-          } @empty {
-            <tr hlmTableRow>
-              <td hlmTableCell colspan="5" class="text-muted-foreground py-6 text-center">
-                {{ loading() ? 'Loading clients…' : 'No matching clients.' }}
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody hlmTableBody>
+            @for (c of visibleClients(); track c.clientId) {
+              <tr hlmTableRow>
+                <td hlmTableCell>
+                  <button type="button" class="text-primary hover:underline font-medium" (click)="loadOrders(c)">
+                    {{ c.firstName }} {{ c.lastName }}
+                  </button>
+                </td>
+                <td hlmTableCell class="text-muted-foreground">{{ c.email }}</td>
+                <td hlmTableCell>
+                  <span hlmBadge [variant]="c.segment === 'Premier' ? 'default' : c.segment === 'Dormant' ? 'outline' : 'secondary'">
+                    {{ c.segment }}
+                  </span>
+                </td>
+                <td hlmTableCell class="text-right tabular-nums">{{ c.totalPortfolioValue | currency }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ c.recentFilledOrderCount }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTableRow>
+                <td hlmTableCell colspan="5" class="text-muted-foreground py-6 text-center">
+                  {{ loading() ? 'Loading clients…' : 'No matching clients.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <aside class="border-border bg-card min-w-0 border p-4 shadow-sm">
+    @if (selectedClient(); as client) {
+      <div class="mb-4 border-b pb-3">
+        <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Client trades</p>
+        <h2 class="mt-1 text-lg font-medium">{{ client.firstName }} {{ client.lastName }}</h2>
+        <p class="text-muted-foreground truncate text-xs">{{ client.email }}</p>
+      </div>
+
+      <div class="space-y-1">
+        @for (order of visibleClientOrders(); track order.orderId) {
+          <div>
+            <button type="button" class="hover:bg-muted border-border flex w-full items-center justify-between border-b px-2 py-3 text-left"
+              [class.bg-muted]="selectedOrder()?.order.orderId === order.orderId" (click)="loadOrderDetails(order)">
+              <span class="min-w-0">
+                <span class="flex items-center gap-2 text-sm font-medium">
+                  {{ order.ticker }}
+                  <span hlmBadge [variant]="statusMeta(order.orderStatus).variant">{{ order.orderStatus }}</span>
+                </span>
+                <span class="text-muted-foreground block text-xs">{{ order.orderType }} {{ order.quantity | number:'1.0-4' }} at {{ effectivePrice(order) | currency }}</span>
+              </span>
+              <ng-icon name="lucideChevronRight" class="text-muted-foreground shrink-0" />
+            </button>
+
+            @if (selectedOrder()?.order.orderId === order.orderId) {
+              @if (selectedOrder(); as details) {
+                <div class="border-border bg-muted/40 border-b px-3 py-4">
+                  <div class="mb-3 flex items-center justify-between">
+                    <h3 class="font-medium">Order #{{ details.order.orderId }}</h3>
+                    <span hlmBadge [variant]="statusMeta(details.order.orderStatus).variant">{{ details.order.orderStatus }}</span>
+                  </div>
+                  <div class="text-muted-foreground mb-4 grid grid-cols-2 gap-2 text-xs">
+                    <span>Account #{{ details.account.accountId }}</span>
+                    <span class="text-right">{{ details.order.submittedAt | date:'MMM d, y HH:mm' }}</span>
+                  </div>
+                  <div class="space-y-0">
+                    @for (event of details.orderEvents; track event.eventId; let i = $index) {
+                      <div class="relative flex gap-2 pb-4">
+                        @if (!isLastEvent(i, details.orderEvents)) { <span class="bg-border absolute top-4 left-[0.35rem] h-full w-px"></span> }
+                        <span
+                          class="z-1 mt-1 size-2 shrink-0 rounded-full ring-4 ring-white"
+                          [class.bg-black]="event.toStatus === 'SUBMITTED'"
+                          [class.bg-primary]="event.toStatus !== 'REJECTED'"
+                          [class.bg-red-500]="event.toStatus === 'REJECTED'"
+                        ></span>
+                        <div class="min-w-0 text-xs">
+                          <b class="block">{{ event.toStatus }}</b>
+                          <span class="text-muted-foreground">{{ event.createdAt | date:'MMM d, y HH:mm:ss' }} · {{ event.createdByUsername || 'System' }}</span>
+                          @if (event.details) { <p class="mt-1 text-sm">{{ event.details }}</p> }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @else if (orderDetailsLoading()) {
+                <div class="border-border bg-muted/40 border-b px-3 py-4">
+                  <p class="text-muted-foreground text-sm">Loading lifecycle…</p>
+                </div>
+              }
+            }
+          </div>
+        } @empty {
+          <p class="text-muted-foreground py-6 text-center text-sm">{{ ordersLoading() ? 'Loading trades…' : 'No trades found.' }}</p>
+        }
+      </div>
+    } @else {
+      <div class="text-muted-foreground flex min-h-48 items-center justify-center text-center text-sm">Select a client name to inspect their trades.</div>
+    }
+  </aside>
 </div>

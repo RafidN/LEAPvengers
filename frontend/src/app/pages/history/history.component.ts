@@ -35,7 +35,7 @@ const STATUS_META: Record<OrderStatus, {
   ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
   FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
   FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
-  PENDING: { label: 'Pending', variant: 'secondary', icon: 'lucideClock' },
+  SUBMITTED: { label: 'Submitted', variant: 'secondary', icon: 'lucideClock' },
   REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
@@ -62,7 +62,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
+  protected readonly statuses: OrderStatus[] = ['SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');

@@ -95,9 +95,6 @@
                       <ng-icon [name]="statusMeta(o.orderStatus).icon" />
                       {{ statusMeta(o.orderStatus).label }}
                     </span>
-                    @if (o.rejectionReason) {
-                      <p class="text-muted-foreground mt-1 max-w-64 text-xs whitespace-normal">{{ o.rejectionReason }}</p>
-                    }
                   </td>
                 </tr>
 

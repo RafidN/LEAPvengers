@@ -22,6 +22,12 @@ public class Users {
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
     @Column(name = "password", nullable = false)
     private String password;
 
@@ -50,6 +56,12 @@ public class Users {
         this.isActive = true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public Users(Integer clientId, String username, String firstName, String lastName, String password) {
+        this(clientId, username, password);
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 
     public Users(Integer userId, Integer clientId, String username, String password, 
@@ -94,6 +106,22 @@ public class Users {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getPassword() {
