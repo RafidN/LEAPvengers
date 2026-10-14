@@ -110,7 +110,7 @@ FROM (VALUES
 JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id;
 
--- Orders. Filled orders move holdings through the orders_sync_holdings trigger.
+-- Orders. Holdings and cash balances are worked out from the filled ones further down.
 -- Joanna's history covers every instrument class and every current status, including a sell that
 -- was rejected because she tried to sell more SHEL than she holds.
 INSERT INTO orders (
@@ -180,6 +180,44 @@ JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id
 JOIN instruments i ON i.ticker = v.ticker
 CROSS JOIN LATERAL generate_series(v.fills, 1, -1) AS g;
+
+-- Order timelines, recorded the way the trading engine does it: on submit the trading rules either
+-- accept the order or reject it outright, then the system fills it or marks it failed.
+-- created_by is the trader for their own submission and NULL for system steps.
+INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
+SELECT o.order_id, u.user_id, NULL,
+       CASE WHEN o.order_status IN ('REJECTED', 'PENDING') THEN o.order_status ELSE 'ACCEPTED' END,
+       o.submitted_at,
+       CASE o.order_status
+           WHEN 'REJECTED' THEN o.rejection_reason
+           WHEN 'PENDING'  THEN 'Waiting to be executed'
+           ELSE 'Passed trading checks'
+       END
+FROM orders o
+JOIN accounts a ON a.account_id = o.account_id
+LEFT JOIN LATERAL (
+    SELECT user_id FROM users WHERE client_id = a.client_id ORDER BY user_id LIMIT 1
+) u ON true
+ORDER BY o.submitted_at;
+
+INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
+SELECT o.order_id, NULL, 'ACCEPTED', o.order_status,
+       COALESCE(o.executed_at, o.submitted_at + interval '2 seconds'),
+       CASE WHEN o.order_status = 'FILLED' THEN 'Filled at $' || to_char(o.execution_price, 'FM999,999,999,990.0099') ELSE o.rejection_reason END
+FROM orders o
+WHERE o.order_status IN ('FILLED', 'FAILED')
+ORDER BY o.submitted_at;
+
+-- Holdings = filled buys - filled sells per account and instrument, the same way OrderService
+-- moves them for live trades. Fully sold positions are left out, as OrderService removes them.
+INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
+SELECT o.account_id, o.instrument_id,
+       SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END),
+       MAX(o.executed_at)::date
+FROM orders o
+WHERE o.order_status = 'FILLED'
+GROUP BY o.account_id, o.instrument_id
+HAVING SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END) <> 0;
 
 -- Cash balance = deposits - withdrawals - filled buys + filled sells, so balances always agree
 -- with the history the seed just wrote.

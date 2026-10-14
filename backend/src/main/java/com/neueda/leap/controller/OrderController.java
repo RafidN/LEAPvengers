@@ -1,10 +1,12 @@
 package com.neueda.leap.controller;
 
+import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.exception.InvalidCredentialsException;
 import com.neueda.leap.exception.TickerNotFoundException;
+import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.model.dto.*;
 import com.neueda.leap.security.JwtUtil;
 import com.neueda.leap.service.OrderService;
@@ -12,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/order")
@@ -40,6 +44,13 @@ public class OrderController {
         } catch (TokenValidationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Unauthorized: " + e.getMessage());
+        } catch (TradingRuleException e) {
+            // The order broke a trading rule: say which one, with a code clients can match on
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("code", e.getCode(), "message", e.getMessage()));
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Forbidden: " + e.getMessage());
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Invalid input: " + e.getMessage());

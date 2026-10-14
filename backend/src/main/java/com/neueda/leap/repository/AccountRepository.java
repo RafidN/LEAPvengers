@@ -33,4 +33,6 @@ public interface AccountRepository extends JpaRepository<Accounts, Integer> {
             ORDER BY a.openedDate ASC, a.accountId ASC
             """)
     List<AccountResponse> findAccountResponsesByAccountId(Integer accountId);
+
+
 }

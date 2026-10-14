@@ -10,12 +10,16 @@ DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS clients CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
+-- Removed trigger function; dropping it keeps databases built from older versions of this file in step
+DROP FUNCTION IF EXISTS sync_holdings_on_order_fill() CASCADE;
 --Clients have basic personal information and a unique email address
 CREATE TABLE clients (
     client_id             SERIAL PRIMARY KEY,
     first_name            TEXT NOT NULL,
     last_name             TEXT NOT NULL,
-    email                 TEXT NOT NULL UNIQUE
+    email                 TEXT NOT NULL UNIQUE,
+    segment               TEXT NOT NULL DEFAULT 'Active'
+                              CHECK (segment IN ('Dormant', 'Core', 'Active', 'Premier'))
 );
 
 -- Instruments are the financial products that can be traded, such as stocks, bonds, funds, cash equivalents, FX pairs and crypto. This table will store their basic details.
@@ -82,7 +86,7 @@ CREATE TABLE orders (
     rejection_reason TEXT,
     execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
-    executed_at      TIMESTAMP -- set by application/business logic when the order is executed
+    executed_at      TIMESTAMP, -- set by application/business logic when the order is executed
 
     CONSTRAINT rejection_reason_required CHECK (
         ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL)

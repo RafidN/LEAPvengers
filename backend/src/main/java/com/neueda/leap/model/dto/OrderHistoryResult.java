@@ -17,6 +17,10 @@ public class OrderHistoryResult {
     private String orderStatus;  // PENDING, ACCEPTED, FILLED, REJECTED, FAILED
     private LocalDate orderDate;
     private LocalDateTime submittedAt;
+    private Integer accountId;
+    private String rejectionReason;  // set for REJECTED and FAILED orders
+    private BigDecimal executionPrice;  // set for FILLED orders
+    private LocalDateTime executedAt;
 
     public OrderHistoryResult() {
     }
@@ -32,6 +36,18 @@ public class OrderHistoryResult {
         this.orderStatus = orderStatus;
         this.orderDate = orderDate;
         this.submittedAt = submittedAt;
+    }
+
+    public OrderHistoryResult(Integer orderId, String ticker, String orderType,
+                             BigDecimal quantity, BigDecimal price, String orderStatus,
+                             LocalDate orderDate, LocalDateTime submittedAt,
+                             Integer accountId, String rejectionReason,
+                             BigDecimal executionPrice, LocalDateTime executedAt) {
+        this(orderId, ticker, orderType, quantity, price, orderStatus, orderDate, submittedAt);
+        this.accountId = accountId;
+        this.rejectionReason = rejectionReason;
+        this.executionPrice = executionPrice;
+        this.executedAt = executedAt;
     }
 
     // Getters and Setters
@@ -97,5 +113,37 @@ public class OrderHistoryResult {
 
     public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
+    }
+
+    public Integer getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(Integer accountId) {
+        this.accountId = accountId;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
+    public BigDecimal getExecutionPrice() {
+        return executionPrice;
+    }
+
+    public void setExecutionPrice(BigDecimal executionPrice) {
+        this.executionPrice = executionPrice;
+    }
+
+    public LocalDateTime getExecutedAt() {
+        return executedAt;
+    }
+
+    public void setExecutedAt(LocalDateTime executedAt) {
+        this.executedAt = executedAt;
     }
 }

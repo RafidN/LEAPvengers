@@ -27,7 +27,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -46,7 +50,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -70,7 +78,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -90,7 +102,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -110,7 +126,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -130,7 +150,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -150,7 +174,11 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.price,
             o.orderStatus,
             o.orderDate,
-            o.submittedAt
+            o.submittedAt,
+            o.accountId,
+            o.rejectionReason,
+            o.executionPrice,
+            o.executedAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -160,4 +188,16 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
         ORDER BY o.submittedAt DESC
     """)
     List<OrderHistoryResult> findOrdersToday(@Param("clientId") Integer clientId);
+
+    @Query("""
+        SELECT COUNT(o) > 0
+        FROM Orders o
+        JOIN o.account a
+        WHERE o.orderId = :orderId
+            AND a.clientId = :clientId
+    """)
+    boolean existsByOrderIdAndClientId(
+        @Param("orderId") Integer orderId,
+        @Param("clientId") Integer clientId
+    );
 }

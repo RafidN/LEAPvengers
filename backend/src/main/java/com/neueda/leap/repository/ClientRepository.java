@@ -1,14 +1,47 @@
 package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Clients;
+import com.neueda.leap.model.dto.AuditClientSummary;
 import com.neueda.leap.model.dto.ClientSegmentMetricsProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Clients, Integer> {
+
+	@Query("""
+		SELECT new com.neueda.leap.model.dto.AuditClientSummary(
+			c.clientId,
+			c.firstName,
+			c.lastName,
+			c.email,
+			c.segment
+		)
+		FROM Clients c
+		WHERE :query IS NULL
+			OR LOWER(c.firstName) LIKE CONCAT('%', :query, '%')
+			OR LOWER(c.lastName) LIKE CONCAT('%', :query, '%')
+			OR LOWER(CONCAT(c.firstName, ' ', c.lastName)) LIKE CONCAT('%', :query, '%')
+			OR LOWER(c.email) LIKE CONCAT('%', :query, '%')
+		ORDER BY c.lastName, c.firstName, c.clientId
+	""")
+	List<AuditClientSummary> searchAuditClients(@Param("query") String query);
+
+	@Query("""
+		SELECT new com.neueda.leap.model.dto.AuditClientSummary(
+			c.clientId,
+			c.firstName,
+			c.lastName,
+			c.email,
+			c.segment
+		)
+		FROM Clients c
+		WHERE c.clientId = :clientId
+	""")
+	Optional<AuditClientSummary> findAuditClientSummaryByClientId(@Param("clientId") Integer clientId);
 
 	@Query(value = """
 		WITH client_portfolio AS (
