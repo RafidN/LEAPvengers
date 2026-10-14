@@ -4,8 +4,6 @@ import com.neueda.leap.exception.ForbiddenException;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.exception.TokenValidationException;
 import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.exception.InvalidCredentialsException;
-import com.neueda.leap.exception.TickerNotFoundException;
 import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.model.dto.*;
 import com.neueda.leap.security.JwtUtil;
@@ -15,14 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 
 
-// Controller for placing order-related endpoints.
+// Controller for placing orders. Reading orders back is OrderQueryController (GET /orders).
 @RestController
-@RequestMapping("/order")
+@RequestMapping("/orders")
 public class OrderController {
-        @Autowired
         private final OrderService orderService;
         private final JwtUtil jwtUtil;
         private static final String BEARER_PREFIX = "Bearer ";
@@ -31,7 +27,7 @@ public class OrderController {
             this.orderService = orderService;
             this.jwtUtil = jwtUtil;
         }
-        @PostMapping("/placed")
+        @PostMapping
         public ResponseEntity<?> makeOrder(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody OrderRequest request) {
@@ -39,10 +35,10 @@ public class OrderController {
             // Extract userId from JWT token
             Integer userId = extractUserIdFromToken(authHeader);
 
-            // Search with parameterized query
-            List<OrderHistoryResult> placedOrder = orderService.placeOrder(userId, request);
+            // The order comes back ACCEPTED; after a short delay it is filled, or fails if the price moved
+            OrderHistoryResult order = orderService.placeOrder(userId, request);
 
-            return ResponseEntity.ok(placedOrder);
+            return ResponseEntity.ok(List.of(order));
 
         } catch (TokenValidationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -57,12 +53,6 @@ public class OrderController {
         } catch (InvalidInputException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Invalid input: " + e.getMessage());
-        } catch (InvalidCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid account: " + e.getMessage());
-        } catch (TickerNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Invalid ticker: " + e.getMessage());   
         } catch (UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("User not found");

@@ -66,7 +66,7 @@ public class Orders {
         this.quantity = quantity;
         this.price = price;
         this.orderDate = orderDate;
-        this.orderStatus = "PENDING";
+        this.orderStatus = "SUBMITTED";
         this.submittedAt = LocalDateTime.now();
     }
 

@@ -28,6 +28,10 @@ public class CashTransactions {
     @Column(name = "txn_date", nullable = false)
     private LocalDate txnDate;
 
+    // The filled order behind a BUY or SELL row; null for deposits and withdrawals
+    @Column(name = "order_id")
+    private Integer orderId;
+
     // Constructors
     public CashTransactions() {
     }
@@ -37,6 +41,11 @@ public class CashTransactions {
         this.txnType = txnType;
         this.amount = amount;
         this.txnDate = txnDate;
+    }
+
+    public CashTransactions(Integer accountId, String txnType, BigDecimal amount, LocalDate txnDate, Integer orderId) {
+        this(accountId, txnType, amount, txnDate);
+        this.orderId = orderId;
     }
 
     public CashTransactions(Integer cashTransactionId, Integer accountId, String txnType, 
@@ -95,5 +104,13 @@ public class CashTransactions {
 
     public void setTxnDate(LocalDate txnDate) {
         this.txnDate = txnDate;
+    }
+
+    public Integer getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(Integer orderId) {
+        this.orderId = orderId;
     }
 }

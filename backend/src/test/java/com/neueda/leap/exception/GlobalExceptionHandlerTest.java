@@ -67,6 +67,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void testTradingRuleFailureIs422WithItsCode() throws Exception {
+        mockMvc.perform(get("/broke-rule"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("INSUFFICIENT_CASH"))
+            .andExpect(jsonPath("$.message").value("Not enough cash"));
+    }
+
+    @Test
     void testUnexpectedErrorIs500() throws Exception {
         mockMvc.perform(get("/boom"))
             .andExpect(status().isInternalServerError());
@@ -88,6 +96,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/search")
         String search(@RequestParam("q") String q) {
             return q;
+        }
+
+        @GetMapping("/broke-rule")
+        String brokeRule() {
+            throw new TradingRuleException("INSUFFICIENT_CASH", "Not enough cash");
         }
 
         @GetMapping("/boom")

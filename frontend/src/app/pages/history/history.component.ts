@@ -35,8 +35,16 @@ const STATUS_META: Record<OrderStatus, {
   ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
   FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
   FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
-  PENDING: { label: 'Pending', variant: 'secondary', icon: 'lucideClock' },
+  SUBMITTED: { label: 'Submitted', variant: 'secondary', icon: 'lucideClock' },
   REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
+};
+
+/** Label per cash transaction type, and whether it brings money into the account. */
+const CASH_META: Record<string, { label: string; incoming: boolean }> = {
+  DEPOSIT: { label: 'Deposit', incoming: true },
+  WITHDRAWAL: { label: 'Withdrawal', incoming: false },
+  BUY: { label: 'Buy', incoming: false },
+  SELL: { label: 'Sell', incoming: true }
 };
 
 /** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
@@ -62,7 +70,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['PENDING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
+  protected readonly statuses: OrderStatus[] = ['SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');
@@ -90,6 +98,10 @@ export class HistoryComponent {
 
   protected countFor(status: OrderStatus): number {
     return this.orders().filter(o => o.orderStatus === status).length;
+  }
+
+  protected cashMeta(type: string) {
+    return CASH_META[type] ?? { label: type, incoming: false };
   }
 
   protected statusMeta(status: string | undefined) {

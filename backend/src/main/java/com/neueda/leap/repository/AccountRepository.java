@@ -2,7 +2,9 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Accounts;
 import com.neueda.leap.model.dto.AccountResponse;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -10,6 +12,11 @@ import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Accounts, Integer> {
     boolean existsByAccountIdAndClientId(Integer accountId, Integer clientId);
+
+    /** Loads an account and locks its row until the transaction ends, so fills on one account run one at a time. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Accounts a WHERE a.accountId = :accountId")
+    Optional<Accounts> findByIdForUpdate(Integer accountId);
 
     @Query("""
             SELECT new com.neueda.leap.model.dto.AccountResponse(

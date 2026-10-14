@@ -186,11 +186,11 @@
                 <tr hlmTableRow>
                   <td hlmTableCell class="text-muted-foreground tabular-nums">{{ t.transactionDate | date: 'MMM d, y' }}</td>
                   <td hlmTableCell>
-                    <span hlmBadge variant="outline">{{ t.transactionType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal' }}</span>
+                    <span hlmBadge variant="outline">{{ cashMeta(t.transactionType).label }}</span>
                   </td>
                   <td hlmTableCell class="text-right font-medium tabular-nums"
-                    [style.color]="t.transactionType === 'DEPOSIT' ? 'var(--profit)' : 'var(--loss)'">
-                    {{ t.transactionType === 'DEPOSIT' ? '+' : '−' }}{{ t.amount | currency }}
+                    [style.color]="cashMeta(t.transactionType).incoming ? 'var(--profit)' : 'var(--loss)'">
+                    {{ cashMeta(t.transactionType).incoming ? '+' : '−' }}{{ t.amount | currency }}
                   </td>
                 </tr>
               } @empty {

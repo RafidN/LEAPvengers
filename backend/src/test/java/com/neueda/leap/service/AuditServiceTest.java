@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +40,9 @@ public class AuditServiceTest {
 
         @Mock
         private AccountRepository accountRepository;
+
+        @Mock
+        private ClientSegmentService clientSegmentService;
 
     @InjectMocks
     private AuditService auditService;
@@ -113,10 +117,13 @@ public class AuditServiceTest {
                 when(auditRepository.findAuditOrders(eq(7), eq(null), eq(null), eq(null), eq(null), eq(null), any()))
                                 .thenReturn(new PageImpl<>(List.of(recentOrder), PageRequest.of(0, 10), 1));
 
+                // The stored segment says Premier, but the client is Core under the current rules
+                when(clientSegmentService.getCurrentSegments()).thenReturn(Map.of(7, "Core"));
+
                 AuditClientDetailsResponse response = auditService.getClientDetails(7);
 
                 assertEquals(7, response.getClientId());
-                assertEquals("Premier", response.getSegment());
+                assertEquals("Core", response.getSegment());
                 assertEquals(accounts, response.getAccounts());
                 assertEquals(1, response.getRecentOrders().size());
                 assertEquals("AAPL", response.getRecentOrders().get(0).getTicker());
@@ -130,12 +137,34 @@ public class AuditServiceTest {
         }
 
         @Test
+        public void searchClientsShowsEachClientsCurrentSegment() {
+                when(clientRepository.searchAuditClients("ada")).thenReturn(List.of(
+                                new AuditClientSummary(7, "Ada", "Lovelace", "ada@example.com", "Active"),
+                                new AuditClientSummary(8, "Adam", "Smith", "adam@example.com", "Active")));
+                when(clientSegmentService.getCurrentSegments()).thenReturn(Map.of(7, "Premier", 8, "Dormant"));
+
+                List<AuditClientSummary> results = auditService.searchClients("Ada");
+
+                assertEquals("Premier", results.get(0).getSegment());
+                assertEquals("Dormant", results.get(1).getSegment());
+        }
+
+        @Test
         public void searchClientsNormalizesBlankQuery() {
-                when(clientRepository.searchAuditClients(null)).thenReturn(List.of());
+                when(clientRepository.searchAuditClients("")).thenReturn(List.of());
 
                 List<AuditClientSummary> results = auditService.searchClients("   ");
 
                 assertTrue(results.isEmpty());
-                verify(clientRepository).searchAuditClients(null);
+                verify(clientRepository).searchAuditClients("");
+        }
+
+        @Test
+        public void searchClientsWithNoQueryMatchesEveryone() {
+                when(clientRepository.searchAuditClients("")).thenReturn(List.of());
+
+                auditService.searchClients(null);
+
+                verify(clientRepository).searchAuditClients("");
         }
 }
