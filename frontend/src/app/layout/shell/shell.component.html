@@ -18,9 +18,11 @@
         <span class="hidden items-center gap-2 text-sm md:flex">
           <b> {{ firstName }}</b>
         </span>
-        <span *ngIf="role === 'OPS' || role === 'ANALYST'" hlmBadge variant="secondary">
+        @if (role === 'OPS' || role === 'ANALYST') {
+          <span hlmBadge variant="secondary">
             {{ roleLabel }}
           </span>
+        }
       }
       <button hlmBtn variant="outline" (click)="signOut()">
         <ng-icon name="lucideLogOut" />

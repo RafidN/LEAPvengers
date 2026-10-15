@@ -26,7 +26,7 @@ type StatusMeta = {
     CurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
   ],
-  providers: [provideIcons({ lucideChevronRight, lucideCircleCheck, lucideCircleX, lucideClock, lucideSearch })]
+  providers: [provideIcons({ lucideChevronRight, lucideCircleCheck, lucideCircleX, lucideClock, lucideSearch })],
 })
 export class ClientsComponent {
   protected readonly segments: ClientSegment[] = ['Premier', 'Active', 'Core', 'Dormant'];
@@ -40,13 +40,18 @@ export class ClientsComponent {
   protected readonly selectedClient = signal<ClientSegmentResult | null>(null);
   protected readonly clientOrders = signal<AuditOrder[]>([]);
   protected readonly selectedOrder = signal<AuditOrderDetails | null>(null);
-  protected readonly statusFilter = signal<string | null>(null);
+  protected readonly orderIdQuery = signal('');
+  protected readonly statusFilters = signal<string[]>([]);
+  protected readonly statusMenuOpen = signal(false);
   protected readonly ordersLoading = signal(false);
   protected readonly orderDetailsLoading = signal(false);
 
   protected readonly visibleClientOrders = computed(() => {
-    const status = this.statusFilter();
-    return status ? this.clientOrders().filter(order => order.orderStatus === status) : this.clientOrders();
+    const statuses = this.statusFilters();
+    const orderIdQuery = this.orderIdQuery().trim();
+    return statuses.length > 0
+      ? this.clientOrders().filter(order => statuses.includes(order.orderStatus) && (!orderIdQuery || `${order.orderId}`.includes(orderIdQuery)))
+      : this.clientOrders().filter(order => !orderIdQuery || `${order.orderId}`.includes(orderIdQuery));
   });
 
   protected readonly visibleClients = computed(() => {
@@ -78,7 +83,8 @@ export class ClientsComponent {
     this.loadOrders = (client: ClientSegmentResult) => {
       this.selectedClient.set(client);
       this.selectedOrder.set(null);
-      this.statusFilter.set(null);
+      this.orderIdQuery.set('');
+      this.statusFilters.set([]);
       this.ordersLoading.set(true);
       auditService.getOrders(client.clientId).subscribe({
         next: orders => {
@@ -128,6 +134,47 @@ export class ClientsComponent {
 
   protected countForStatus(status: string): number {
     return this.clientOrders().filter(order => order.orderStatus === status).length;
+  }
+
+  protected isStatusSelected(status: string): boolean {
+    return this.statusFilters().includes(status);
+  }
+
+  protected toggleStatus(status: string): void {
+    const current = this.statusFilters();
+    this.statusFilters.set(
+      current.includes(status)
+        ? current.filter(value => value !== status)
+        : [...current, status]
+    );
+  }
+
+  protected clearStatuses(): void {
+    this.statusFilters.set([]);
+  }
+
+  protected selectDisputes(): void {
+    this.statusFilters.set(['FAILED']);
+    this.statusMenuOpen.set(false);
+  }
+
+  protected isDisputesSelected(): boolean {
+    const statuses = this.statusFilters();
+    return statuses.includes('FAILED');
+  }
+
+  protected statusToneClass(status: string): string {
+    if (!this.isStatusSelected(status)) {
+      return 'border-border text-foreground';
+    }
+
+    if (status === 'REJECTED') {
+      return '!border-red-500 !text-red-600 hover:!bg-red-50';
+    }
+    if (status === 'ACCEPTED' || status === 'FAILED') {
+      return '!border-black !text-black hover:!bg-black/5';
+    }
+    return '';
   }
 
   protected isLastEvent(index: number, events: AuditOrderEvent[]): boolean {

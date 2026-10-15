@@ -2,7 +2,7 @@
   <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Operations</p>
   <h1 class="text-3xl font-medium tracking-tight">Client Lookup</h1>
   <p class="text-muted-foreground mt-1 text-sm">
-    Segments are calculated from each client's portfolio value and filled orders in the last 90 days.
+    Each client's portfolio value and filled orders in the last 90 days is listed along with the lifecycle of each order.
   </p>
 </div>
 
@@ -18,20 +18,9 @@
     <input hlmInput class="h-8 w-full pl-8" placeholder="Search name or email" aria-label="Search clients"
       [ngModel]="query()" (ngModelChange)="query.set($event)" />
   </div>
-  <div class="ml-auto flex flex-wrap gap-2">
-    <button hlmBtn size="sm" [variant]="statusFilter() === null ? 'default' : 'outline'" (click)="statusFilter.set(null)">
-      All <span class="opacity-70">{{ clientOrders().length }}</span>
-    </button>
-    @for (status of statuses; track status) {
-      <button hlmBtn size="sm" [variant]="statusFilter() === status ? 'default' : 'outline'" (click)="statusFilter.set(status)">
-        <ng-icon [name]="statusMeta(status).icon" />
-        {{ statusMeta(status).label }} <span class="opacity-70">{{ countForStatus(status) }}</span>
-      </button>
-    }
-  </div>
 </div>
 
-<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
   <div hlmCard>
     <div hlmCardContent>
       <div hlmTableContainer>
@@ -39,7 +28,6 @@
           <thead hlmTableHeader>
             <tr hlmTableRow>
               <th hlmTableHead>Client</th>
-              <th hlmTableHead>Email</th>
               <th hlmTableHead>Segment</th>
               <th hlmTableHead class="text-right">Portfolio value</th>
               <th hlmTableHead class="text-right">Filled orders (90 days)</th>
@@ -53,7 +41,6 @@
                     {{ c.firstName }} {{ c.lastName }}
                   </button>
                 </td>
-                <td hlmTableCell class="text-muted-foreground">{{ c.email }}</td>
                 <td hlmTableCell>
                   <span hlmBadge [variant]="c.segment === 'Premier' ? 'default' : c.segment === 'Dormant' ? 'outline' : 'secondary'">
                     {{ c.segment }}
@@ -75,12 +62,81 @@
     </div>
   </div>
 
-  <aside class="border-border bg-card min-w-0 border p-4 shadow-sm">
+  <aside class="border-border bg-card min-w-0 border p-4 shadow-sm max-h-[calc(100vh-11rem)] overflow-y-auto">
     @if (selectedClient(); as client) {
       <div class="mb-4 border-b pb-3">
-        <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Client trades</p>
-        <h2 class="mt-1 text-lg font-medium">{{ client.firstName }} {{ client.lastName }}</h2>
-        <p class="text-muted-foreground truncate text-xs">{{ client.email }}</p>
+        <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Selected Client trades</p>
+        <div class="mt-1 grid items-end gap-3">
+          <div class="min-w-0">
+            <h2 class="text-lg font-medium">{{ client.firstName }} {{ client.lastName }}</h2>
+            <p class="text-muted-foreground truncate text-xs">{{ client.email }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative mx-auto flex justify-center items-center mb-3 w-full max-w-56">
+        <ng-icon name="lucideSearch" class="text-muted-foreground absolute top-1/2 left-2.5 -translate-y-1/2" />
+        <input hlmInput class="h-8 w-full pl-8" placeholder="Order ID" aria-label="Order ID"
+          [ngModel]="orderIdQuery()" (ngModelChange)="orderIdQuery.set($event)" />
+      </div>
+
+      <div class="relative mx-auto flex w-fit flex-wrap items-center justify-center gap-2 mb-4">
+        <button
+          hlmBtn
+          size="sm"
+          variant="outline"
+          class="min-w-24"
+          [class.border-red-500]="isDisputesSelected()"
+          [class.text-red-600]="isDisputesSelected()"
+          [class.bg-red-50]="isDisputesSelected()"
+          (click)="selectDisputes()">
+          Disputes
+        </button>
+
+        <button hlmBtn size="sm" variant="outline" class="min-w-30 justify-between gap-3" (click)="statusMenuOpen.set(!statusMenuOpen())">
+          <span class="flex items-center justify-center mx-auto gap-2">
+            @if (statusFilters().length > 0) {
+              {{ statusFilters().length }} selected
+            } @else {
+              Order Status
+            }
+          </span>
+          <ng-icon name="lucideChevronRight" class="rotate-90 transition-transform" />
+        </button>
+
+        @if (statusMenuOpen()) {
+          <div class="border-border bg-card absolute top-full right-0 z-20 mt-2 w-56 overflow-hidden rounded-md border shadow-lg">
+            <button type="button" class="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+              (click)="clearStatuses()">
+              <span class="inline-flex size-6 items-center justify-center rounded-full border border-dashed border-muted-foreground/40">
+                <ng-icon name="lucideClock" class="text-muted-foreground" />
+              </span>
+              All statuses
+            </button>
+            @for (status of statuses; track status) {
+              <button type="button"
+                class="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                (click)="toggleStatus(status)">
+                <span class="inline-flex size-6 items-center justify-center rounded-full border border-current/30"
+                  [class.text-red-600]="isStatusSelected(status) && status === 'REJECTED'"
+                  [class.text-green-600]="isStatusSelected(status) && status === 'FILLED'"
+                  [class.text-black]="isStatusSelected(status) && (status === 'ACCEPTED' || status === 'FAILED')"
+                  [class.text-muted-foreground]="!isStatusSelected(status)">
+                  <ng-icon [name]="statusMeta(status).icon" />
+                </span>
+                <span class="flex-1">{{ statusMeta(status).label }}</span>
+                <span class="text-muted-foreground text-xs">{{ countForStatus(status) }}</span>
+                @if (isStatusSelected(status)) {
+                  <span class="ml-2 size-2 shrink-0 rounded-full"
+                    [class.bg-red-500]="status === 'REJECTED'"
+                    [class.bg-green-500]="status === 'FILLED'"
+                    [class.bg-black]="status === 'ACCEPTED' || status === 'FAILED'"
+                    [class.bg-muted-foreground]="status !== 'REJECTED' && status !== 'FILLED' && status !== 'ACCEPTED' && status !== 'FAILED'"></span>
+                }
+              </button>
+            }
+          </div>
+        }
       </div>
 
       <div class="space-y-1">
@@ -117,7 +173,7 @@
                           class="z-1 mt-1 size-2 shrink-0 rounded-full ring-4 ring-white"
                           [class.bg-black]="event.toStatus === 'SUBMITTED'"
                           [class.bg-primary]="event.toStatus !== 'REJECTED'"
-                          [class.bg-red-500]="event.toStatus === 'REJECTED'"
+                          [class.bg-red-500]="event.toStatus === 'REJECTED' || event.toStatus === 'FAILED'"
                         ></span>
                         <div class="min-w-0 text-xs">
                           <b class="block">{{ event.toStatus }}</b>
