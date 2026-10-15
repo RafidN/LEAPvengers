@@ -57,9 +57,10 @@ const INSTRUMENTS: InstrumentInsightsResult[] = [
 ];
 
 describe('InsightsComponent', () => {
+    // The component loads through toObservable, which emits from an effect, and effects only run
+    // during change detection. whenStable waits for the change detection a signal change schedules.
     const flush = async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+      await fixture.whenStable();
     };
 
   let fixture: ComponentFixture<InsightsComponent>;

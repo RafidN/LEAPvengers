@@ -29,7 +29,7 @@ export interface OrderHistoryResult {
 
 export interface CashTransactionResult {
   cashTransactionId: number;
-  transactionType: string;  // DEPOSIT or WITHDRAWAL
+  transactionType: string;  // DEPOSIT, WITHDRAWAL, or BUY / SELL for a filled order
   amount: number;
   transactionDate: string;
   runningBalance?: number;

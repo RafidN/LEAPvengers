@@ -181,9 +181,9 @@ JOIN accounts a ON a.client_id = c.client_id
 JOIN instruments i ON i.ticker = v.ticker
 CROSS JOIN LATERAL generate_series(v.fills, 1, -1) AS g;
 
--- Order timelines, recorded the way the trading engine does it: on submit the trading rules either
--- accept the order or reject it outright, then the system fills it or marks it failed.
--- created_by is the trader for their own submission and NULL for system steps.
+-- Order timelines, recorded the way the trading engine does it: an order is submitted, the trading
+-- rules accept it or reject it straight away, then after a short delay the system fills it or marks
+-- it failed. created_by is the trader for their own steps and NULL for system steps.
 INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
 SELECT o.order_id, u.user_id, NULL,
     CASE WHEN o.order_status IN ('REJECTED', 'SUBMITTED') THEN o.order_status ELSE 'ACCEPTED' END,
@@ -198,7 +198,13 @@ JOIN accounts a ON a.account_id = o.account_id
 LEFT JOIN LATERAL (
     SELECT user_id FROM users WHERE client_id = a.client_id ORDER BY user_id LIMIT 1
 ) u ON true
-ORDER BY o.submitted_at;
+CROSS JOIN LATERAL (VALUES
+    (1, NULL, 'SUBMITTED', 'Order submitted'),
+    (2, 'SUBMITTED', CASE WHEN o.order_status = 'REJECTED' THEN 'REJECTED' ELSE 'ACCEPTED' END,
+        COALESCE(CASE WHEN o.order_status = 'REJECTED' THEN o.rejection_reason END, 'Passed trading checks'))
+) AS step(n, from_status, to_status, details)
+WHERE step.n = 1 OR o.order_status <> 'SUBMITTED'
+ORDER BY o.submitted_at, step.n;
 
 INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
 SELECT o.order_id, NULL, 'ACCEPTED', o.order_status,
@@ -208,8 +214,8 @@ FROM orders o
 WHERE o.order_status IN ('FILLED', 'FAILED')
 ORDER BY o.submitted_at;
 
--- Holdings = filled buys - filled sells per account and instrument, the same way OrderService
--- moves them for live trades. Fully sold positions are left out, as OrderService removes them.
+-- Holdings = filled buys - filled sells per account and instrument, the same way OrderExecutionService
+-- moves them for live trades. Fully sold positions are left out, as OrderExecutionService removes them.
 INSERT INTO holdings (account_id, instrument_id, quantity, as_of_date)
 SELECT o.account_id, o.instrument_id,
        SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END),
@@ -224,7 +230,8 @@ HAVING SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity ELSE -o.quantity END) 
 UPDATE accounts a
 SET balance =
     COALESCE((SELECT SUM(CASE WHEN ct.txn_type = 'DEPOSIT' THEN ct.amount ELSE -ct.amount END)
-              FROM cash_transactions ct WHERE ct.account_id = a.account_id), 0)
+              FROM cash_transactions ct
+              WHERE ct.account_id = a.account_id AND ct.txn_type IN ('DEPOSIT', 'WITHDRAWAL')), 0)
   - COALESCE((SELECT SUM(CASE WHEN o.order_type = 'BUY' THEN o.quantity * o.price ELSE -o.quantity * o.price END)
               FROM orders o WHERE o.account_id = a.account_id AND o.order_status = 'FILLED'), 0);
 

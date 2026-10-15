@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class RoleAccessTest {
 
     @Autowired
@@ -52,7 +55,7 @@ class RoleAccessTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(get("/orders").header("Authorization", token))
                     .andExpect(status().isForbidden());
-            mockMvc.perform(post("/order/placed").header("Authorization", token)
+            mockMvc.perform(post("/orders").header("Authorization", token)
                             .contentType("application/json").content("{}"))
                     .andExpect(status().isForbidden());
         }
@@ -62,6 +65,13 @@ class RoleAccessTest {
     void analystIsForbiddenFromAudit() throws Exception {
         mockMvc.perform(get("/internal/audit/orders").header("Authorization", bearer("ANALYST", null)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void opsMayReadReports() throws Exception {
+        // Only the role check is tested here: whatever the endpoint answers, it is not a 403
+        mockMvc.perform(get("/internal/reports/activity").header("Authorization", bearer("OPS", null)))
+                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
     @Test

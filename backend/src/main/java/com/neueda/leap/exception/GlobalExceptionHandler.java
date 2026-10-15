@@ -50,6 +50,14 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
     }
 
+    /** An order that broke a trading rule: 422 with a code clients can match on, e.g. INSUFFICIENT_CASH. */
+    @ExceptionHandler(TradingRuleException.class)
+    public ResponseEntity<Map<String, Object>> handleTradingRule(TradingRuleException ex) {
+        ResponseEntity<Map<String, Object>> response = buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), ex);
+        response.getBody().put("code", ex.getCode());
+        return response;
+    }
+
     /** A path variable or parameter of the wrong type (e.g. /orders/abc/events), or an unreadable JSON body. */
     @ExceptionHandler({TypeMismatchException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<Map<String, Object>> handleMalformedRequest(Exception ex) {

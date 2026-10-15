@@ -5,11 +5,11 @@ import java.time.LocalDate;
 
 /**
  * Response DTO for cash transaction history by time period
- * Represents a single deposit or withdrawal
+ * Represents a single cash movement: a deposit, a withdrawal, or the cash side of a filled order
  */
 public class CashTransactionResult {
     private Integer cashTransactionId;
-    private String transactionType;  // DEPOSIT or WITHDRAWAL
+    private String transactionType;  // DEPOSIT, WITHDRAWAL, or BUY / SELL for a filled order
     private BigDecimal amount;
     private LocalDate transactionDate;
     private Double runningBalance;  // Optional: balance after transaction

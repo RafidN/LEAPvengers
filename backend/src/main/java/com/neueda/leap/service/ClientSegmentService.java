@@ -59,6 +59,20 @@ public class ClientSegmentService {
                 .toList();
     }
 
+    /**
+     * Each client's segment under the default rules, the same view the Clients page opens with,
+     * keyed by client id. Computed fresh, so it never depends on the stored copy being up to date.
+     */
+    @Transactional(readOnly = true)
+    public Map<Integer, String> getCurrentSegments() {
+        ClientSegmentRules.SegmentCriteria criteria = clientSegmentRules.resolve(new ClientSegmentQueryRequest());
+        Map<Integer, String> segments = new HashMap<>();
+        for (ClientSegmentMetricsProjection row : clientRepository.findClientSegmentMetrics(criteria.lookbackDays())) {
+            segments.put(row.getClientId(), toResult(row, criteria).getSegment());
+        }
+        return segments;
+    }
+
     private void updateStoredSegments(List<ClientSegmentResult> results) {
         if (results.isEmpty()) {
             return;

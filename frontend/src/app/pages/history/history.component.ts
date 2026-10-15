@@ -39,6 +39,14 @@ const STATUS_META: Record<OrderStatus, {
   REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
+/** Label per cash transaction type, and whether it brings money into the account. */
+const CASH_META: Record<string, { label: string; incoming: boolean }> = {
+  DEPOSIT: { label: 'Deposit', incoming: true },
+  WITHDRAWAL: { label: 'Withdrawal', incoming: false },
+  BUY: { label: 'Buy', incoming: false },
+  SELL: { label: 'Sell', incoming: true }
+};
+
 /** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
 @Component({
   selector: 'app-history',
@@ -90,6 +98,10 @@ export class HistoryComponent {
 
   protected countFor(status: OrderStatus): number {
     return this.orders().filter(o => o.orderStatus === status).length;
+  }
+
+  protected cashMeta(type: string) {
+    return CASH_META[type] ?? { label: type, incoming: false };
   }
 
   protected statusMeta(status: string | undefined) {

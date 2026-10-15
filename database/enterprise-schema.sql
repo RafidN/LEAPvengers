@@ -136,16 +136,19 @@ CREATE UNIQUE INDEX orders_dedup_idx ON orders (
     account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
 );
 
--- Holdings are not moved by a trigger: OrderService updates them in Java, in the same
--- transaction as the cash and the order, so every fill is applied exactly once.
+-- Holdings and cash are not moved by a trigger: OrderExecutionService updates them in Java, in the
+-- same transaction as the order, so every fill is applied exactly once.
 
--- This table records all cash transactions for each account, including deposits and withdrawals. It helps track the cash flow and balance of each account.
+-- This table records all cash movements for each account: deposits, withdrawals, and the cash paid for a
+-- filled buy or received for a filled sell. It helps track the cash flow and balance of each account.
 CREATE TABLE cash_transactions (
     cash_transaction_id  SERIAL PRIMARY KEY,
     account_id           INTEGER NOT NULL REFERENCES accounts(account_id),
-    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL')),
+    txn_type             TEXT NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL')),
     amount               NUMERIC(14,4) NOT NULL,
-    txn_date             DATE NOT NULL
+    txn_date             DATE NOT NULL,
+    order_id             INTEGER REFERENCES orders(order_id), -- the filled order, for BUY and SELL rows
+    CHECK ((txn_type IN ('BUY', 'SELL')) = (order_id IS NOT NULL))
 );
 -- Index to quickly look up cash transactions by account_id for faster queries on account cash flow
 CREATE INDEX cash_transactions_account_id_idx ON cash_transactions (account_id);

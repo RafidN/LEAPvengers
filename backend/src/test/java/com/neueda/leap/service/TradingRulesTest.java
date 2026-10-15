@@ -91,9 +91,37 @@ class TradingRulesTest {
     }
 
     @Test
+    void anyPricePassesTheExistsCheckHoweverOld() {
+        assertDoesNotThrow(() -> rules.checkPriceExists(quote("100", NOW.minusDays(30))));
+    }
+
+    @Test
+    void missingPriceFailsTheExistsCheck() {
+        assertFailsWith(TradingRules.NO_PRICE, () -> rules.checkPriceExists(null));
+    }
+
+    @Test
     void stalePriceFails() {
         assertFailsWith(TradingRules.STALE_PRICE,
                 () -> rules.checkPriceIsRecent(quote("100", NOW.minusMinutes(5).minusSeconds(1))));
+    }
+
+    // Price unchanged since the order was submitted
+
+    @Test
+    void samePriceAtConfirmationPasses() {
+        assertDoesNotThrow(() -> rules.checkPriceUnchanged(new BigDecimal("100.00"), quote("100", NOW)));
+    }
+
+    @Test
+    void movedPriceAtConfirmationFails() {
+        assertFailsWith(TradingRules.PRICE_CHANGED,
+                () -> rules.checkPriceUnchanged(new BigDecimal("100"), quote("100.01", NOW)));
+    }
+
+    @Test
+    void missingPriceAtConfirmationFails() {
+        assertFailsWith(TradingRules.NO_PRICE, () -> rules.checkPriceUnchanged(new BigDecimal("100"), null));
     }
 
     // Enough cash for a buy

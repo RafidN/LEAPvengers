@@ -13,6 +13,7 @@ import com.neueda.leap.security.JwtAuthenticationFilter;
 import com.neueda.leap.security.JwtAuthenticationEntryPoint;
 import com.neueda.leap.security.JwtUtil;
 import com.neueda.leap.service.AuditService;
+import com.neueda.leap.service.ClientSegmentService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +67,8 @@ class AuditControllerSecurityTest {
 
                 @Bean
                 AuditService auditService() {
-                        return new AuditService(auditRepository(), clientRepository(), accountRepository(), orderEventsRepository()) {
+                        return new AuditService(auditRepository(), clientRepository(), accountRepository(), orderEventsRepository(),
+                                        Mockito.mock(ClientSegmentService.class)) {
                                 @Override
                                 public List<AuditClientSummary> searchClients(String query) {
                                         return List.of(new AuditClientSummary(7, "Ada", "Lovelace", "ada@example.com", "Premier"));
