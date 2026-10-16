@@ -32,6 +32,7 @@ export interface CashTransactionResult {
   transactionType: string;  // DEPOSIT, WITHDRAWAL, or BUY / SELL for a filled order
   amount: number;
   transactionDate: string;
+  transactionTime?: string; // when the cash moved
   runningBalance?: number;
 }
 

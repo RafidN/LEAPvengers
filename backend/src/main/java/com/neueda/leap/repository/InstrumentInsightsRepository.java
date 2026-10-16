@@ -19,15 +19,13 @@ public interface InstrumentInsightsRepository extends JpaRepository<Holdings, In
             LEFT JOIN account_valuations av ON av.account_id = a.account_id
             GROUP BY a.client_id
         ),
+        -- Trading history comes from the reporting store, not the live orders table (BR-16)
         client_orders AS (
-            SELECT a.client_id,
-                   COUNT(o.order_id) AS recent_filled_order_count
-            FROM accounts a
-            LEFT JOIN orders o
-                ON o.account_id = a.account_id
-                AND o.order_status = 'FILLED'
-                AND o.submitted_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
-            GROUP BY a.client_id
+            SELECT t.client_id,
+                   COUNT(*) AS recent_filled_order_count
+            FROM reporting.trade_activity t
+            WHERE t.executed_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
+            GROUP BY t.client_id
         ),
         classified_clients AS (
             SELECT c.client_id,
@@ -58,17 +56,15 @@ public interface InstrumentInsightsRepository extends JpaRepository<Holdings, In
             GROUP BY h.instrument_id
         ),
         instrument_activity AS (
-            SELECT o.instrument_id,
-                   COUNT(o.order_id) AS recent_filled_order_count,
-                   SUM(CASE WHEN o.order_type = 'BUY' THEN 1 ELSE 0 END) AS buy_count,
-                   SUM(CASE WHEN o.order_type = 'SELL' THEN 1 ELSE 0 END) AS sell_count,
-                   COUNT(DISTINCT a.client_id) AS traded_client_count
+            SELECT t.instrument_id,
+                   COUNT(*) AS recent_filled_order_count,
+                   SUM(CASE WHEN t.side = 'BUY' THEN 1 ELSE 0 END) AS buy_count,
+                   SUM(CASE WHEN t.side = 'SELL' THEN 1 ELSE 0 END) AS sell_count,
+                   COUNT(DISTINCT t.client_id) AS traded_client_count
             FROM filtered_clients fc
-            JOIN accounts a ON a.client_id = fc.client_id
-            JOIN orders o ON o.account_id = a.account_id
-            WHERE o.order_status = 'FILLED'
-              AND o.submitted_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
-            GROUP BY o.instrument_id
+            JOIN reporting.trade_activity t ON t.client_id = fc.client_id
+            WHERE t.executed_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
+            GROUP BY t.instrument_id
         )
         SELECT i.ticker AS "ticker",
                i.instrument_name AS "instrumentName",

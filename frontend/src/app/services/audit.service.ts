@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
 import { expand, map, reduce } from 'rxjs/operators';
+import { Dispute } from './order.service';
 
 export interface AuditClient {
   clientId: number;
@@ -43,6 +44,19 @@ export interface AuditOrderEvent {
   toStatus: string;
   createdAt: string;
   details?: string | null;
+  // The quote this step was priced against (BR-15), when it involved a price
+  quotePrice?: number | null;
+  quoteTime?: string | null;
+  quoteSource?: 'YAHOO_LIVE' | 'YAHOO_HISTORY' | 'SIMULATED' | null;
+}
+
+/** The cash a filled order moved: what it settled as. */
+export interface AuditSettlement {
+  cashTransactionId: number;
+  transactionType: string;   // BUY (cash out) or SELL (cash in)
+  amount: number;
+  transactionDate: string;
+  transactionTime?: string;
 }
 
 export interface AuditOrderDetails {
@@ -50,6 +64,8 @@ export interface AuditOrderDetails {
   client: AuditClient;
   account: AuditAccount;
   orderEvents: AuditOrderEvent[];
+  settlement?: AuditSettlement | null;
+  disputes?: Dispute[];
 }
 
 export interface AuditOrderPage {
@@ -87,6 +103,17 @@ export class AuditService {
       }),
       reduce((orders, page) => orders.concat(page.content), [] as AuditOrder[])
     );
+  }
+
+  /** Clients' disputes, newest first: all of them, or only OPEN or RESOLVED ones. */
+  getDisputes(status?: 'OPEN' | 'RESOLVED'): Observable<Dispute[]> {
+    const params: Record<string, string> = status ? { status } : {};
+    return this.http.get<Dispute[]>('/api/internal/audit/disputes', { params });
+  }
+
+  /** Closes a dispute with an answer the client sees on their History page. */
+  resolveDispute(disputeId: number, resolution: string): Observable<Dispute> {
+    return this.http.post<Dispute>(`/api/internal/audit/disputes/${disputeId}/resolve`, { resolution });
   }
 
   getOrderDetails(orderId: number): Observable<AuditOrderDetails> {

@@ -1,0 +1,298 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  LEAPvengers trading platform - the containers (redeployed on every release with a new ImageTag): backend API,
+  frontend and the live price feed on ECS Fargate, plus a task for one-off database jobs. Needs infra.yml first.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: leapvengers
+    Description: The ProjectName the infrastructure stack was created with
+  ImageTag:
+    Type: String
+    Description: Tag of the backend, frontend and market-data images to run (deploy/aws/push-images.sh pushes them)
+  BackendCount:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    Description: >-
+      Backend tasks. Keep 1 for the first deployment (it sets up the empty database); 2 or more afterwards for
+      availability during a zone outage or a deployment.
+  FrontendCount:
+    Type: Number
+    Default: 1
+    MinValue: 0
+  QuoteSource:
+    Type: String
+    Default: live
+    AllowedValues: [live, simulated]
+    Description: live streams real Yahoo Finance prices; simulated is an offline random walk, labelled SIMULATED
+  EnforceMarketHours:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: false lets equities and FX trade outside their market's hours (demos with QuoteSource=simulated only)
+
+Resources:
+  # ---------------------------------------------------------------------------------------------------------
+  # Backend API. Its first container, db-init, sets up the database if it is empty (schema, demo data, a year of
+  # prices) and otherwise finishes in a second; the API starts once it has succeeded. So the very first
+  # deployment needs no separate database step.
+  # ---------------------------------------------------------------------------------------------------------
+  BackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-backend"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "1024"
+      Memory: "2048"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${ProjectName}-TaskExecutionRoleArn" }
+      ContainerDefinitions:
+        - Name: db-init
+          Image: !Sub
+            - "${Repository}:${ImageTag}"
+            - Repository: { "Fn::ImportValue": !Sub "${ProjectName}-MarketDataRepositoryUri" }
+          Essential: false
+          Command: ["init-db"]
+          Environment:
+            - { Name: PGHOST, Value: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseHost" } }
+            - { Name: PGPORT, Value: "5432" }
+            - { Name: PGDATABASE, Value: leapvengersdb }
+            - { Name: PGSSLMODE, Value: require }
+            # Never true here: every backend start would wipe the database. Resets are a one-off db-jobs task.
+            - { Name: RESET_DATABASE, Value: "false" }
+          Secrets:
+            - Name: PGUSER
+              ValueFrom: !Sub
+                - "${SecretArn}:username::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+            - Name: PGPASSWORD
+              ValueFrom: !Sub
+                - "${SecretArn}:password::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: { "Fn::ImportValue": !Sub "${ProjectName}-LogGroupName" }
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: db-init
+        - Name: backend
+          Image: !Sub
+            - "${Repository}:${ImageTag}"
+            - Repository: { "Fn::ImportValue": !Sub "${ProjectName}-BackendRepositoryUri" }
+          Essential: true
+          DependsOn:
+            - { ContainerName: db-init, Condition: SUCCESS }
+          PortMappings:
+            - { ContainerPort: 8081, Protocol: tcp }
+          Environment:
+            - { Name: SPRING_PROFILES_ACTIVE, Value: prod }
+            - Name: DB_URL
+              Value: !Sub
+                - "jdbc:postgresql://${Host}:5432/leapvengersdb?sslmode=require"
+                - Host: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseHost" }
+            - { Name: LEAP_TRADING_ENFORCE_MARKET_HOURS, Value: !Ref EnforceMarketHours }
+          Secrets:
+            - Name: DB_USER
+              ValueFrom: !Sub
+                - "${SecretArn}:username::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - "${SecretArn}:password::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+            - Name: JWT_SECRET
+              ValueFrom: { "Fn::ImportValue": !Sub "${ProjectName}-JwtSecretArn" }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: { "Fn::ImportValue": !Sub "${ProjectName}-LogGroupName" }
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: backend
+
+  BackendService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: backend
+      Cluster: { "Fn::ImportValue": !Sub "${ProjectName}-ClusterName" }
+      TaskDefinition: !Ref BackendTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: !Ref BackendCount
+      # Room for the first start, which loads a year of prices before the API comes up
+      HealthCheckGracePeriodSeconds: 300
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${ProjectName}-PublicSubnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${ProjectName}-AppSecurityGroup" }]
+      LoadBalancers:
+        - ContainerName: backend
+          ContainerPort: 8081
+          TargetGroupArn: { "Fn::ImportValue": !Sub "${ProjectName}-BackendTargetGroupArn" }
+
+  # ---------------------------------------------------------------------------------------------------------
+  # Frontend: nginx serving the built app. The load balancer sends /api/* to the backend directly.
+  # ---------------------------------------------------------------------------------------------------------
+  FrontendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-frontend"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${ProjectName}-TaskExecutionRoleArn" }
+      ContainerDefinitions:
+        - Name: frontend
+          Image: !Sub
+            - "${Repository}:${ImageTag}"
+            - Repository: { "Fn::ImportValue": !Sub "${ProjectName}-FrontendRepositoryUri" }
+          Essential: true
+          PortMappings:
+            - { ContainerPort: 8080, Protocol: tcp }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: { "Fn::ImportValue": !Sub "${ProjectName}-LogGroupName" }
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: frontend
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: frontend
+      Cluster: { "Fn::ImportValue": !Sub "${ProjectName}-ClusterName" }
+      TaskDefinition: !Ref FrontendTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: !Ref FrontendCount
+      HealthCheckGracePeriodSeconds: 30
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${ProjectName}-PublicSubnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${ProjectName}-AppSecurityGroup" }]
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 8080
+          TargetGroupArn: { "Fn::ImportValue": !Sub "${ProjectName}-FrontendTargetGroupArn" }
+
+  # ---------------------------------------------------------------------------------------------------------
+  # Live price feed: exactly one, always (two would just write the same prices twice).
+  # ---------------------------------------------------------------------------------------------------------
+  MarketDataTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-feed"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "256"
+      Memory: "1024"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${ProjectName}-TaskExecutionRoleArn" }
+      ContainerDefinitions:
+        - Name: feed
+          Image: !Sub
+            - "${Repository}:${ImageTag}"
+            - Repository: { "Fn::ImportValue": !Sub "${ProjectName}-MarketDataRepositoryUri" }
+          Essential: true
+          Command: ["feed"]
+          Environment:
+            - { Name: PGHOST, Value: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseHost" } }
+            - { Name: PGPORT, Value: "5432" }
+            - { Name: PGDATABASE, Value: leapvengersdb }
+            - { Name: PGSSLMODE, Value: require }
+            - { Name: QUOTE_SOURCE, Value: !Ref QuoteSource }
+            - { Name: QUOTE_ALL_HOURS, Value: !If [EnforcesMarketHours, "false", "true"] }
+          Secrets:
+            - Name: PGUSER
+              ValueFrom: !Sub
+                - "${SecretArn}:username::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+            - Name: PGPASSWORD
+              ValueFrom: !Sub
+                - "${SecretArn}:password::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: { "Fn::ImportValue": !Sub "${ProjectName}-LogGroupName" }
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: feed
+
+  MarketDataService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: feed
+      Cluster: { "Fn::ImportValue": !Sub "${ProjectName}-ClusterName" }
+      TaskDefinition: !Ref MarketDataTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: 1
+      # Stop the old feed before starting the new one
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 0
+        MaximumPercent: 100
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${ProjectName}-PublicSubnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${ProjectName}-AppSecurityGroup" }]
+
+  # ---------------------------------------------------------------------------------------------------------
+  # One-off database jobs, run by hand (deploy/aws/run-db-job.sh): backfill (reload price history) or a full
+  # reset (init-db with RESET_DATABASE=true, which deletes all data).
+  # ---------------------------------------------------------------------------------------------------------
+  DatabaseJobsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-db-jobs"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "1024"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${ProjectName}-TaskExecutionRoleArn" }
+      ContainerDefinitions:
+        - Name: db-jobs
+          Image: !Sub
+            - "${Repository}:${ImageTag}"
+            - Repository: { "Fn::ImportValue": !Sub "${ProjectName}-MarketDataRepositoryUri" }
+          Essential: true
+          Command: ["backfill"]
+          Environment:
+            - { Name: PGHOST, Value: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseHost" } }
+            - { Name: PGPORT, Value: "5432" }
+            - { Name: PGDATABASE, Value: leapvengersdb }
+            - { Name: PGSSLMODE, Value: require }
+          Secrets:
+            - Name: PGUSER
+              ValueFrom: !Sub
+                - "${SecretArn}:username::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+            - Name: PGPASSWORD
+              ValueFrom: !Sub
+                - "${SecretArn}:password::"
+                - SecretArn: { "Fn::ImportValue": !Sub "${ProjectName}-DatabaseSecretArn" }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: { "Fn::ImportValue": !Sub "${ProjectName}-LogGroupName" }
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: db-jobs
+
+Conditions:
+  EnforcesMarketHours: !Equals [!Ref EnforceMarketHours, "true"]
+
+Outputs:
+  ImageTag:
+    Description: The release now running
+    Value: !Ref ImageTag
+  DatabaseJobsTaskDefinition:
+    Value: !Ref DatabaseJobsTaskDefinition

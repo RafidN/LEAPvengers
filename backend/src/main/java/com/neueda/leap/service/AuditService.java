@@ -9,6 +9,7 @@ import com.neueda.leap.model.dto.AuditOrderDetailsResponse;
 import com.neueda.leap.model.dto.OrderEventResult;
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.AuditRepository;
+import com.neueda.leap.repository.CashTransactionRepository;
 import com.neueda.leap.repository.ClientRepository;
 import com.neueda.leap.repository.OrderEventsRepository;
 import org.springframework.data.domain.Page;
@@ -33,17 +34,23 @@ public class AuditService {
     private final AccountRepository accountRepository;
     private final OrderEventsRepository orderEventsRepository;
     private final ClientSegmentService clientSegmentService;
+    private final CashTransactionRepository cashTransactionRepository;
+    private final DisputeService disputeService;
 
     public AuditService(AuditRepository auditRepository,
                         ClientRepository clientRepository,
                         AccountRepository accountRepository,
                         OrderEventsRepository orderEventsRepository,
-                        ClientSegmentService clientSegmentService) {
+                        ClientSegmentService clientSegmentService,
+                        CashTransactionRepository cashTransactionRepository,
+                        DisputeService disputeService) {
         this.auditRepository = auditRepository;
         this.clientRepository = clientRepository;
         this.accountRepository = accountRepository;
         this.orderEventsRepository = orderEventsRepository;
         this.clientSegmentService = clientSegmentService;
+        this.cashTransactionRepository = cashTransactionRepository;
+        this.disputeService = disputeService;
     }
 
         public AuditOrderDetailsResponse getAuditById(Integer orderId) {
@@ -55,7 +62,11 @@ public class AuditService {
         AccountResponse account = accountRepository.findAccountResponseByOrderId(orderId)
             .orElseThrow(() -> new UserNotFoundException("Account not found"));
         List<OrderEventResult> events = orderEventsRepository.findAuditOrderEventsByOrderId(orderId);
-        return new AuditOrderDetailsResponse(order, client, account, events);
+        AuditOrderDetailsResponse details = new AuditOrderDetailsResponse(order, client, account, events);
+        // What the order settled as: the cash its fill moved, if it was filled
+        cashTransactionRepository.findSettlementByOrderId(orderId).ifPresent(details::setSettlement);
+        details.setDisputes(disputeService.forOrder(orderId));
+        return details;
         }
 
     /**

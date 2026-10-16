@@ -11,6 +11,8 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ClientSegment, ClientSegmentResult, ClientSegmentService } from '../../services/client-segment.service';
 import { InstrumentInsightsResult, InstrumentInsightsService } from '../../services/instrument-insights.service';
+import { ThemeService } from '../../services/theme.service';
+import { CHART_PALETTES, CHART_PROVIDERS } from '../../components/chart-theme';
 
 interface SegmentSummary {
   segment: ClientSegment;
@@ -25,6 +27,7 @@ interface SegmentSummary {
  */
 @Component({
   selector: 'app-insights',
+  providers: [CHART_PROVIDERS],
   templateUrl: './insights.component.html',
   imports: [
     CurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,
@@ -71,74 +74,65 @@ export class InsightsComponent {
       .sort((a, b) => b.currentPositionValue - a.currentPositionValue || b.recentFilledOrderCount - a.recentFilledOrderCount)
       .slice(0, 5));
 
+  protected readonly theme = inject(ThemeService).theme;
+  private readonly palette = computed(() => CHART_PALETTES[this.theme()]);
+
   // One series, one hue: no legend needed, the card title names it; the table beside it is the table view
   protected readonly chartData = computed<ChartConfiguration<'bar'>['data']>(() => ({
     labels: this.summary().map(s => s.segment),
     datasets: [{
       data: this.summary().map(s => s.portfolioValue),
       label: 'Portfolio value',
-      backgroundColor: '#0f6a46',
-      hoverBackgroundColor: '#37b87b',
+      backgroundColor: this.palette().series1,
+      hoverBackgroundColor: this.palette().series1Hover,
       borderRadius: 4,
       maxBarThickness: 28
     }]
   }));
 
-  protected readonly chartOptions: ChartConfiguration<'bar'>['options'] = {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: item => ` ${Number(item.raw).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}`
+  /** Both bar charts share these options; they follow the theme. */
+  protected readonly chartOptions = computed<ChartConfiguration<'bar'>['options']>(() => {
+    const palette = this.palette();
+    return {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: palette.surface,
+          titleColor: palette.ink,
+          bodyColor: palette.ink,
+          borderColor: palette.border,
+          borderWidth: 1,
+          callbacks: {
+            label: item => ` ${Number(item.raw).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}`
+          }
         }
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(0,0,0,0.06)' },
-        ticks: { maxTicksLimit: 5, callback: value => `$${Number(value) / 1000}k` }
       },
-      y: { grid: { display: false } }
-    }
-  };
+      scales: {
+        x: {
+          grid: { color: palette.grid },
+          ticks: { color: palette.inkMuted, maxTicksLimit: 5, callback: value => `$${Number(value) / 1000}k` }
+        },
+        y: { grid: { display: false }, ticks: { color: palette.inkMuted } }
+      }
+    };
+  });
 
   protected readonly instrumentChartData = computed<ChartConfiguration<'bar'>['data']>(() => ({
     labels: this.topInstruments().map(item => item.ticker),
     datasets: [{
       data: this.topInstruments().map(item => item.currentPositionValue),
       label: 'Invested value',
-      backgroundColor: '#13315c',
-      hoverBackgroundColor: '#2b5f9e',
+      backgroundColor: this.palette().series2,
+      hoverBackgroundColor: this.palette().series2Hover,
       borderRadius: 4,
       maxBarThickness: 28
     }]
   }));
 
-  protected readonly instrumentChartOptions: ChartConfiguration<'bar'>['options'] = {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: item => ` ${Number(item.raw).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}`
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(0,0,0,0.06)' },
-        ticks: { maxTicksLimit: 5, callback: value => `$${Number(value) / 1000}k` }
-      },
-      y: { grid: { display: false } }
-    }
-  };
 
   constructor() {
     const insightQuery = computed(() => ({

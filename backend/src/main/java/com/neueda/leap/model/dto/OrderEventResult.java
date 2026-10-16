@@ -1,5 +1,6 @@
 package com.neueda.leap.model.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -14,8 +15,21 @@ public class OrderEventResult {
     private String toStatus;
     private LocalDateTime createdAt;
     private String details;
+    // The quote the step was priced against, when it involved a price (BR-15); null otherwise
+    private BigDecimal quotePrice;
+    private LocalDateTime quoteTime;
+    private String quoteSource;
 
     public OrderEventResult() {
+    }
+
+    public OrderEventResult(Integer eventId, Integer orderId, Integer createdBy, String createdByUsername,
+                            String fromStatus, String toStatus, LocalDateTime createdAt, String details,
+                            BigDecimal quotePrice, LocalDateTime quoteTime, String quoteSource) {
+        this(eventId, orderId, createdBy, createdByUsername, fromStatus, toStatus, createdAt, details);
+        this.quotePrice = quotePrice;
+        this.quoteTime = quoteTime;
+        this.quoteSource = quoteSource;
     }
 
     public OrderEventResult(Integer eventId, Integer orderId, Integer createdBy, String createdByUsername,
@@ -92,5 +106,29 @@ public class OrderEventResult {
 
     public void setDetails(String details) {
         this.details = details;
+    }
+
+    public BigDecimal getQuotePrice() {
+        return quotePrice;
+    }
+
+    public void setQuotePrice(BigDecimal quotePrice) {
+        this.quotePrice = quotePrice;
+    }
+
+    public LocalDateTime getQuoteTime() {
+        return quoteTime;
+    }
+
+    public void setQuoteTime(LocalDateTime quoteTime) {
+        this.quoteTime = quoteTime;
+    }
+
+    public String getQuoteSource() {
+        return quoteSource;
+    }
+
+    public void setQuoteSource(String quoteSource) {
+        this.quoteSource = quoteSource;
     }
 }

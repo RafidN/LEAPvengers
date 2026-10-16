@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -101,10 +102,13 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        TradingRules tradingRules = new TradingRules(Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE), Duration.ofMinutes(5));
+        Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
+        TradingRules tradingRules = new TradingRules(clock, Duration.ofMinutes(5));
+        // Thursday 14:00 UTC: New York is open (10:00), India is closed (19:30)
+        MarketHours marketHours = new MarketHours(clock, true);
         orderService = new OrderService(userRepository, instrumentsRepository, latestPriceQuotesRepository,
                 orderRepository, orderEventsRepository, holdingsRepository, accountRepository, ownershipService, tradingRules,
-                orderExecutionService, executorService, Duration.ofSeconds(3));
+                orderExecutionService, marketHours, executorService, Duration.ofSeconds(3));
 
         // User 1 (client 1) owns account 67 with 750 cash; NFLX trades at 6.70, quoted 15 seconds ago
         Users user = new Users();
@@ -131,6 +135,7 @@ class OrderServiceTest {
         quote.setInstrumentId(INSTRUMENT_ID);
         quote.setPrice(new BigDecimal(price));
         quote.setQuoteTimestamp(at);
+        quote.setSource("YAHOO_LIVE");
         when(latestPriceQuotesRepository.findByInstrumentId(INSTRUMENT_ID)).thenReturn(Optional.of(quote));
     }
 
@@ -166,6 +171,13 @@ class OrderServiceTest {
         assertEquals(details, event.getDetails());
     }
 
+    /** The first step names the price the order was submitted at and the quote it came from. */
+    private static void assertSubmittedStep(OrderEvents event) {
+        assertNull(event.getFromStatus());
+        assertEquals("SUBMITTED", event.getToStatus());
+        assertTrue(event.getDetails().startsWith("Order submitted at $6.70, the live Yahoo Finance quote of Oct 8, "), event.getDetails());
+    }
+
     /** Placing an order never moves cash or holdings; that is OrderExecutionService's job. */
     private void assertCashAndHoldingsUntouched() {
         verify(accountRepository, never()).save(any());
@@ -190,12 +202,13 @@ class OrderServiceTest {
 
         assertEquals(List.of("SUBMITTED", "REJECTED"), savedStatuses);
         Orders order = savedOrder();
+        assertEquals(order.getOrderId(), e.getOrderId());
         assertEquals(e.getMessage(), order.getRejectionReason());
         assertNull(order.getExecutionPrice());
 
         List<OrderEvents> events = savedEvents();
         assertEquals(2, events.size());
-        assertStep(events.get(0), null, "SUBMITTED", "Order submitted");
+        assertSubmittedStep(events.get(0));
         assertStep(events.get(1), "SUBMITTED", "REJECTED", e.getMessage());
         assertCashAndHoldingsUntouched();
         assertNothingScheduled();
@@ -321,8 +334,40 @@ class OrderServiceTest {
 
         List<OrderEvents> events = savedEvents();
         assertEquals(2, events.size());
-        assertStep(events.get(0), null, "SUBMITTED", "Order submitted");
+        assertSubmittedStep(events.get(0));
         assertStep(events.get(1), "SUBMITTED", "ACCEPTED", "Passed trading checks");
+    }
+
+    @Test
+    void everyStepRecordsTheQuoteItWasPricedAgainst() {
+        orderService.placeOrder(1, order("NFLX", "5", "BUY"));
+
+        // BR-15: how the order was priced is on the record, not just the price
+        for (OrderEvents event : savedEvents()) {
+            assertEquals(0, new BigDecimal("6.70").compareTo(event.getQuotePrice()));
+            assertEquals(NOW.minusSeconds(15), event.getQuoteTime());
+            assertEquals("YAHOO_LIVE", event.getQuoteSource());
+        }
+    }
+
+    // Tradability (BR-05)
+
+    @Test
+    void orderWhileItsMarketIsClosedIsRecordedAsRejected() {
+        // 19:30 in Mumbai: the NSE closed at 15:30
+        when(instrumentsRepository.findByTickerIgnoreCase("TCS.NS"))
+                .thenReturn(Optional.of(new Instruments(INSTRUMENT_ID, "TCS.NS", "Tata Consultancy", "Equity", "IN")));
+
+        assertRecordedAsRejected(TradingRules.MARKET_CLOSED, () -> orderService.placeOrder(1, order("TCS.NS", "1", "BUY")));
+    }
+
+    @Test
+    void orderInASuspendedInstrumentIsRecordedAsRejected() {
+        Instruments suspended = new Instruments(INSTRUMENT_ID, "NFLX", "Netflix", "Equity", "US");
+        suspended.setTradable(false);
+        when(instrumentsRepository.findByTickerIgnoreCase("NFLX")).thenReturn(Optional.of(suspended));
+
+        assertRecordedAsRejected(TradingRules.NOT_TRADABLE, () -> orderService.placeOrder(1, order("NFLX", "1", "BUY")));
     }
 
     @Test
@@ -360,18 +405,40 @@ class OrderServiceTest {
         scheduledOrderDelay().run();
 
         verify(orderExecutionService).execute(ORDER_ID);
-        verify(orderExecutionService, never()).markFailed(any(), any());
+        verify(orderExecutionService, never()).markFailed(any(), any(), any());
     }
 
     @Test
-    void priceThatMovedDuringTheDelayFailsTheOrder() {
+    void priceThatMovedDuringTheDelayFailsTheOrderWithTheQuoteItMovedTo() {
         orderService.placeOrder(1, order("NFLX", "5", "BUY"));
+        LatestPriceQuotes moved = new LatestPriceQuotes();
+        moved.setPrice(new BigDecimal("6.80"));
         when(orderExecutionService.execute(ORDER_ID))
-                .thenThrow(new TradingRuleException(TradingRules.PRICE_CHANGED, "The price moved"));
+                .thenThrow(new TradingRuleException(TradingRules.PRICE_CHANGED, "The price moved").pricedFrom(moved));
 
         scheduledOrderDelay().run();
 
-        verify(orderExecutionService).markFailed(ORDER_ID, "The price moved");
+        verify(orderExecutionService).markFailed(ORDER_ID, "The price moved", moved);
+    }
+
+    // Restart recovery: an order whose fill timer was lost
+
+    @Test
+    void recoveredOrderThatCanStillFillIsFilled() {
+        orderService.fillOrFail(ORDER_ID, true);
+
+        verify(orderExecutionService).execute(ORDER_ID);
+        verify(orderExecutionService, never()).markFailed(any(), any(), any());
+    }
+
+    @Test
+    void recoveredOrderThatCannotFillSaysThePlatformRestarted() {
+        when(orderExecutionService.execute(ORDER_ID))
+                .thenThrow(new TradingRuleException(TradingRules.PRICE_CHANGED, "The price moved"));
+
+        orderService.fillOrFail(ORDER_ID, true);
+
+        verify(orderExecutionService).markFailed(ORDER_ID, "The platform restarted before this order was filled. The price moved", null);
     }
 
     @Test
@@ -381,14 +448,14 @@ class OrderServiceTest {
 
         scheduledOrderDelay().run();
 
-        verify(orderExecutionService).markFailed(ORDER_ID, "Database went away");
+        verify(orderExecutionService).markFailed(ORDER_ID, "Database went away", null);
     }
 
     @Test
     void failureToMarkFailedDoesNotEscapeTheDelayThread() {
         orderService.placeOrder(1, order("NFLX", "5", "BUY"));
         when(orderExecutionService.execute(ORDER_ID)).thenThrow(new IllegalStateException("Database went away"));
-        doThrow(new IllegalStateException("Still away")).when(orderExecutionService).markFailed(eq(ORDER_ID), anyString());
+        doThrow(new IllegalStateException("Still away")).when(orderExecutionService).markFailed(eq(ORDER_ID), anyString(), any());
 
         scheduledOrderDelay().run();
     }

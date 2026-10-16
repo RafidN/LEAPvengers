@@ -25,7 +25,10 @@ public interface OrderEventsRepository extends JpaRepository<OrderEvents, Intege
 			oe.fromStatus,
 			oe.toStatus,
 			oe.createdAt,
-			oe.details
+			oe.details,
+			oe.quotePrice,
+			oe.quoteTime,
+			oe.quoteSource
 		)
 		FROM OrderEvents oe
 		JOIN oe.order o
@@ -43,7 +46,7 @@ public interface OrderEventsRepository extends JpaRepository<OrderEvents, Intege
 	@Query("""
 		SELECT new com.neueda.leap.model.dto.OrderEventResult(
 			oe.eventId, oe.orderId, oe.createdBy, u.username, oe.fromStatus,
-			oe.toStatus, oe.createdAt, oe.details)
+			oe.toStatus, oe.createdAt, oe.details, oe.quotePrice, oe.quoteTime, oe.quoteSource)
 		FROM OrderEvents oe LEFT JOIN oe.user u
 		WHERE oe.orderId = :orderId
 		ORDER BY oe.createdAt ASC, oe.eventId ASC

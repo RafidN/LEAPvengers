@@ -4,12 +4,14 @@ import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.model.Accounts;
 import com.neueda.leap.model.CashTransactions;
 import com.neueda.leap.model.Holdings;
+import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.LatestPriceQuotes;
 import com.neueda.leap.model.OrderEvents;
 import com.neueda.leap.model.Orders;
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.CashTransactionRepository;
 import com.neueda.leap.repository.HoldingsRepository;
+import com.neueda.leap.repository.InstrumentsRepository;
 import com.neueda.leap.repository.LatestPriceQuotesRepository;
 import com.neueda.leap.repository.OrderEventsRepository;
 import com.neueda.leap.repository.OrderRepository;
@@ -29,6 +31,8 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -64,16 +68,26 @@ class OrderExecutionServiceTest {
     @Mock
     private LatestPriceQuotesRepository latestPriceQuotesRepository;
 
+    @Mock
+    private InstrumentsRepository instrumentsRepository;
+
     private OrderExecutionService orderExecutionService;
+
+    private Instruments instrument;
 
     private Accounts account;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        TradingRules tradingRules = new TradingRules(Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE), Duration.ofMinutes(5));
+        Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
+        TradingRules tradingRules = new TradingRules(clock, Duration.ofMinutes(5));
+        // Thursday 14:00 UTC is 10:00 in New York, so NFLX's market is open
         orderExecutionService = new OrderExecutionService(orderRepository, orderEventsRepository, accountRepository,
-                holdingsRepository, cashTransactionRepository, latestPriceQuotesRepository, tradingRules);
+                holdingsRepository, cashTransactionRepository, latestPriceQuotesRepository, instrumentsRepository,
+                tradingRules, new MarketHours(clock, true));
+        instrument = new Instruments(INSTRUMENT_ID, "NFLX", "Netflix", "Equity", "US");
+        when(instrumentsRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
 
         // Account 67 has 750 cash and 6 NFLX. Orders were accepted at 6.70, and NFLX is still at 6.70
         account = new Accounts(ACCOUNT_ID, 1, LocalDate.of(2025, 1, 1), new BigDecimal("750"));
@@ -92,7 +106,7 @@ class OrderExecutionServiceTest {
     private Orders givenOrder(String status, String side, String quantity) {
         Orders order = new Orders(ORDER_ID, ACCOUNT_ID, INSTRUMENT_ID, side, new BigDecimal(quantity), new BigDecimal("6.70"),
                 NOW.toLocalDate(), status, null, null, NOW.minusSeconds(1), null);
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
         return order;
     }
 
@@ -107,6 +121,7 @@ class OrderExecutionServiceTest {
         quote.setInstrumentId(INSTRUMENT_ID);
         quote.setPrice(new BigDecimal(price));
         quote.setQuoteTimestamp(at);
+        quote.setSource("YAHOO_LIVE");
         when(latestPriceQuotesRepository.findByInstrumentId(INSTRUMENT_ID)).thenReturn(Optional.of(quote));
     }
 
@@ -178,6 +193,47 @@ class OrderExecutionServiceTest {
     }
 
     @Test
+    void failureRecordsTheQuoteTheFillWasPricedAgainst() {
+        givenOrder("ACCEPTED", "BUY", "5");
+        LatestPriceQuotes moved = new LatestPriceQuotes();
+        moved.setPrice(new BigDecimal("6.80"));
+        moved.setQuoteTimestamp(NOW);
+        moved.setSource("YAHOO_LIVE");
+
+        orderExecutionService.markFailed(ORDER_ID, "The price moved", moved);
+
+        OrderEvents event = savedEvent();
+        assertEquals(0, new BigDecimal("6.80").compareTo(event.getQuotePrice()));
+        assertEquals(NOW, event.getQuoteTime());
+    }
+
+    // Closing an order left SUBMITTED by a crash
+
+    @Test
+    void orderLeftSubmittedIsRejectedWithNothingMoved() {
+        Orders order = givenOrder("SUBMITTED", "BUY", "5");
+
+        assertTrue(orderExecutionService.rejectUnchecked(ORDER_ID));
+
+        assertEquals("REJECTED", order.getOrderStatus());
+        assertEquals(OrderExecutionService.UNCHECKED_REASON, order.getRejectionReason());
+        OrderEvents event = savedEvent();
+        assertEquals("SUBMITTED", event.getFromStatus());
+        assertEquals("REJECTED", event.getToStatus());
+        assertNull(event.getCreatedBy());
+        verify(accountRepository, never()).save(any());
+        verify(cashTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void orderThatMovedOnIsNotRejectedAsUnchecked() {
+        givenOrder("ACCEPTED", "BUY", "5");
+
+        assertFalse(orderExecutionService.rejectUnchecked(ORDER_ID));
+        assertNothingChanged();
+    }
+
+    @Test
     void finishedOrderIsNotMarkedFailed() {
         Orders order = givenOrder("FILLED", "BUY", "5");
 
@@ -245,7 +301,66 @@ class OrderExecutionServiceTest {
         assertNull(event.getCreatedBy());
         assertEquals("ACCEPTED", event.getFromStatus());
         assertEquals("FILLED", event.getToStatus());
-        assertEquals("Filled at $6.70", event.getDetails());
+        assertEquals("Filled at $6.70, the live Yahoo Finance quote of Oct 8, 13:59:57", event.getDetails());
+    }
+
+    @Test
+    void fillRecordsTheQuoteItWasPricedAgainst() {
+        orderExecutionService.execute(ORDER_ID);
+
+        OrderEvents event = savedEvent();
+        assertEquals(0, new BigDecimal("6.70").compareTo(event.getQuotePrice()));
+        assertEquals(NOW.minusSeconds(3), event.getQuoteTime());
+        assertEquals("YAHOO_LIVE", event.getQuoteSource());
+    }
+
+    @Test
+    void fillRecordsWhenTheCashMoved() {
+        orderExecutionService.execute(ORDER_ID);
+
+        assertNotNull(savedCashTransaction().getCreatedAt());
+    }
+
+    @Test
+    void fillLocksTheOrderRowSoItCanOnlyBeFilledOnce() {
+        orderExecutionService.execute(ORDER_ID);
+
+        verify(orderRepository).findByIdForUpdate(ORDER_ID);
+        verify(orderRepository, never()).findById(anyInt());
+    }
+
+    // BR-08: priced against a current quote at the point of execution
+
+    @Test
+    void quoteThatWentStaleDuringTheDelayChangesNothing() {
+        // The feed stopped: the latest quote is 10 minutes old, past the 5 minute limit
+        givenQuote("6.70", NOW.minusMinutes(10));
+
+        assertFailsWithNothingChanged(TradingRules.STALE_PRICE, () -> orderExecutionService.execute(ORDER_ID));
+    }
+
+    @Test
+    void instrumentSuspendedDuringTheDelayChangesNothing() {
+        instrument.setTradable(false);
+
+        assertFailsWithNothingChanged(TradingRules.NOT_TRADABLE, () -> orderExecutionService.execute(ORDER_ID));
+    }
+
+    @Test
+    void marketThatClosedBeforeTheFillChangesNothing() {
+        // An order recovered after a restart, for a market that has since closed
+        instrument.setMarket("IN");
+
+        assertFailsWithNothingChanged(TradingRules.MARKET_CLOSED, () -> orderExecutionService.execute(ORDER_ID));
+    }
+
+    @Test
+    void failedFillCarriesTheQuoteItWasDecidedAgainst() {
+        givenQuote("6.80", NOW.minusSeconds(1));
+
+        TradingRuleException e = assertThrows(TradingRuleException.class, () -> orderExecutionService.execute(ORDER_ID));
+
+        assertEquals(0, new BigDecimal("6.80").compareTo(e.getQuote().getPrice()));
     }
 
     @Test
@@ -324,7 +439,7 @@ class OrderExecutionServiceTest {
     void alreadyFilledOrderIsNotFilledAgain() {
         Orders order = new Orders(ORDER_ID, ACCOUNT_ID, INSTRUMENT_ID, "BUY", new BigDecimal("5"), new BigDecimal("6.70"),
                 NOW.toLocalDate(), "FILLED", null, new BigDecimal("6.70"), NOW.minusSeconds(1), NOW);
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
 
         assertThrows(IllegalStateException.class, () -> orderExecutionService.execute(ORDER_ID));
         assertNothingChanged();
@@ -332,7 +447,7 @@ class OrderExecutionServiceTest {
 
     @Test
     void missingOrderIsNotFilled() {
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class, () -> orderExecutionService.execute(ORDER_ID));
         assertNothingChanged();

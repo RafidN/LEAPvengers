@@ -15,6 +15,7 @@ import java.time.ZoneId;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Plain unit tests (no database, no Spring): a pass and a fail case for each trading rule. */
 class TradingRulesTest {
@@ -104,6 +105,41 @@ class TradingRulesTest {
     void stalePriceFails() {
         assertFailsWith(TradingRules.STALE_PRICE,
                 () -> rules.checkPriceIsRecent(quote("100", NOW.minusMinutes(5).minusSeconds(1))));
+    }
+
+    @Test
+    void delayedFeedGetsItsDelayOnTopOfTheLimit() {
+        // London prices arrive 15 minutes late on the free feed: 5 + 15 minutes is allowed, no more
+        assertDoesNotThrow(() -> rules.checkPriceIsRecent(quote("100", NOW.minusMinutes(20)), 15));
+        TradingRuleException e = assertThrows(TradingRuleException.class,
+                () -> rules.checkPriceIsRecent(quote("100", NOW.minusMinutes(20).minusSeconds(1)), 15));
+        assertEquals(TradingRules.STALE_PRICE, e.getCode());
+        assertTrue(e.getMessage().contains("older than the 20 minutes limit"), e.getMessage());
+    }
+
+    // Tradable right now (BR-05)
+
+    @Test
+    void openMarketAndTradableInstrumentPasses() {
+        Instruments nflx = new Instruments("NFLX", "Netflix", "Equity", "US");
+        assertDoesNotThrow(() -> rules.checkTradable(nflx, new MarketHours.Status(true, "the New York stock market", null, null, null)));
+    }
+
+    @Test
+    void closedMarketFailsWithItsReason() {
+        Instruments tcs = new Instruments("TCS.NS", "Tata Consultancy", "Equity", "IN");
+        TradingRuleException e = assertThrows(TradingRuleException.class, () -> rules.checkTradable(tcs,
+                new MarketHours.Status(false, "the National Stock Exchange of India", null, null, "The NSE is closed.")));
+        assertEquals(TradingRules.MARKET_CLOSED, e.getCode());
+        assertEquals("TCS.NS can't be traded right now. The NSE is closed.", e.getMessage());
+    }
+
+    @Test
+    void suspendedInstrumentFailsEvenWhileItsMarketIsOpen() {
+        Instruments nflx = new Instruments("NFLX", "Netflix", "Equity", "US");
+        nflx.setTradable(false);
+        assertFailsWith(TradingRules.NOT_TRADABLE,
+                () -> rules.checkTradable(nflx, new MarketHours.Status(true, "the New York stock market", null, null, null)));
     }
 
     // Price unchanged since the order was submitted

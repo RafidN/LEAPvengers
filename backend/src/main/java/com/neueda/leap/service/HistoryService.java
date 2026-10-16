@@ -15,6 +15,8 @@ import com.neueda.leap.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -80,12 +82,21 @@ public class HistoryService {
         validateInstrumentQuery(query);
         return switch (normalizePeriod(period)) {
             case null -> priceHistoryRepository.findAllPriceHistory(query);
-            case PERIOD_1D -> priceHistoryRepository.findPricesPastDay(query);
-            case PERIOD_7D -> priceHistoryRepository.findPricesPast7Days(query);
-            case PERIOD_1M -> priceHistoryRepository.findPricesPastMonth(query);
-            case PERIOD_1Y -> priceHistoryRepository.findPricesPastYear(query);
+            // A chart's worth of points, one per interval: about 300 whatever the period
+            case PERIOD_1D -> sampledPrices(query, Duration.ofDays(1), Duration.ofMinutes(5));
+            case PERIOD_7D -> sampledPrices(query, Duration.ofDays(7), Duration.ofMinutes(30));
+            case PERIOD_1M -> sampledPrices(query, Duration.ofDays(31), Duration.ofHours(2));
+            case PERIOD_1Y -> sampledPrices(query, Duration.ofDays(366), Duration.ofDays(1));
             default -> throw new InvalidInputException("Unsupported period: " + period);
         };
+    }
+
+    private List<PriceHistoryResult> sampledPrices(String ticker, Duration period, Duration step) {
+        return priceHistoryRepository.findSampledPrices(ticker.trim(), LocalDateTime.now().minus(period), step.toSeconds())
+                .stream()
+                .map(p -> new PriceHistoryResult(p.getTicker(), p.getInstrumentName(), p.getPrice(), p.getVolume(),
+                        p.getQuoteTimestamp()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

@@ -2,6 +2,7 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Holdings;
 import com.neueda.leap.model.dto.TickerSearchResult;
+import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -48,4 +49,7 @@ public interface HoldingsRepository extends JpaRepository<Holdings, Integer> {
 
     /** The position one account holds in one instrument, if any. */
     Optional<Holdings> findByAccountIdAndInstrumentId(Integer accountId, Integer instrumentId);
+
+    /** Every holding in the given accounts, e.g. all of one trader's positions. */
+    List<Holdings> findByAccountIdIn(Collection<Integer> accountIds);
 }

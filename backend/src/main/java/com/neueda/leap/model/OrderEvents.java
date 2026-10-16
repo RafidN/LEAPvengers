@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -46,6 +47,16 @@ public class OrderEvents {
 
 	@Column(name = "details")
 	private String details;
+
+	// The quote this step was priced against (BR-15), copied so the record stands on its own
+	@Column(name = "quote_price", precision = 14, scale = 4)
+	private BigDecimal quotePrice;
+
+	@Column(name = "quote_time")
+	private LocalDateTime quoteTime;
+
+	@Column(name = "quote_source")
+	private String quoteSource;
 
 	public OrderEvents() {
 	}
@@ -141,6 +152,28 @@ public class OrderEvents {
 
 	public void setDetails(String details) {
 		this.details = details;
+	}
+
+	/** Records the quote this step was priced against; returns this event so it can be saved in one go. */
+	public OrderEvents pricedFrom(LatestPriceQuotes quote) {
+		if (quote != null) {
+			this.quotePrice = quote.getPrice();
+			this.quoteTime = quote.getQuoteTimestamp();
+			this.quoteSource = quote.getSource();
+		}
+		return this;
+	}
+
+	public BigDecimal getQuotePrice() {
+		return quotePrice;
+	}
+
+	public LocalDateTime getQuoteTime() {
+		return quoteTime;
+	}
+
+	public String getQuoteSource() {
+		return quoteSource;
 	}
 
 }

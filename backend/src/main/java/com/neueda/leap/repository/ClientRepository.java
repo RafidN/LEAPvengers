@@ -12,6 +12,9 @@ import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Clients, Integer> {
 
+	/** One client per email address, regardless of case. */
+	boolean existsByEmailIgnoreCase(String email);
+
 	@Query("""
 		SELECT new com.neueda.leap.model.dto.AuditClientSummary(
 			c.clientId,
@@ -51,15 +54,13 @@ public interface ClientRepository extends JpaRepository<Clients, Integer> {
 			LEFT JOIN account_valuations av ON av.account_id = a.account_id
 			GROUP BY a.client_id
 		),
+		-- Trading history comes from the reporting store, not the live orders table (BR-16)
 		client_orders AS (
-			SELECT a.client_id,
-				   COUNT(o.order_id) AS recent_filled_order_count
-			FROM accounts a
-			LEFT JOIN orders o
-				ON o.account_id = a.account_id
-				AND o.order_status = 'FILLED'
-				AND o.submitted_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
-			GROUP BY a.client_id
+			SELECT t.client_id,
+				   COUNT(*) AS recent_filled_order_count
+			FROM reporting.trade_activity t
+			WHERE t.executed_at >= CURRENT_TIMESTAMP - (:lookbackDays * INTERVAL '1 day')
+			GROUP BY t.client_id
 		)
 		SELECT c.client_id AS "clientId",
 			   c.first_name AS "firstName",

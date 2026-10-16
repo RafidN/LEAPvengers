@@ -2,6 +2,7 @@ package com.neueda.leap.model.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Response DTO for cash transaction history by time period
@@ -12,6 +13,7 @@ public class CashTransactionResult {
     private String transactionType;  // DEPOSIT, WITHDRAWAL, or BUY / SELL for a filled order
     private BigDecimal amount;
     private LocalDate transactionDate;
+    private LocalDateTime transactionTime;  // when the cash moved
     private Double runningBalance;  // Optional: balance after transaction
 
     public CashTransactionResult() {
@@ -23,6 +25,12 @@ public class CashTransactionResult {
         this.transactionType = transactionType;
         this.amount = amount;
         this.transactionDate = transactionDate;
+    }
+
+    public CashTransactionResult(Integer cashTransactionId, String transactionType,
+                                 BigDecimal amount, LocalDate transactionDate, LocalDateTime transactionTime) {
+        this(cashTransactionId, transactionType, amount, transactionDate);
+        this.transactionTime = transactionTime;
     }
 
     public CashTransactionResult(Integer cashTransactionId, String transactionType,
@@ -41,6 +49,14 @@ public class CashTransactionResult {
 
     public void setCashTransactionId(Integer cashTransactionId) {
         this.cashTransactionId = cashTransactionId;
+    }
+
+    public LocalDateTime getTransactionTime() {
+        return transactionTime;
+    }
+
+    public void setTransactionTime(LocalDateTime transactionTime) {
+        this.transactionTime = transactionTime;
     }
 
     public String getTransactionType() {

@@ -18,15 +18,22 @@
       </div>
     </div>
     <div hlmCardContent class="flex flex-col gap-4">
-      <div class="flex items-baseline gap-3">
+      <div class="flex flex-wrap items-baseline gap-3">
         <span class="text-3xl font-semibold tabular-nums">
-          {{ selectedQuote()?.currentPrice ?? points()[points().length - 1]?.value | currency: 'USD' : 'symbol' : '1.2-4' }}
+          {{ selectedQuote()?.currentPrice ?? points()[points().length - 1]?.value | currency }}
         </span>
         @if (change(); as c) {
           <span class="text-sm font-medium tabular-nums"
             [style.color]="c.amount >= 0 ? 'var(--profit)' : 'var(--loss)'">
-            {{ c.amount >= 0 ? '+' : '' }}{{ c.amount | currency: 'USD' : 'symbol' : '1.2-4' }} ({{ c.ratio | percent: '1.2-2' }})
+            {{ c.amount >= 0 ? '+' : '−' }}{{ (c.amount < 0 ? -c.amount : c.amount) | currency }}
+            ({{ c.amount >= 0 ? '+' : '−' }}{{ (c.ratio < 0 ? -c.ratio : c.ratio) | percent: '1.2-2' }})
           </span>
+        }
+        @if (canTrade) {
+          <a hlmBtn class="ml-auto self-center" routerLink="/trade" [queryParams]="{ ticker: selected() }">
+            <ng-icon name="lucideArrowLeftRight" />
+            Trade {{ selected() }}
+          </a>
         }
       </div>
 
@@ -71,7 +78,7 @@
                   <div class="text-muted-foreground max-w-44 truncate text-xs">{{ q.instrumentName }}</div>
                 </td>
                 <td hlmTableCell><span hlmBadge variant="secondary">{{ q.assetClass }}</span></td>
-                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | currency }}</td>
               </tr>
             } @empty {
               <tr hlmTableRow>
@@ -83,4 +90,10 @@
       </div>
     </div>
   </div>
+</section>
+
+<!-- What's moving the market today, from public sources -->
+<section class="mt-4 grid items-start gap-4 lg:grid-cols-5">
+  <app-market-movers class="lg:col-span-2" />
+  <app-market-news class="lg:col-span-3" />
 </section>

@@ -39,7 +39,8 @@ import java.util.logging.Logger;
 /**
  * Takes in orders: saves the order as SUBMITTED, checks the trading rules, then moves it straight to
  * ACCEPTED or REJECTED, with an order_events row for each step. After a short delay, OrderDelay has
- * OrderExecutionService fill the order if its price has not moved, or mark it FAILED.
+ * OrderExecutionService fill the order if its price has not moved, or mark it FAILED. The delay is an
+ * in-memory timer, so if the platform stops during it OrderRecoveryService finishes the order instead.
  */
 @Service
 public class OrderService {
@@ -53,6 +54,7 @@ public class OrderService {
     private final OwnershipService ownershipService;
     private final TradingRules tradingRules;
     private final OrderExecutionService orderExecutionService;
+    private final MarketHours marketHours;
     private final ScheduledExecutorService executorService;
     private final Duration orderDelay;
 
@@ -64,11 +66,11 @@ public class OrderService {
                         OrderRepository orderRepository, OrderEventsRepository orderEventsRepository,
                         HoldingsRepository holdingsRepository, AccountRepository accountRepository,
                         OwnershipService ownershipService, TradingRules tradingRules,
-                        OrderExecutionService orderExecutionService,
-                        @Value("${leap.trading.order-delay:PT3S}") Duration orderDelay) {
+                        OrderExecutionService orderExecutionService, MarketHours marketHours,
+                        @Value("${leap.trading.order-delay:PT0.5S}") Duration orderDelay) {
         // One shared thread is plenty: each delayed step is a few quick queries
         this(userRepository, instrumentsRepository, latestPriceQuotesRepository, orderRepository, orderEventsRepository,
-                holdingsRepository, accountRepository, ownershipService, tradingRules, orderExecutionService,
+                holdingsRepository, accountRepository, ownershipService, tradingRules, orderExecutionService, marketHours,
                 Executors.newSingleThreadScheduledExecutor(), orderDelay);
     }
 
@@ -77,7 +79,7 @@ public class OrderService {
                         OrderRepository orderRepository, OrderEventsRepository orderEventsRepository,
                         HoldingsRepository holdingsRepository, AccountRepository accountRepository,
                         OwnershipService ownershipService, TradingRules tradingRules,
-                        OrderExecutionService orderExecutionService,
+                        OrderExecutionService orderExecutionService, MarketHours marketHours,
                         ScheduledExecutorService executorService, Duration orderDelay) {
         this.userRepository = userRepository;
         this.instrumentsRepository = instrumentsRepository;
@@ -89,6 +91,7 @@ public class OrderService {
         this.ownershipService = ownershipService;
         this.tradingRules = tradingRules;
         this.orderExecutionService = orderExecutionService;
+        this.marketHours = marketHours;
         this.executorService = executorService;
         this.orderDelay = orderDelay;
     }
@@ -135,9 +138,12 @@ public class OrderService {
 
         Orders order = orderRepository.save(
                 new Orders(accountId, instrument.getInstrumentId(), orderType, quantity, quote.getPrice(), LocalDate.now()));
-        recordEvent(order, user, null, "Order submitted");
+        // Each step records the quote it was priced against (BR-15)
+        recordEvent(order, user, null, "Order submitted at " + TradingRules.money(quote.getPrice()) + ", "
+                + TradingRules.describeQuote(quote, instrument.getQuoteDelayMinutes()), quote);
         try {
-            tradingRules.checkPriceIsRecent(quote);
+            tradingRules.checkTradable(instrument, marketHours.statusOf(instrument));
+            tradingRules.checkPriceIsRecent(quote, instrument.getQuoteDelayMinutes());
             if (orderType.equals("BUY")) {
                 Accounts account = accountRepository.findById(accountId).orElseThrow();
                 tradingRules.checkSufficientCash(account.getBalance(), quantity, quote.getPrice());
@@ -150,13 +156,13 @@ public class OrderService {
             order.setOrderStatus("REJECTED");
             order.setRejectionReason(e.getMessage());
             Orders rejected = orderRepository.save(order);
-            recordEvent(rejected, user, "SUBMITTED", e.getMessage());
-            throw e;
+            recordEvent(rejected, user, "SUBMITTED", e.getMessage(), quote);
+            throw e.forOrder(rejected.getOrderId());
         }
 
         order.setOrderStatus("ACCEPTED");
         Orders accepted = orderRepository.save(order);
-        recordEvent(accepted, user, "SUBMITTED", "Passed trading checks");
+        recordEvent(accepted, user, "SUBMITTED", "Passed trading checks", quote);
         scheduleAfterCommit(new OrderDelay(accepted.getOrderId()));
 
         return new OrderHistoryResult(accepted.getOrderId(), instrument.getTicker(), accepted.getOrderType(),
@@ -181,9 +187,28 @@ public class OrderService {
     }
 
     /**
-     * Runs once the order's delay is up. The order is filled only if the price is still the one it
-     * was accepted at. If the fill throws, it was rolled back, and the order is marked FAILED with the reason.
+     * Fills an ACCEPTED order if the price is still the one it was accepted at. If the fill throws, it was
+     * rolled back, and the order is marked FAILED with the reason. recovered is true when the restart
+     * recovery sweep (OrderRecoveryService) is finishing an order whose fill timer was lost, which the
+     * reason then says. An order that already moved on is left alone, so calling this twice is harmless.
      */
+    public void fillOrFail(Integer orderId, boolean recovered) {
+        try {
+            orderExecutionService.execute(orderId);
+        } catch (Exception e) {
+            // An order that is no longer ACCEPTED (e.g. the other of timer and sweep got there first) throws
+            // too; markFailed leaves it alone
+            String reason = recovered ? "The platform restarted before this order was filled. " + e.getMessage() : e.getMessage();
+            try {
+                orderExecutionService.markFailed(orderId, reason,
+                        e instanceof TradingRuleException rule ? rule.getQuote() : null);
+            } catch (Exception markFailedError) {
+                logger.log(Level.SEVERE, "Could not mark order " + orderId + " as FAILED", markFailedError);
+            }
+        }
+    }
+
+    /** Runs once the order's delay is up. */
     public class OrderDelay implements Runnable {
         private final Integer orderId;
 
@@ -193,21 +218,13 @@ public class OrderService {
 
         @Override
         public void run() {
-            try {
-                orderExecutionService.execute(orderId);
-            } catch (Exception e) {
-                try {
-                    orderExecutionService.markFailed(orderId, e.getMessage());
-                } catch (Exception markFailedError) {
-                    logger.log(Level.SEVERE, "Could not mark order " + orderId + " as FAILED", markFailedError);
-                }
-            }
+            fillOrFail(orderId, false);
         }
     }
 
-    /** One step of the order, made by the trader who submitted it. */
-    private void recordEvent(Orders order, Users user, String fromStatus, String details) {
+    /** One step of the order, made by the trader who submitted it, priced against quote. */
+    private void recordEvent(Orders order, Users user, String fromStatus, String details, LatestPriceQuotes quote) {
         orderEventsRepository.save(new OrderEvents(order.getOrderId(), user.getUserId(), fromStatus,
-                order.getOrderStatus(), LocalDateTime.now(), details));
+                order.getOrderStatus(), LocalDateTime.now(), details).pricedFrom(quote));
     }
 }

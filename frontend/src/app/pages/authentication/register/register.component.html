@@ -6,28 +6,36 @@
 
   <form hlmCardContent class="flex flex-col gap-3 text-left" (ngSubmit)="onSubmit()">
     @if (errorMessage()) {
-      <div hlmAlert variant="destructive">
+      <div hlmAlert variant="destructive" role="alert">
         <p hlmAlertDescription>{{ errorMessage() }}</p>
       </div>
     }
     @if (successMessage()) {
-      <div hlmAlert>
+      <div hlmAlert role="status">
         <p hlmAlertDescription class="text-primary">{{ successMessage() }}</p>
       </div>
     }
 
     <div class="flex gap-2">
       <input hlmInput name="firstName" class="h-11 bg-input" placeholder="First name" aria-label="First name"
-        required [(ngModel)]="firstName" [disabled]="isLoading()" />
+        autocomplete="given-name" maxlength="100" required [(ngModel)]="firstName" [disabled]="isLoading()" />
       <input hlmInput name="lastName" class="h-11 bg-input" placeholder="Last name" aria-label="Last name"
-        required [(ngModel)]="lastName" [disabled]="isLoading()" />
+        autocomplete="family-name" maxlength="100" required [(ngModel)]="lastName" [disabled]="isLoading()" />
     </div>
     <input hlmInput type="email" name="email" class="h-11 bg-input" placeholder="Email address" aria-label="Email address"
-      required [(ngModel)]="email" [disabled]="isLoading()" />
-    <input hlmInput name="username" class="h-11 bg-input" placeholder="Username" aria-label="Username"
-      autocomplete="username" required [(ngModel)]="username" [disabled]="isLoading()" />
-    <input hlmInput type="password" name="password" class="h-11 bg-input" placeholder="Password" aria-label="Password"
-      autocomplete="new-password" required [(ngModel)]="password" [disabled]="isLoading()" />
+      autocomplete="email" required [(ngModel)]="email" [disabled]="isLoading()" />
+    <div>
+      <input hlmInput name="username" class="h-11 bg-input" placeholder="Username" aria-label="Username"
+        aria-describedby="username-hint" autocomplete="username" maxlength="30" required [(ngModel)]="username"
+        [disabled]="isLoading()" />
+      <p id="username-hint" class="text-muted-foreground mt-1 text-xs">{{ usernameHint }}</p>
+    </div>
+    <div>
+      <input hlmInput type="password" name="password" class="h-11 bg-input" placeholder="Password" aria-label="Password"
+        aria-describedby="password-hint" autocomplete="new-password" maxlength="72" required [(ngModel)]="password"
+        [disabled]="isLoading()" />
+      <p id="password-hint" class="text-muted-foreground mt-1 text-xs">{{ passwordHint }}</p>
+    </div>
     <input hlmInput type="password" name="confirmPassword" class="h-11 bg-input" placeholder="Confirm password"
       aria-label="Confirm password" autocomplete="new-password" required [(ngModel)]="confirmPassword"
       [disabled]="isLoading()" />

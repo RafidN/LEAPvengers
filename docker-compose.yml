@@ -1,28 +1,102 @@
+# The whole platform in containers, built from the same images that run on AWS.
+#
+#   docker compose up --build -d        then open http://localhost:8080 (sign in as joanna / Test123)
+#   docker compose logs -f backend      follow one service
+#   docker compose down                 stop (the database volume is kept)
+#   docker compose down -v              stop and delete the database
+#
+# Settings come from a .env file next to this one (copy .env.example); every one has a local default.
+# First start: db-init creates the schema, demo data and a year of prices (about a minute), then the
+# backend and the live price feed start.
+
+name: leapvengers
+
+x-database-env: &database-env
+  PGHOST: leapdb
+  PGPORT: "5432"
+  PGDATABASE: ${POSTGRES_DB:-leapvengersdb}
+  PGUSER: ${POSTGRES_USER:-postgres}
+  PGPASSWORD: ${POSTGRES_PASSWORD:-n3u3d4!}
+
+x-market-data-build: &market-data-build
+  context: .
+  dockerfile: scripts/Dockerfile
+
 services:
   leapdb:
-    image: postgres:15
+    image: postgres:17-alpine
     container_name: leapdb
     environment:
-      POSTGRES_PASSWORD: n3u3d4!
-      POSTGRES_USER: postgres
-      POSTGRES_DB: leapvengersdb
+      POSTGRES_DB: ${POSTGRES_DB:-leapvengersdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-n3u3d4!}
+      TZ: UTC
     ports:
-      - "5432:5432"
+      # Change DB_PORT if a local PostgreSQL already uses 5432
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 2s
       timeout: 5s
-      retries: 10
+      retries: 15
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/enterprise-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
-    networks:
-      - leapvengers
+
+  # One-off: sets up an empty database, does nothing to one that is already set up
+  db-init:
+    build: *market-data-build
+    image: leap-market-data:local
+    command: ["init-db"]
+    environment:
+      <<: *database-env
+      RESET_DATABASE: ${RESET_DATABASE:-false}
+    depends_on:
+      leapdb:
+        condition: service_healthy
+    restart: "no"
+
+  # Live prices: real Yahoo Finance quotes (QUOTE_SOURCE=simulated for offline work)
+  feed:
+    build: *market-data-build
+    image: leap-market-data:local
+    command: ["feed"]
+    environment:
+      <<: *database-env
+      QUOTE_SOURCE: ${QUOTE_SOURCE:-live}
+      QUOTE_ALL_HOURS: ${QUOTE_ALL_HOURS:-false}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  backend:
+    build: backend
+    image: leap-backend:local
+    environment:
+      DB_URL: jdbc:postgresql://leapdb:5432/${POSTGRES_DB:-leapvengersdb}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-n3u3d4!}
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-not-for-real-use-0123456789}
+      LEAP_TRADING_ENFORCE_MARKET_HOURS: ${ENFORCE_MARKET_HOURS:-true}
+    ports:
+      - "${API_PORT:-8081}:8081"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    build: frontend
+    image: leap-frontend:local
+    environment:
+      # nginx passes /api/ to the backend, so the app and its API share one address, as on AWS
+      BACKEND_URL: http://backend:8081
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-
-networks:
-  leapvengers:
-    driver: bridge

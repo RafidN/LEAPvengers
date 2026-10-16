@@ -78,10 +78,14 @@ $frontendDir = "$scriptPath\frontend"
 $yahooBackfillScript = "$scriptPath\scripts\yahoo_backfill.py"
 $liveQuoteGeneratorScript = "$scriptPath\scripts\live_quote_generator.py"
 $pythonRequirementsFile = "$scriptPath\scripts\requirements.txt"
-$historicalInterval = "auto"
-$liveQuoteIntervalSeconds = 15
+$liveQuoteIntervalSeconds = 3
 $historicalStartDate = (Get-Date).AddDays(-365).ToString("yyyy-MM-dd")
 $historicalEndDate = (Get-Date).AddDays(1).ToString("yyyy-MM-dd")
+$historicalBackfills = @(
+    @{ Label = "Past year"; Start = $historicalStartDate; End = (Get-Date).AddDays(-58).ToString("yyyy-MM-dd"); Interval = "1d" },
+    @{ Label = "Past two months"; Start = (Get-Date).AddDays(-58).ToString("yyyy-MM-dd"); End = (Get-Date).AddDays(-6).ToString("yyyy-MM-dd"); Interval = "30m" },
+    @{ Label = "Past week"; Start = (Get-Date).AddDays(-6).ToString("yyyy-MM-dd"); End = $historicalEndDate; Interval = "1m" }
+)
 
 $pythonLauncher = Get-PythonLauncher
 $pythonLauncherArgs = if ($pythonLauncher -eq "py") { @("-3") } else { @() }
@@ -231,14 +235,19 @@ if (-not (Test-Path $yahooBackfillScript)) {
 }
 
 try {
-    & $pythonLauncher @pythonLauncherArgs $yahooBackfillScript --host $pgHost --port $pgPort --database $dbName --user $pgUser --password $pgPassword --start-date $historicalStartDate --end-date $historicalEndDate --interval $historicalInterval
+    # Finer prices for recent history, so price charts have the same density of points for every day:
+    # daily closes for the year, 30-minute bars for the last two months, 1-minute bars for the last week
+    # (the finest Yahoo keeps for each). The ranges don't overlap, so a day never mixes bar sizes.
+    foreach ($backfill in $historicalBackfills) {
+        Write-Info "  $($backfill.Label): $($backfill.Start) to $($backfill.End) ($($backfill.Interval) bars)"
+        & $pythonLauncher @pythonLauncherArgs $yahooBackfillScript --host $pgHost --port $pgPort --database $dbName --user $pgUser --password $pgPassword --start-date $backfill.Start --end-date $backfill.End --interval $backfill.Interval
 
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "OK - Historical market data backfill completed"
-    } else {
-        Write-Error-Custom "ERROR - Historical market data backfill failed"
-        exit 1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error-Custom "ERROR - Historical market data backfill failed ($($backfill.Label))"
+            exit 1
+        }
     }
+    Write-Success "OK - Historical market data backfill completed"
 } catch {
     Write-Error-Custom "ERROR - Historical market data backfill failed: $_"
     exit 1
@@ -263,7 +272,7 @@ try {
     $generatorPID = $generatorProcess.Id
 
     Write-Success "OK - Live quote generator started (PID: $generatorPID)"
-    Write-Info "  The live quote generator will append simulated updates every 15 seconds"
+    Write-Info "  The live quote generator streams real Yahoo Finance prices, written every 3 seconds while each market is open"
 } catch {
     Write-Error-Custom "ERROR - Failed to start live quote generator: $_"
     exit 1
@@ -434,7 +443,7 @@ Write-Info ""
 Write-Info "  Historical Market Data:"
 Write-Info "    Source: Yahoo Finance"
 Write-Info "    Backfill Range: $historicalStartDate to $historicalEndDate"
-Write-Info "    Interval: $historicalInterval (auto-selects the finest supported Yahoo interval for the full range)"
+Write-Info "    Intervals: daily for the year, 30-minute for the last two months, 1-minute for the last week"
 Write-Info ""
 Write-Info "  Live Quote Generator:"
 Write-Info "    Interval: $liveQuoteIntervalSeconds seconds"

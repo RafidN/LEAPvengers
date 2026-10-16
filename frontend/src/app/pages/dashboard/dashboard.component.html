@@ -1,7 +1,12 @@
-  <!-- Client Dash activity -->
-<div class="mb-6">
-  <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Overview</p>
-  <h1 class="text-3xl font-medium tracking-tight">Dashboard</h1>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Overview</p>
+    <h1 class="text-3xl font-medium tracking-tight">Dashboard</h1>
+  </div>
+  <a hlmBtn size="lg" routerLink="/trade">
+    <ng-icon name="lucideArrowLeftRight" />
+    Place an order
+  </a>
 </div>
 
 @if (error()) {
@@ -10,42 +15,94 @@
   </div>
 }
 
-<!-- Account totals -->
+<!-- Account totals: each one hidden until its eye is clicked -->
 <section class="mb-6 grid gap-4 md:grid-cols-3">
-  <div hlmCard>
-    <div hlmCardHeader>
-      <p hlmCardDescription>Total value</p>
-      <div hlmCardAction>
-        <button hlmBtn variant="ghost" size="icon-sm" (click)="toggleBalance()"
-          [attr.aria-label]="balanceHidden() ? 'Show balance' : 'Hide balance'">
-          <ng-icon [name]="balanceHidden() ? 'lucideEye' : 'lucideEyeOff'" />
+  @for (card of totals(); track card.key) {
+    <div hlmCard>
+      <div hlmCardHeader>
+        <p hlmCardDescription>{{ card.label }}</p>
+        <div hlmCardAction>
+          <button hlmBtn variant="ghost" size="icon-sm" (click)="toggle(card.key)"
+            [attr.aria-pressed]="!isHidden(card.key)"
+            [attr.aria-label]="(isHidden(card.key) ? 'Show ' : 'Hide ') + card.label.toLowerCase()">
+            <ng-icon [name]="isHidden(card.key) ? 'lucideEye' : 'lucideEyeOff'" />
+          </button>
+        </div>
+      </div>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+        {{ loading() ? '…' : isHidden(card.key) ? '••••••' : (card.value | currency) }}
+      </p>
+    </div>
+  }
+</section>
+
+<!-- Account value over time -->
+<section hlmCard class="mb-6" aria-labelledby="value-title">
+  <div hlmCardHeader>
+    <h2 hlmCardTitle id="value-title">Account value</h2>
+    <p hlmCardDescription>Cash plus holdings, valued at the prices of the time</p>
+    <div hlmCardAction class="flex gap-1" role="group" aria-label="Period">
+      @for (p of valuePeriods; track p.value) {
+        <button hlmBtn size="sm" [variant]="valuePeriod() === p.value ? 'default' : 'ghost'"
+          [attr.aria-pressed]="valuePeriod() === p.value" (click)="valuePeriod.set(p.value)">
+          {{ p.label }}
         </button>
-      </div>
+      }
     </div>
-    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
-      {{ loading() ? '…' : balanceHidden() ? '••••••' : (totalValue() | currency) }}
-    </p>
   </div>
+  <div hlmCardContent class="flex flex-col gap-4">
+    @if (valueChange(); as c) {
+      <p class="flex flex-wrap items-center gap-x-2 text-sm">
+        <ng-icon [name]="c.amount >= 0 ? 'lucideArrowUpRight' : 'lucideArrowDownRight'" class="text-lg"
+          [style.color]="c.amount >= 0 ? 'var(--profit)' : 'var(--loss)'" aria-hidden="true" />
+        <!-- Gains in green, losses in red, as on the Markets chart -->
+        <span class="text-lg font-semibold" [style.color]="c.amount >= 0 ? 'var(--profit)' : 'var(--loss)'">
+          <!-- With the total hidden, only the percentage shows -->
+          @if (!isHidden('total')) {
+            {{ c.amount >= 0 ? '+' : '−' }}{{ (c.amount < 0 ? -c.amount : c.amount) | currency }}
+            ({{ c.amount >= 0 ? '+' : '−' }}{{ (c.ratio < 0 ? -c.ratio : c.ratio) | percent: '1.2-2' }})
+          } @else {
+            {{ c.amount >= 0 ? '+' : '−' }}{{ (c.ratio < 0 ? -c.ratio : c.ratio) | percent: '1.2-2' }}
+          }
+        </span>
+        <span class="text-muted-foreground">{{ periodPhrase() }}</span>
+      </p>
+    }
 
-  <div hlmCard>
-    <div hlmCardHeader>
-      <p hlmCardDescription>Cash available</p>
-      <div hlmCardAction>
-        @for (a of accounts(); track a.accountId) {
-          <span hlmBadge variant="outline">Account #{{ a.accountId }}</span>
-        }
+    @if (chartPoints().length > 1) {
+      <app-value-chart [points]="chartPoints()" [masked]="isHidden('total')" />
+      @if (!isHidden('total')) {
+        <details class="text-sm">
+          <summary class="text-muted-foreground hover:text-foreground w-fit cursor-pointer">View as table</summary>
+          <div hlmTableContainer class="mt-2 max-h-72 overflow-y-auto">
+            <table hlmTable>
+              <thead hlmTableHeader>
+                <tr hlmTableRow>
+                  <th hlmTableHead>Time</th>
+                  <th hlmTableHead class="text-right">Cash</th>
+                  <th hlmTableHead class="text-right">Holdings</th>
+                  <th hlmTableHead class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody hlmTableBody>
+                @for (p of chartPoints(); track p.time) {
+                  <tr hlmTableRow>
+                    <td hlmTableCell class="text-muted-foreground tabular-nums">{{ p.time | date: 'MMM d, HH:mm' }}</td>
+                    <td hlmTableCell class="text-right tabular-nums">{{ p.cash | currency }}</td>
+                    <td hlmTableCell class="text-right tabular-nums">{{ p.holdingsValue | currency }}</td>
+                    <td hlmTableCell class="text-right font-medium tabular-nums">{{ p.totalValue | currency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+      }
+    } @else {
+      <div class="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">
+        {{ valueLoading() ? 'Loading account value…' : valueError() ? 'Could not load your account value.' : 'Not enough history yet.' }}
       </div>
-    </div>
-    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
-      {{ loading() ? '…' : (cash() | currency) }}
-    </p>
-  </div>
-
-  <div hlmCard>
-    <div hlmCardHeader><p hlmCardDescription>Holdings value</p></div>
-    <p hlmCardContent class="text-3xl font-semibold tracking-tight">
-      {{ loading() ? '…' : (holdingsValue() | currency) }}
-    </p>
+    }
   </div>
 </section>
 
@@ -54,7 +111,10 @@
   <div hlmCard class="lg:col-span-2">
     <div hlmCardHeader>
       <h2 hlmCardTitle>Holdings</h2>
-      <p hlmCardDescription>What you own today</p>
+      <p hlmCardDescription>
+        Valued at the latest prices
+        @if (lastUpdated(); as t) { · checked {{ t | date: 'HH:mm:ss' }} }
+      </p>
     </div>
     <div hlmCardContent>
       @if (holdings().length) {
@@ -64,19 +124,44 @@
               <tr hlmTableRow>
                 <th hlmTableHead>Ticker</th>
                 <th hlmTableHead>Name</th>
+                @if (portfolios().length > 1) {
+                  <th hlmTableHead>Account</th>
+                }
                 <th hlmTableHead class="text-right">Quantity</th>
                 <th hlmTableHead class="text-right">Price</th>
                 <th hlmTableHead class="text-right">Value</th>
+                <th hlmTableHead><span class="sr-only">Trade</span></th>
               </tr>
             </thead>
             <tbody hlmTableBody>
-              @for (h of holdings(); track h.holdingId) {
+              @for (h of holdings(); track rowKey(h)) {
                 <tr hlmTableRow>
                   <td hlmTableCell class="font-medium">{{ h.ticker }}</td>
                   <td hlmTableCell>{{ h.instrumentName }}</td>
-                  <td hlmTableCell class="text-right">{{ h.quantity | number }}</td>
-                  <td hlmTableCell class="text-right">{{ h.price | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td hlmTableCell class="text-right">{{ h.totalValue | currency }}</td>
+                  @if (portfolios().length > 1) {
+                    <td hlmTableCell class="text-muted-foreground">#{{ h.accountId }}</td>
+                  }
+                  <td hlmTableCell class="text-right tabular-nums">{{ h.quantity | number: '1.0-2' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums" [attr.title]="'Price from ' + (h.priceTimestamp | date: 'MMM d, HH:mm:ss')">
+                    <span class="inline-flex items-center justify-end gap-1">
+                      @switch (priceMoves()[rowKey(h)]) {
+                        @case ('up') {
+                          <ng-icon name="lucideArrowUp" class="text-xs" [style.color]="'var(--profit)'" aria-label="up since last check" />
+                        }
+                        @case ('down') {
+                          <ng-icon name="lucideArrowDown" class="text-xs" [style.color]="'var(--loss)'" aria-label="down since last check" />
+                        }
+                      }
+                      {{ h.latestPrice | currency }}
+                    </span>
+                  </td>
+                  <td hlmTableCell class="text-right tabular-nums">
+                    {{ isHidden('holdings') ? '••••' : (h.value | currency) }}
+                  </td>
+                  <td hlmTableCell class="text-right">
+                    <a hlmBtn variant="ghost" size="xs" routerLink="/trade" [queryParams]="{ ticker: h.ticker, side: 'SELL' }"
+                      [attr.aria-label]="'Trade ' + h.ticker">Trade</a>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -84,7 +169,9 @@
         </div>
       } @else if (!loading()) {
         <div class="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-          No holdings yet. Browse live prices on
+          No holdings yet.
+          <a routerLink="/trade" class="text-primary underline-offset-4 hover:underline">Place your first order</a>
+          or browse live prices on
           <a routerLink="/markets" class="text-primary underline-offset-4 hover:underline">Markets</a>.
         </div>
       }
@@ -100,10 +187,22 @@
       </div>
     </div>
     <ul hlmCardContent class="flex flex-col gap-3">
-      @for (item of activity(); track $index) {
-        <li class="flex items-start justify-between gap-3 text-sm">
-          <span>{{ item.text }}</span>
-          <span hlmBadge variant="outline" class="shrink-0">{{ item.date | date: 'MMM d' }}</span>
+      @for (item of activity(); track item.key) {
+        <li class="flex items-center justify-between gap-3 text-sm">
+          <div class="min-w-0">
+            <p class="truncate font-medium">{{ item.title }}</p>
+            <p class="text-muted-foreground text-xs">
+              @if (item.detail) { {{ item.detail }} · }{{ item.date | date: 'MMM d' }}
+            </p>
+          </div>
+          @if (item.status; as s) {
+            <span hlmBadge [variant]="s.variant" class="shrink-0">{{ s.label }}</span>
+          } @else if (item.amount != null) {
+            <span class="shrink-0 font-medium tabular-nums"
+              [style.color]="item.direction === 'in' ? 'var(--profit)' : item.direction === 'out' ? 'var(--loss)' : null">
+              {{ item.direction === 'in' ? '+' : item.direction === 'out' ? '−' : '' }}{{ item.amount | currency }}
+            </span>
+          }
         </li>
       } @empty {
         @if (!loading()) {
@@ -111,44 +210,5 @@
         }
       }
     </ul>
-  </div>
-
-  <!-- Watchlist -->
-  <div hlmCard class="lg:col-span-3">
-    <div hlmCardHeader>
-      <h2 hlmCardTitle>Watchlist</h2>
-      <p hlmCardDescription>Live prices, refreshed every 15 seconds</p>
-      <div hlmCardAction>
-        <a hlmBtn variant="outline" routerLink="/markets">All markets</a>
-      </div>
-    </div>
-    <div hlmCardContent>
-      <div hlmTableContainer>
-        <table hlmTable>
-          <thead hlmTableHeader>
-            <tr hlmTableRow>
-              <th hlmTableHead>Ticker</th>
-              <th hlmTableHead>Name</th>
-              <th hlmTableHead>Asset class</th>
-              <th hlmTableHead class="text-right">Price</th>
-              <th hlmTableHead class="text-right">As of</th>
-            </tr>
-          </thead>
-          <tbody hlmTableBody>
-            @for (q of watchlist(); track q.ticker) {
-              <tr hlmTableRow>
-                <td hlmTableCell class="font-medium">
-                  <a [routerLink]="['/markets']" [queryParams]="{ ticker: q.ticker }" class="hover:underline">{{ q.ticker }}</a>
-                </td>
-                <td hlmTableCell>{{ q.instrumentName }}</td>
-                <td hlmTableCell><span hlmBadge variant="secondary">{{ q.assetClass }}</span></td>
-                <td hlmTableCell class="text-right tabular-nums">{{ q.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td hlmTableCell class="text-muted-foreground text-right">{{ q.quoteTimestamp | date: 'MMM d, HH:mm:ss' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </section>

@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleInvalidTicker(TickerNotFoundException ex) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), ex);
     }
+    /** A third-party source (news feeds, Yahoo Finance) couldn't be reached and nothing is cached yet. */
+    @ExceptionHandler(ExternalDataUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleExternalDataUnavailable(ExternalDataUnavailableException ex) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), ex);
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), ex);

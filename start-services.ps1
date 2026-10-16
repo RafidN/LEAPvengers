@@ -74,28 +74,28 @@ function Wait-ForPostgres {
     Write-WarningCustom "WARN - PostgreSQL did not report healthy status within 30 seconds"
 }
 
-function Wait-ForSonarQube {
-    Write-Info "Waiting for SonarQube (leapsonar)..."
-    $maxAttempts = 30
+function Wait-ForApp {
+    Write-Info "Waiting for the app (the first start also builds the images and loads a year of prices)..."
+    $maxAttempts = 150
     $attempt = 0
-    
+
     while ($attempt -lt $maxAttempts) {
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost:9000/api/system/health" -UseBasicParsing -ErrorAction Stop
+            $response = Invoke-WebRequest -Uri "http://localhost:8080/api/health" -UseBasicParsing -ErrorAction Stop
             if ($response.StatusCode -eq 200) {
-                Write-Success "OK - SonarQube is ready"
+                Write-Success "OK - The app is ready"
                 return
             }
         }
         catch {
-            # Service not ready yet
+            # Not ready yet
         }
 
         $attempt++
         Start-Sleep -Seconds 2
     }
 
-    Write-WarningCustom "WARN - SonarQube did not report ready status within 60 seconds (after $maxAttempts attempts)"
+    Write-WarningCustom "WARN - The app was not ready within 5 minutes; check: docker compose logs db-init backend"
 }
 
 function Start-Services {
@@ -110,7 +110,7 @@ function Start-Services {
 
     Write-Info ""
     Write-Info "Starting containers from docker-compose.yml..."
-    docker compose up -d
+    docker compose up --build -d
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorCustom "ERROR - Failed to start containers"
         exit 1
@@ -121,7 +121,7 @@ function Start-Services {
     Write-Info "Services are starting up. Waiting for health checks..."
 
     Wait-ForPostgres
-    Wait-ForSonarQube
+    Wait-ForApp
 
     Write-Info ""
     Write-Success "================================"
@@ -129,13 +129,14 @@ function Start-Services {
     Write-Success "================================"
     Write-Info ""
     Write-Info "Service endpoints:"
+    Write-Info "  App:        http://localhost:8080 (sign in as joanna, david or priya; password Test123)"
+    Write-Info "  API:        http://localhost:8081/api"
     Write-Info "  PostgreSQL: localhost:5432 (user: postgres)"
-    Write-Info "  SonarQube:  http://localhost:9000"
     Write-Info ""
     Write-Info "Useful commands:"
     Write-Info "  docker compose logs -f            # View all logs (follow)"
-    Write-Info "  docker compose logs -f leapdb     # View PostgreSQL logs"
-    Write-Info "  docker compose logs -f leapsonar  # View SonarQube logs"
+    Write-Info "  docker compose logs -f backend    # View the backend's logs"
+    Write-Info "  docker compose logs -f feed       # View the live price feed"
     Write-Info "  docker compose ps                 # Show container status"
     Write-Info "  docker compose stop               # Stop services"
     Write-Info "  docker compose down               # Stop and remove containers"

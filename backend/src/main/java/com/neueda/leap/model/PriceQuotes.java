@@ -31,6 +31,10 @@ public class PriceQuotes {
     @Column(name = "fetched_at", nullable = false)
     private LocalDateTime fetchedAt;
 
+    // YAHOO_LIVE, YAHOO_HISTORY or SIMULATED: where the price came from
+    @Column(name = "source", nullable = false)
+    private String source = "YAHOO_HISTORY";
+
     // Constructors
     public PriceQuotes() {
     }
@@ -109,5 +113,13 @@ public class PriceQuotes {
 
     public void setFetchedAt(LocalDateTime fetchedAt) {
         this.fetchedAt = fetchedAt;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 }

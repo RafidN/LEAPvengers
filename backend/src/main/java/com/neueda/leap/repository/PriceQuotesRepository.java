@@ -2,6 +2,8 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.PriceQuotes;
 import com.neueda.leap.model.dto.PriceHistoryResult;
+import java.util.Collection;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -130,4 +132,63 @@ public interface PriceQuotesRepository extends JpaRepository<PriceQuotes, Intege
         ORDER BY pq.quoteTimestamp DESC
     """)
     List<PriceHistoryResult> findPricesToday(@Param("ticker") String ticker);
+
+    /**
+     * For each instrument, the last quote in each interval of stepSeconds after from, up to to, oldest first.
+     * Interval k runs from from + (k-1) * step (exclusive) to from + k * step (inclusive), so its last quote
+     * is the price at the point from + k * step. This keeps a chart to a few rows per point however many
+     * quotes the live generator has written. Postgres only (DISTINCT ON).
+     */
+    // The interval number is worked out once in the subquery: written out in both DISTINCT ON and ORDER BY,
+    // each copy gets its own JDBC parameters and Postgres can't tell the two expressions match
+    @Query(value = """
+        SELECT DISTINCT ON (b.instrument_id, b.interval_number)
+               b.price_quote_id, b.instrument_id, b.price, b.volume, b.quote_timestamp, b.fetched_at, b.source
+        FROM (
+            SELECT q.*, CEIL(EXTRACT(EPOCH FROM (q.quote_timestamp - CAST(:from AS timestamp))) / :stepSeconds)
+                   AS interval_number
+            FROM price_quotes q
+            WHERE q.instrument_id IN (:instrumentIds)
+                AND q.quote_timestamp > :from
+                AND q.quote_timestamp <= :to
+        ) b
+        ORDER BY b.instrument_id, b.interval_number, b.quote_timestamp DESC
+        """, nativeQuery = true)
+    List<PriceQuotes> findLastQuotePerInterval(@Param("instrumentIds") Collection<Integer> instrumentIds,
+                                               @Param("from") LocalDateTime from,
+                                               @Param("to") LocalDateTime to,
+                                               @Param("stepSeconds") double stepSeconds);
+
+    /** The last quote for an instrument at or before a moment. */
+    Optional<PriceQuotes> findFirstByInstrumentIdAndQuoteTimestampLessThanEqualOrderByQuoteTimestampDesc(
+            Integer instrumentId, LocalDateTime at);
+
+    /**
+     * One price per interval of stepSeconds since from: the last quote in each interval, newest first. Live
+     * quotes arrive every few seconds, so a chart reads this rather than every stored quote, which keeps a
+     * year of prices to a few hundred points and gives every day the same density of points.
+     */
+    @Query(value = """
+        SELECT DISTINCT ON (b.bucket) b.ticker AS ticker, b.instrument_name AS instrumentName, b.price AS price,
+               b.volume AS volume, b.quote_timestamp AS quoteTimestamp
+        FROM (
+            SELECT i.ticker, i.instrument_name, q.price, q.volume, q.quote_timestamp,
+                   FLOOR(EXTRACT(EPOCH FROM q.quote_timestamp) / :stepSeconds) AS bucket
+            FROM price_quotes q
+            JOIN instruments i ON i.instrument_id = q.instrument_id
+            WHERE UPPER(i.ticker) = UPPER(:ticker)
+                AND q.quote_timestamp >= :from
+        ) b
+        ORDER BY b.bucket DESC, b.quote_timestamp DESC
+        """, nativeQuery = true)
+    List<SampledPrice> findSampledPrices(@Param("ticker") String ticker, @Param("from") LocalDateTime from,
+                                         @Param("stepSeconds") long stepSeconds);
+
+    interface SampledPrice {
+        String getTicker();
+        String getInstrumentName();
+        java.math.BigDecimal getPrice();
+        Long getVolume();
+        LocalDateTime getQuoteTimestamp();
+    }
 }
