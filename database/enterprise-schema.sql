@@ -3,6 +3,7 @@ DROP SCHEMA IF EXISTS reporting CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS account_valuations;
 DROP MATERIALIZED VIEW IF EXISTS latest_price_quotes;
 DROP TABLE IF EXISTS price_quotes CASCADE;
+DROP TABLE IF EXISTS order_disputes CASCADE;
 DROP TABLE IF EXISTS cash_transactions CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS order_events CASCADE;
@@ -229,6 +230,49 @@ CREATE TRIGGER cash_transactions_append_only
     BEFORE UPDATE OR DELETE ON cash_transactions
     FOR EACH ROW
     EXECUTE FUNCTION prevent_cash_transaction_mutation();
+
+-- A client's dispute of one of their orders, raised from their History page and worked by Operations
+-- (BR-15: answer a client dispute from the records). Like the other trade records it is never deleted, and
+-- it only ever moves from OPEN to RESOLVED, with Ops' resolution, who resolved it and when.
+CREATE TABLE order_disputes (
+    dispute_id    SERIAL PRIMARY KEY,
+    order_id      INTEGER NOT NULL REFERENCES orders(order_id),
+    raised_by     INTEGER NOT NULL REFERENCES users(user_id),
+    reason        TEXT NOT NULL CHECK (reason IN ('WRONG_PRICE', 'SHOULD_HAVE_FILLED', 'NOT_PLACED_BY_ME', 'OTHER')),
+    message       TEXT NOT NULL CHECK (length(message) BETWEEN 1 AND 1000),
+    status        TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'RESOLVED')),
+    created_at    TIMESTAMP NOT NULL DEFAULT now(),
+    resolution    TEXT CHECK (resolution IS NULL OR length(resolution) BETWEEN 1 AND 1000),
+    resolved_by   INTEGER REFERENCES users(user_id),
+    resolved_at   TIMESTAMP,
+    CHECK ((status = 'RESOLVED') = (resolution IS NOT NULL AND resolved_by IS NOT NULL AND resolved_at IS NOT NULL))
+);
+-- One open dispute per order at a time; once it is resolved the client can raise another
+CREATE UNIQUE INDEX order_disputes_one_open_idx ON order_disputes (order_id) WHERE status = 'OPEN';
+CREATE INDEX order_disputes_status_created_idx ON order_disputes (status, created_at);
+
+CREATE OR REPLACE FUNCTION protect_order_dispute() RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'disputes are permanent records; DELETE of dispute % is not allowed', OLD.dispute_id;
+    END IF;
+    IF OLD.status <> 'OPEN' OR NEW.status <> 'RESOLVED'
+       OR NEW.dispute_id IS DISTINCT FROM OLD.dispute_id
+       OR NEW.order_id IS DISTINCT FROM OLD.order_id
+       OR NEW.raised_by IS DISTINCT FROM OLD.raised_by
+       OR NEW.reason IS DISTINCT FROM OLD.reason
+       OR NEW.message IS DISTINCT FROM OLD.message
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'dispute % can only be resolved once, and what the client raised never changes', OLD.dispute_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_disputes_protect_record
+    BEFORE UPDATE OR DELETE ON order_disputes
+    FOR EACH ROW
+    EXECUTE FUNCTION protect_order_dispute();
 
 -- Live market data, populated by an external feed (e.g. Alpha Vantage),
 -- kept separate from the static instrument reference data above.

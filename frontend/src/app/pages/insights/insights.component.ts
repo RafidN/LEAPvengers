@@ -12,7 +12,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ClientSegment, ClientSegmentResult, ClientSegmentService } from '../../services/client-segment.service';
 import { InstrumentInsightsResult, InstrumentInsightsService } from '../../services/instrument-insights.service';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES } from '../../components/chart-theme';
+import { CHART_PALETTES, CHART_PROVIDERS } from '../../components/chart-theme';
 
 interface SegmentSummary {
   segment: ClientSegment;
@@ -27,6 +27,7 @@ interface SegmentSummary {
  */
 @Component({
   selector: 'app-insights',
+  providers: [CHART_PROVIDERS],
   templateUrl: './insights.component.html',
   imports: [
     CurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,

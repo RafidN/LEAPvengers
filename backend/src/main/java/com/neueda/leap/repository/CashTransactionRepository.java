@@ -133,6 +133,15 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
     List<CashTransactionResult> findTransactionsToday(@Param("clientId") Integer clientId);
 
     /** Deposits and withdrawals (the transactions not tied to an order) in the given accounts on or after a date. */
+    /** The cash a filled order moved (at most one row per order), for the audit trail. */
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.CashTransactionResult(
+            ct.cashTransactionId, ct.txnType, ct.amount, ct.txnDate, ct.createdAt)
+        FROM CashTransactions ct
+        WHERE ct.orderId = :orderId
+    """)
+    java.util.Optional<CashTransactionResult> findSettlementByOrderId(@Param("orderId") Integer orderId);
+
     List<CashTransactions> findByAccountIdInAndOrderIdIsNullAndTxnDateGreaterThanEqual(
             Collection<Integer> accountIds, LocalDate from);
 }

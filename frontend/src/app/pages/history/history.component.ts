@@ -1,6 +1,8 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, defer, forkJoin, map, of, repeat, switchMap, timer } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -11,12 +13,16 @@ import {
   lucideCircleX,
   lucideChevronRight,
   lucideClock,
+  lucideFlag,
+  lucideMessageSquareReply,
   lucideRefreshCw
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmLabelImports } from '@spartan-ng/helm/label';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { HlmTabsImports } from '@spartan-ng/helm/tabs';
 import {
@@ -26,7 +32,9 @@ import {
   OrderHistoryResult,
   OrderStatus
 } from '../../services/history.service';
-import { OrderEvent, OrderService } from '../../services/order.service';
+import {
+  DISPUTE_REASONS, Dispute, DisputeReason, FINAL_STATUSES, OrderEvent, OrderService, disputeReasonLabel
+} from '../../services/order.service';
 
 /** Badge style and icon per order status, so a status reads the same everywhere on the page. */
 const STATUS_META: Record<OrderStatus, {
@@ -61,11 +69,13 @@ const IN_PROGRESS_REFRESH_MS = 1_000;
   selector: 'app-history',
   templateUrl: './history.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, NgIcon, RouterLink,
-    HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports, HlmTabsImports
+    CurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon, RouterLink,
+    HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports,
+    HlmTableImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideArrowLeftRight, lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw
+    lucideArrowLeftRight, lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideFlag,
+    lucideMessageSquareReply, lucideRefreshCw
   })]
 })
 export class HistoryComponent {
@@ -96,6 +106,29 @@ export class HistoryComponent {
   protected readonly events = signal<OrderEvent[]>([]);
   protected readonly eventsLoading = signal(false);
   protected readonly eventsError = signal('');
+
+  // ---- Disputes: a client reports a problem with an order; Operations replies ----
+  protected readonly disputeReasons = DISPUTE_REASONS;
+  protected readonly reasonLabel = disputeReasonLabel;
+  protected readonly disputes = signal<Dispute[]>([]);
+  /** The order whose dispute form is open, if any. */
+  protected readonly disputeFormFor = signal<number | null>(null);
+  protected readonly disputeReason = signal<DisputeReason | ''>('');
+  protected readonly disputeMessage = signal('');
+  protected readonly disputeSending = signal(false);
+  protected readonly disputeError = signal('');
+  protected readonly maxDisputeLength = 1000;
+
+  /** Each order's most recent dispute; the list comes newest first. */
+  protected readonly latestDispute = computed(() => {
+    const latest = new Map<number, Dispute>();
+    for (const d of this.disputes()) {
+      if (!latest.has(d.orderId)) {
+        latest.set(d.orderId, d);
+      }
+    }
+    return latest;
+  });
 
   protected readonly visibleOrders = computed(() => {
     const status = this.statusFilter();
@@ -142,7 +175,9 @@ export class HistoryComponent {
     toObservable(this.period).pipe(
       switchMap(period => defer(() => forkJoin({
         orders: this.orderService.getOrders(period),
-        cash: this.history.getCashHistory(period)
+        cash: this.history.getCashHistory(period),
+        // Disputes are extra: if they can't load, the orders still show
+        disputes: this.orderService.getDisputes().pipe(catchError(() => of(null)))
       }).pipe(catchError(() => of(null)))).pipe(
         repeat({ delay: () => timer(this.inProgress() ? IN_PROGRESS_REFRESH_MS : REFRESH_MS) })
       )),
@@ -155,6 +190,9 @@ export class HistoryComponent {
       }
       this.orders.set(result.orders);
       this.cash.set(result.cash);
+      if (result.disputes) {
+        this.disputes.set(result.disputes);
+      }
       this.error.set('');
       this.lastUpdated.set(new Date());
 
@@ -196,11 +234,56 @@ export class HistoryComponent {
     }
   }
 
+  /** Only a finished order can be disputed; one still going through has no outcome yet. */
+  protected canDispute(o: OrderHistoryResult): boolean {
+    return FINAL_STATUSES.includes(o.orderStatus) && this.latestDispute().get(o.orderId)?.status !== 'OPEN';
+  }
+
+  protected openDisputeForm(orderId: number): void {
+    this.disputeFormFor.set(orderId);
+    this.disputeReason.set('');
+    this.disputeMessage.set('');
+    this.disputeError.set('');
+  }
+
+  protected closeDisputeForm(): void {
+    this.disputeFormFor.set(null);
+  }
+
+  protected submitDispute(orderId: number): void {
+    const reason = this.disputeReason();
+    const message = this.disputeMessage().trim();
+    if (!reason) {
+      this.disputeError.set('Choose what went wrong.');
+      return;
+    }
+    if (!message) {
+      this.disputeError.set('Tell us what happened, so Operations can look into it.');
+      return;
+    }
+    this.disputeSending.set(true);
+    this.disputeError.set('');
+    this.orderService.raiseDispute(orderId, reason, message).subscribe({
+      next: dispute => {
+        this.disputeSending.set(false);
+        this.disputes.update(list => [dispute, ...list]);
+        this.disputeFormFor.set(null);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.disputeSending.set(false);
+        this.disputeError.set(error.status === 400 && error.error?.message
+          ? error.error.message
+          : 'Could not send your dispute. Please try again.');
+      }
+    });
+  }
+
   protected toggleTimeline(orderId: number): void {
     // Clear the previous order's steps so they never show under a different order while loading
     this.events.set([]);
     this.eventsError.set('');
     this.linkedOrderId.set(null);
+    this.disputeFormFor.set(null);
     this.selectedOrderId.update(current => (current === orderId ? null : orderId));
   }
 }

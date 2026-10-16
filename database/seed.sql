@@ -192,14 +192,7 @@ CROSS JOIN LATERAL generate_series(v.fills, 1, -1) AS g;
 -- rules accept it or reject it straight away, then after a short delay the system fills it or marks
 -- it failed. created_by is the trader for their own steps and NULL for system steps.
 INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
-SELECT o.order_id, u.user_id, NULL,
-    CASE WHEN o.order_status IN ('REJECTED', 'SUBMITTED') THEN o.order_status ELSE 'ACCEPTED' END,
-       o.submitted_at,
-       CASE o.order_status
-           WHEN 'REJECTED' THEN o.rejection_reason
-           WHEN 'SUBMITTED'  THEN 'Waiting to be executed'
-           ELSE 'Passed trading checks'
-       END
+SELECT o.order_id, u.user_id, from_status, to_status, o.submitted_at, details
 FROM orders o
 JOIN accounts a ON a.account_id = o.account_id
 LEFT JOIN LATERAL (
@@ -228,6 +221,17 @@ SELECT o.account_id, o.order_type, round(o.quantity * o.execution_price, 4), o.e
 FROM orders o
 WHERE o.order_status = 'FILLED'
 ORDER BY o.executed_at;
+
+-- Joanna disputes her failed SAP order, so Operations has a dispute waiting to work through.
+INSERT INTO order_disputes (order_id, raised_by, reason, message, created_at)
+SELECT o.order_id, u.user_id, 'SHOULD_HAVE_FILLED',
+       'I had enough cash for this and the price on screen was right. Why did my SAP order fail?',
+       o.submitted_at + interval '1 day'
+FROM orders o
+JOIN accounts a ON a.account_id = o.account_id
+JOIN users u ON u.client_id = a.client_id AND u.username = 'joanna'
+JOIN instruments i ON i.instrument_id = o.instrument_id AND i.ticker = 'SAP'
+WHERE o.order_status = 'FAILED';
 
 -- Holdings = filled buys - filled sells per account and instrument, the same way OrderExecutionService
 -- moves them for live trades. Fully sold positions are left out, as OrderExecutionService removes them.

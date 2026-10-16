@@ -162,4 +162,33 @@ public interface PriceQuotesRepository extends JpaRepository<PriceQuotes, Intege
     /** The last quote for an instrument at or before a moment. */
     Optional<PriceQuotes> findFirstByInstrumentIdAndQuoteTimestampLessThanEqualOrderByQuoteTimestampDesc(
             Integer instrumentId, LocalDateTime at);
+
+    /**
+     * One price per interval of stepSeconds since from: the last quote in each interval, newest first. Live
+     * quotes arrive every few seconds, so a chart reads this rather than every stored quote, which keeps a
+     * year of prices to a few hundred points and gives every day the same density of points.
+     */
+    @Query(value = """
+        SELECT DISTINCT ON (b.bucket) b.ticker AS ticker, b.instrument_name AS instrumentName, b.price AS price,
+               b.volume AS volume, b.quote_timestamp AS quoteTimestamp
+        FROM (
+            SELECT i.ticker, i.instrument_name, q.price, q.volume, q.quote_timestamp,
+                   FLOOR(EXTRACT(EPOCH FROM q.quote_timestamp) / :stepSeconds) AS bucket
+            FROM price_quotes q
+            JOIN instruments i ON i.instrument_id = q.instrument_id
+            WHERE UPPER(i.ticker) = UPPER(:ticker)
+                AND q.quote_timestamp >= :from
+        ) b
+        ORDER BY b.bucket DESC, b.quote_timestamp DESC
+        """, nativeQuery = true)
+    List<SampledPrice> findSampledPrices(@Param("ticker") String ticker, @Param("from") LocalDateTime from,
+                                         @Param("stepSeconds") long stepSeconds);
+
+    interface SampledPrice {
+        String getTicker();
+        String getInstrumentName();
+        java.math.BigDecimal getPrice();
+        Long getVolume();
+        LocalDateTime getQuoteTimestamp();
+    }
 }

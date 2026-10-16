@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES } from '../chart-theme';
+import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
 import { formatMoney } from '../../services/format';
 
 export interface ActivityBar {
@@ -20,6 +20,7 @@ const axisMoney = (value: number) => '$' + value.toLocaleString('en-US', { notat
  */
 @Component({
   selector: 'app-activity-chart',
+  providers: [CHART_PROVIDERS],
   imports: [BaseChartDirective],
   template: `
     <div class="relative w-full" [style.height.px]="height()">

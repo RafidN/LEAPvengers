@@ -6,7 +6,9 @@ import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.OrderEvents;
 import com.neueda.leap.model.Orders;
 import com.neueda.leap.model.Users;
+import com.neueda.leap.model.dto.CashTransactionResult;
 import com.neueda.leap.repository.AccountRepository;
+import com.neueda.leap.repository.CashTransactionRepository;
 import com.neueda.leap.repository.ClientRepository;
 import com.neueda.leap.repository.InstrumentsRepository;
 import com.neueda.leap.repository.OrderEventsRepository;
@@ -51,6 +53,7 @@ class OrderRecoveryIntegrationTest {
     @Autowired private OrderEventsRepository orderEventsRepository;
     @Autowired private OrderRecoveryService orderRecoveryService;
     @Autowired private OrderService orderService;
+    @Autowired private CashTransactionRepository cashTransactionRepository;
 
     private Integer accountId;
     private Integer instrumentId;
@@ -101,6 +104,12 @@ class OrderRecoveryIntegrationTest {
         OrderEvents fill = events(orderId).get(0);
         assertEquals("FILLED", fill.getToStatus());
         assertEquals("YAHOO_LIVE", fill.getQuoteSource());
+
+        // What it settled as, as the Ops audit trail shows it: the cash the fill moved, with its time
+        CashTransactionResult settlement = cashTransactionRepository.findSettlementByOrderId(orderId).orElseThrow();
+        assertEquals("BUY", settlement.getTransactionType());
+        assertEquals(0, new BigDecimal("500").compareTo(settlement.getAmount()));
+        assertTrue(settlement.getTransactionTime() != null);
     }
 
     @Test

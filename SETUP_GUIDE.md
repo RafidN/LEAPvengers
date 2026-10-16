@@ -17,7 +17,7 @@ The `setup-dev.ps1` script automates your entire local development setup:
 3. ✓ **Runs Schema** - Executes `database/enterprise-schema.sql` to set up tables
 4. ✓ **Loads Seed Data** - Executes `database/seed.sql` to populate test data (clients, accounts, instruments, orders, etc.)
 5. ✓ **Installs Python Market Data Dependencies** - Installs `yfinance` for historical market-data backfill
-6. ✓ **Backfills One Year Of Prices** - Loads one year of Yahoo Finance history at the finest interval Yahoo supports for that date range
+6. ✓ **Backfills One Year Of Prices** - Loads Yahoo Finance history: daily closes for the year, 30-minute bars for the last two months and 1-minute bars for the last week
 7. ✓ **Starts Live Quote Generator** - Streams real Yahoo Finance prices for every open market and writes them every 3 seconds (see [Market data and trading hours](#market-data-and-trading-hours))
 8. ✓ **Builds Backend** - Runs `mvn clean install` for the Spring Boot application
 9. ✓ **Installs Frontend Dependencies** - Installs npm packages for Angular
@@ -45,14 +45,28 @@ If you get an error about script execution policies, run this first:
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-## Docker Option (Automatic)
+## Docker Option (the whole platform in containers)
 
-For Docker-based services (PostgreSQL + SonarQube), use the included scripts:
+With Docker Desktop installed you don't need Java, Node, Python or PostgreSQL on your machine. The same images run on AWS.
 
-**Windows:** `.\start-services.ps1`  
-**macOS/Linux:** `./start-services.sh`
+```powershell
+Copy-Item .env.example .env    # optional: every setting has a local default
+docker compose up --build -d   # or: .\start-services.ps1
+```
 
-Jenkins CI/CD automatically uses Docker Compose for all stages.
+Then open http://localhost:8080 and sign in as `joanna`, `david` or `priya` (password `Test123`). The API is also on http://localhost:8081/api.
+
+The first start takes a few minutes: it builds the images, then the `db-init` job creates the schema, demo data and a year of prices before the backend and the live price feed start. Later starts leave the database as it is.
+
+| Command | What it does |
+| --- | --- |
+| `docker compose logs -f backend` | Follow one service (`backend`, `frontend`, `feed`, `db-init`, `leapdb`) |
+| `docker compose down` | Stop; the database is kept |
+| `docker compose down -v` | Stop and delete the database (the next start rebuilds it) |
+
+If PostgreSQL is already running on this machine, set `DB_PORT=5433` in `.env` so the two don't clash.
+
+To deploy to AWS, see [deploy/aws/README.md](deploy/aws/README.md). Jenkins (the `Jenkinsfile`) tests every build, builds these images, and can push and deploy them.
 
 ## After Setup
 
@@ -90,7 +104,7 @@ The setup automatically loads test data that includes:
 
 Instrument tickers are seeded in Yahoo Finance format so the backfill script uses the same symbols.
 
-Because Yahoo intraday history is limited, the backfill script automatically falls back to the finest interval Yahoo supports for the requested one-year range. For a full year, that typically means daily bars.
+Yahoo keeps fine-grained history only for recent dates, so setup loads three ranges that don't overlap: daily bars for the year, 30-minute bars for the last two months and 1-minute bars for the last week. Charts sample one price per interval (`GET /api/history/prices`), so every day in a chart has the same density of points.
 
 Use this data to test the dashboard, portfolio views, order history, and other features. The data reflects realistic trading patterns.
 
@@ -104,7 +118,7 @@ The sign-in page has one-click buttons for the three personas from the business 
 | `david` | Ops | `/clients` | Every client with their segment; trade lifecycles |
 | `priya` | Analyst | `/insights` | Activity and value by segment, clients shown by id only |
 
-Every role also has `/markets` and `/access`. The Access page calls the real API and shows which requests the server blocks for the signed-in role.
+Every role also has `/markets`. Each role's access rules are enforced by the server and covered by the backend tests (`RoleAccessTest`, `AuditControllerSecurityTest` and the integration tests).
 
 ## Stopping Services
 
@@ -150,11 +164,14 @@ psql -h localhost -p 5432 -U postgres -d leapvengersdb -f database/enterprise-sc
 # Load seed data (test data for development)
 psql -h localhost -p 5432 -U postgres -d leapvengersdb -f database/seed.sql
 
-# Install Python dependency and backfill one year of Yahoo prices
+# Install Python dependency and backfill a year of Yahoo prices
 python -m pip install -r scripts/requirements.txt
-$startDate = (Get-Date).AddDays(-365).ToString('yyyy-MM-dd')
-$endDate = (Get-Date).AddDays(1).ToString('yyyy-MM-dd')
-python scripts/yahoo_backfill.py --host localhost --port 5432 --database leapvengersdb --user postgres --start-date $startDate --end-date $endDate --interval auto
+$d = { param($days) (Get-Date).AddDays($days).ToString('yyyy-MM-dd') }
+$db = '--host localhost --port 5432 --database leapvengersdb --user postgres'.Split(' ')
+# Daily closes for the year, 30-minute bars for the last two months, 1-minute bars for the last week
+python scripts/yahoo_backfill.py @db --start-date (& $d -365) --end-date (& $d -58) --interval 1d
+python scripts/yahoo_backfill.py @db --start-date (& $d -58) --end-date (& $d -6) --interval 30m
+python scripts/yahoo_backfill.py @db --start-date (& $d -6) --end-date (& $d 1) --interval 1m
 
 # Start live prices (real Yahoo Finance quotes; orders are rejected without a current price)
 python scripts/live_quote_generator.py --host localhost --port 5432 --database leapvengersdb --user postgres --interval-seconds 3 --iterations 0
@@ -183,9 +200,10 @@ npm start
 Key configuration files:
 
 - **Backend**: `backend/src/main/resources/application.properties`
-  - Database connection
-  - JWT settings
+  - Database connection and JWT secret, from the environment variables `DB_URL`, `DB_USER`, `DB_PASSWORD` and `JWT_SECRET`; the defaults after `:` are for local development only
   - Server port (8081)
+  - `application-prod.properties` (the `prod` profile, used by the container image) has no defaults: the backend refuses to start without those variables. It also turns off the Swagger API docs.
+- **Docker / AWS**: `.env.example` lists the settings for `docker compose`; on AWS they come from Secrets Manager and the CloudFormation stacks (`deploy/aws/`)
 
 - **Frontend**: `frontend/angular.json` and `frontend/proxy.conf.json`
   - Angular build configuration
@@ -219,5 +237,6 @@ Orders are priced on current market quotes (BR-08, BR-12) and only accepted whil
 ## Trade records
 
 - **Permanent.** Database triggers stop orders and cash movements from being edited or deleted. An order can only move forward (SUBMITTED → ACCEPTED or REJECTED → FILLED or FAILED), and order events are append-only. Corrections are new records. The triggers stop the application and anyone using its database login; in production, the application should also connect as a role without rights to drop the triggers.
+- **Disputes.** A client can report a problem with any finished order from History (the order's timeline). It appears in Operations' "Open disputes" queue on the Clients page within 30 seconds; Review opens the order's full record, and Ops resolves it with a written reply the client sees on their History page. Disputes are permanent records: they can only move from open to resolved, once. The seed includes one open dispute (Joanna's failed SAP order).
 - **Restart recovery.** If the backend stops during an order's half-second fill delay, `OrderRecoveryService` finishes the order when the backend next starts. It also checks every 10 seconds after that. The order is filled if its price still holds, or marked FAILED with "The platform restarted before this order was filled…". An order left mid-check is REJECTED, and nothing moves.
 

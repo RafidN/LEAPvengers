@@ -1,3 +1,4 @@
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 /**
  * Chart colours per theme. Chart.js draws on a canvas, so it can't read the CSS tokens in styles.css;
  * these mirror them. The dark series colours were checked against the dark card surface (#1c2024).
@@ -60,3 +61,9 @@ export const CHART_PALETTES: Record<'light' | 'dark', ChartPalette> = {
     border: '#30363c'
   }
 };
+
+/**
+ * Chart.js registration, provided by each chart component rather than the app, so Chart.js loads with the
+ * pages that draw charts instead of before sign-in.
+ */
+export const CHART_PROVIDERS = [provideCharts(withDefaultRegisterables())];

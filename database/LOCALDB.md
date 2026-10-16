@@ -25,9 +25,12 @@ python -m pip install -r scripts/requirements.txt
 
 ### 4. Backfill one year of Yahoo Finance prices
 ```bash
-$startDate = (Get-Date).AddDays(-365).ToString('yyyy-MM-dd')
-$endDate = (Get-Date).AddDays(1).ToString('yyyy-MM-dd')
-python scripts/yahoo_backfill.py --host localhost --port 5432 --database leapvengersdb --user postgres --start-date $startDate --end-date $endDate --interval auto
+$d = { param($days) (Get-Date).AddDays($days).ToString('yyyy-MM-dd') }
+$db = '--host localhost --port 5432 --database leapvengersdb --user postgres'.Split(' ')
+# Daily closes for the year, 30-minute bars for the last two months, 1-minute bars for the last week
+python scripts/yahoo_backfill.py @db --start-date (& $d -365) --end-date (& $d -58) --interval 1d
+python scripts/yahoo_backfill.py @db --start-date (& $d -58) --end-date (& $d -6) --interval 30m
+python scripts/yahoo_backfill.py @db --start-date (& $d -6) --end-date (& $d 1) --interval 1m
 ```
 
 ### 5. Start live prices (real Yahoo Finance quotes, every 3 seconds while each market is open)
@@ -37,7 +40,7 @@ python scripts/live_quote_generator.py --host localhost --port 5432 --database l
 
 Instrument tickers are stored in Yahoo Finance format so the backfill script can query them directly.
 
-Yahoo intraday data is limited, so the backfill script auto-selects the finest interval Yahoo supports for the requested one-year range. In practice, a full year usually resolves to daily bars.
+Yahoo keeps fine-grained history only for recent dates, so the year is loaded in three ranges that don't overlap: daily, 30-minute and 1-minute bars.
 
 ### 6. Verify Setup
 ```bash

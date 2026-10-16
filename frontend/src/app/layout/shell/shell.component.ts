@@ -3,7 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideMoon, lucideShield, lucideShieldCheck, lucideSun, lucideUsers
+  lucideMoon, lucideShield, lucideSun, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -25,8 +25,7 @@ const NAV_LINKS: NavLink[] = [
   { path: '/clients', label: 'Clients', icon: 'lucideUsers', roles: ['OPS'] },
   { path: '/insights', label: 'Insights', icon: 'lucideChartPie', roles: ['ANALYST'] },
   { path: '/reports', label: 'Reports', icon: 'lucideChartColumn', roles: ['ANALYST', 'OPS'] },
-  { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] },
-  { path: '/access', label: 'Access', icon: 'lucideShieldCheck', roles: ['TRADER', 'OPS', 'ANALYST'] }
+  { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] }
 ];
 
 /** Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself. */
@@ -36,7 +35,7 @@ const NAV_LINKS: NavLink[] = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideMoon, lucideShield, lucideShieldCheck, lucideSun, lucideUsers
+    lucideMoon, lucideShield, lucideSun, lucideUsers
   })]
 })
 export class ShellComponent {

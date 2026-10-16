@@ -4,10 +4,15 @@ import com.neueda.leap.model.dto.AuditClientDetailsResponse;
 import com.neueda.leap.model.dto.AuditClientSummary;
 import com.neueda.leap.model.dto.AuditOrder;
 import com.neueda.leap.model.dto.AuditOrderDetailsResponse;
+import com.neueda.leap.model.dto.DisputeRequest;
+import com.neueda.leap.model.dto.DisputeResult;
 import com.neueda.leap.service.AuditService;
+import com.neueda.leap.service.DisputeService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,9 +27,23 @@ import java.util.List;
 @RequestMapping("/internal/audit")
 public class AuditController {
     private final AuditService auditService;
+    private final DisputeService disputeService;
 
-    public AuditController(AuditService auditService) {
+    public AuditController(AuditService auditService, DisputeService disputeService) {
         this.auditService = auditService;
+        this.disputeService = disputeService;
+    }
+
+    /** GET /internal/audit/disputes?status=OPEN|RESOLVED: clients' disputes, newest first (all when no status). */
+    @GetMapping("/disputes")
+    public List<DisputeResult> getDisputes(@RequestParam(required = false) String status) {
+        return disputeService.all(status);
+    }
+
+    /** POST /internal/audit/disputes/{id}/resolve {"resolution": "..."}: closes it with an answer the client sees. */
+    @PostMapping("/disputes/{id}/resolve")
+    public DisputeResult resolveDispute(@PathVariable("id") Integer disputeId, @RequestBody DisputeRequest request) {
+        return disputeService.resolve(disputeId, request);
     }
 
     /**

@@ -1,0 +1,7 @@
+# Only the market-data image (scripts/Dockerfile) builds from the repository root; it needs scripts/ and database/.
+# The backend and frontend images use their own folders as build context.
+*
+!scripts/
+!database/
+scripts/validation-logs/
+**/__pycache__/

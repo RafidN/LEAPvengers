@@ -3,7 +3,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, Plugin } from 'chart.js';
 import { AccountValuePoint } from '../../services/account.service';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES } from '../chart-theme';
+import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
 import { formatMoney } from '../../services/format';
 
 const money = formatMoney;
@@ -45,6 +45,7 @@ const crosshair: Plugin<'line'> = {
  */
 @Component({
   selector: 'app-value-chart',
+  providers: [CHART_PROVIDERS],
   imports: [BaseChartDirective],
   template: `
     <div class="relative h-64 w-full">

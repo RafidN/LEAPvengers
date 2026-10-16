@@ -7,6 +7,8 @@ import com.neueda.leap.model.dto.AuditClientSummary;
 import com.neueda.leap.model.dto.AuditOrder;
 import com.neueda.leap.repository.AccountRepository;
 import com.neueda.leap.repository.AuditRepository;
+import com.neueda.leap.repository.CashTransactionRepository;
+import com.neueda.leap.service.DisputeService;
 import com.neueda.leap.repository.ClientRepository;
 import com.neueda.leap.repository.OrderEventsRepository;
 import com.neueda.leap.security.JwtAuthenticationFilter;
@@ -68,7 +70,8 @@ class AuditControllerSecurityTest {
                 @Bean
                 AuditService auditService() {
                         return new AuditService(auditRepository(), clientRepository(), accountRepository(), orderEventsRepository(),
-                                        Mockito.mock(ClientSegmentService.class)) {
+                                        Mockito.mock(ClientSegmentService.class), Mockito.mock(CashTransactionRepository.class),
+                                        disputeService()) {
                                 @Override
                                 public List<AuditClientSummary> searchClients(String query) {
                                         return List.of(new AuditClientSummary(7, "Ada", "Lovelace", "ada@example.com", "Premier"));
@@ -101,6 +104,11 @@ class AuditControllerSecurityTest {
                 @Bean
                 JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint() {
                         return new JwtAuthenticationEntryPoint();
+                }
+
+                @Bean
+                DisputeService disputeService() {
+                        return Mockito.mock(DisputeService.class);
                 }
 
                 @Bean

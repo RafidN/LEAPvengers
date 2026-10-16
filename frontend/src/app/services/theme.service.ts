@@ -5,8 +5,6 @@
  */
 import { DOCUMENT, Injectable, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Chart } from 'chart.js';
-import { CHART_PALETTES } from '../components/chart-theme';
 
 export type Theme = 'light' | 'dark';
 
@@ -53,10 +51,7 @@ export class ThemeService {
   }
 
   private apply(theme: Theme): void {
+    // Charts take their colours from CHART_PALETTES themselves and are rebuilt when the theme changes
     this.document.documentElement.classList.toggle('dark', theme === 'dark');
-    // Axis labels and gridlines of every chart; charts are rebuilt on a theme change to pick these up
-    const palette = CHART_PALETTES[theme];
-    Chart.defaults.color = palette.inkMuted;
-    Chart.defaults.borderColor = palette.grid;
   }
 }
