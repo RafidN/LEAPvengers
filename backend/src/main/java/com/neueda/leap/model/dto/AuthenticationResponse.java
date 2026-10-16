@@ -3,6 +3,8 @@ package com.neueda.leap.model.dto;
 public class AuthenticationResponse {
     private String token;
     private Integer userId;
+    private String firstName;
+    private String lastName;
     private String username;
     private Integer clientId;
     private String email;
@@ -11,9 +13,11 @@ public class AuthenticationResponse {
     public AuthenticationResponse() {
     }
 
-    public AuthenticationResponse(String token, Integer userId, String username, Integer clientId, String email, String role) {
+    public AuthenticationResponse(String token, Integer userId, String firstName, String lastName, String username, Integer clientId, String email, String role) {
         this.token = token;
         this.userId = userId;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.username = username;
         this.clientId = clientId;
         this.email = email;
@@ -34,6 +38,22 @@ public class AuthenticationResponse {
 
     public void setUserId(Integer userId) {
         this.userId = userId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getUsername() {

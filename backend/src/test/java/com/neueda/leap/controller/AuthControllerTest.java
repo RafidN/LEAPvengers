@@ -50,6 +50,8 @@ class AuthControllerTest {
         authService.registerResponse = new AuthenticationResponse(
                 "jwt-register-token",
                 101,
+            "Jane",
+            "Doe",
                 "newuser",
                 42,
                 "newuser@example.com",
@@ -88,6 +90,8 @@ class AuthControllerTest {
         authService.loginResponse = new AuthenticationResponse(
                 "jwt-login-token",
                 202,
+            "Existing",
+            "User",
                 "existinguser",
                 77,
                 "existinguser@example.com",

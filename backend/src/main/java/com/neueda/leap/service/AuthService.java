@@ -98,7 +98,8 @@ public class AuthService {
         Users savedUser;
         try {
             savedClient = clientRepository.save(new Clients(firstName, lastName, email));
-            savedUser = userRepository.save(new Users(savedClient.getClientId(), username, passwordEncoder.encode(password)));
+            savedUser = userRepository.save(new Users(
+                savedClient.getClientId(), username, firstName, lastName, passwordEncoder.encode(password)));
             openAccount(savedClient.getClientId());
         } catch (DataIntegrityViolationException e) {
             // Someone registered the same username or email between the checks above and these inserts
@@ -109,6 +110,8 @@ public class AuthService {
         return new AuthenticationResponse(
             token,
             savedUser.getUserId(),
+            savedClient.getFirstName(),
+            savedClient.getLastName(),
             savedUser.getUsername(),
             savedUser.getClientId(),
             savedClient.getEmail(),
@@ -158,9 +161,11 @@ public class AuthService {
         }
 
         String email = findClientEmail(user.getClientId());
+        String firstName = findFirstName(user);
+        String lastName = findLastName(user);
         String token = jwtUtil.generateToken(user);
 
-        return new AuthenticationResponse(token, user.getUserId(), user.getUsername(), user.getClientId(), email, user.getRole());
+        return new AuthenticationResponse(token, user.getUserId(), firstName, lastName, user.getUsername(), user.getClientId(), email, user.getRole());
     }
 
     private String unknownUserHash() {
@@ -200,6 +205,42 @@ public class AuthService {
         return clientRepository.findById(clientId)
             .map(Clients::getEmail)
             .orElse(null);
+    }
+
+    private String findFirstName(Users user) {
+        if (user.getClientId() != null) {
+            String clientFirstName = clientRepository.findById(user.getClientId())
+                .map(Clients::getFirstName)
+                .orElse(null);
+            if (clientFirstName != null && !clientFirstName.isBlank()) {
+                return clientFirstName;
+            }
+        }
+        if (user.getFirstName() != null && !user.getFirstName().isBlank()) {
+            return user.getFirstName();
+        }
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            return null;
+        }
+        return Character.toUpperCase(user.getUsername().charAt(0)) + user.getUsername().substring(1);
+    }
+
+    private String findLastName(Users user) {
+        if (user.getClientId() != null) {
+            String clientLastName = clientRepository.findById(user.getClientId())
+                .map(Clients::getLastName)
+                .orElse(null);
+            if (clientLastName != null && !clientLastName.isBlank()) {
+                return clientLastName;
+            }
+        }
+        if (user.getLastName() != null && !user.getLastName().isBlank()) {
+            return user.getLastName();
+        }
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            return null;
+        }
+        return Character.toUpperCase(user.getUsername().charAt(0)) + user.getUsername().substring(1);
     }
 
     private boolean isBlank(String value) {

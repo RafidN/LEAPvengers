@@ -29,6 +29,8 @@ export const ROLE_LABEL: Record<Role, string> = {
 interface AuthenticationResponse {
   token: string;
   userId: number;
+  firstName?: string;
+  lastName?: string;
   username: string;
   clientId?: number;
   email?: string;
@@ -81,6 +83,8 @@ export class AuthService {
     }
     localStorage.removeItem('authToken');
     localStorage.removeItem('userId');
+    localStorage.removeItem('firstName');
+    localStorage.removeItem('lastName');
     localStorage.removeItem('username');
     localStorage.removeItem('clientId');
     localStorage.removeItem('email');
@@ -108,11 +112,40 @@ export class AuthService {
     return localStorage.getItem('authToken');
   }
 
+  getFirstName(): string | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+    return localStorage.getItem('firstName');
+  }
+
+  getLastName(): string | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+    return localStorage.getItem('lastName');
+  }
+
   getUsername(): string | null {
     if (!this.isBrowser) {
       return null;
     }
-    return localStorage.getItem('username');
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      return storedUsername;
+    }
+
+    const token = this.getToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof payload.sub === 'string' ? payload.sub : null;
+    } catch {
+      return null;
+    }
   }
 
   getRole(): Role | null {
@@ -140,6 +173,12 @@ export class AuthService {
     this.logout();
     localStorage.setItem('authToken', response.token);
     localStorage.setItem('userId', response.userId.toString());
+    if (response.firstName) {
+      localStorage.setItem('firstName', response.firstName);
+    }
+    if (response.lastName) {
+      localStorage.setItem('lastName', response.lastName);
+    }
     localStorage.setItem('username', response.username);
     localStorage.setItem('role', response.role);
     if (response.clientId != null) {

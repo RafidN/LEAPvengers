@@ -61,15 +61,15 @@ ON CONFLICT DO NOTHING;
 -- Users (authentication)
 -- Password hash for: Test123
 -- Traders belong to a client. Ops and Analyst are internal staff, so their client_id is NULL.
-INSERT INTO users (client_id, username, password, role, is_active) VALUES
-((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), 'paula', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), 'rafid', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-((SELECT client_id FROM clients WHERE email = 'sam.onwukeme@lol.com'), 'sam', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), 'bryan', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), 'mark', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-(NULL, 'ops', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'OPS', true),
-(NULL, 'analyst', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'ANALYST', true)
+INSERT INTO users (client_id, username, first_name, last_name, password, role, is_active) VALUES
+((SELECT client_id FROM clients WHERE email = 'test@test.com'), 'test', 'Test', 'User', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com'), 'paula', 'Paula', 'Agyeman', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com'), 'rafid', 'Rafid', 'Nasery', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'sam.onwukeme@lol.com'), 'sam', 'Sam', 'Onwukeme', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com'), 'bryan', 'Bryan', 'Nguyen', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+((SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com'), 'mark', 'Mark', 'Bounheuangvilay', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+(NULL, 'ops', 'David', 'Agyeman', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'OPS', true),
+(NULL, 'analyst', 'Priya', 'Patel', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'ANALYST', true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Cash Transactions (Deposits)
@@ -97,10 +97,10 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO accounts (client_id, opened_date, balance) VALUES
 ((SELECT client_id FROM clients WHERE email = 'joanna.mitchell@example.com'), CURRENT_DATE - 120, 0);
 
-INSERT INTO users (client_id, username, password, role, is_active) VALUES
-((SELECT client_id FROM clients WHERE email = 'joanna.mitchell@example.com'), 'joanna', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
-(NULL, 'david', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'OPS', true),
-(NULL, 'priya', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'ANALYST', true)
+INSERT INTO users (client_id, username, first_name, last_name, password, role, is_active) VALUES
+((SELECT client_id FROM clients WHERE email = 'joanna.mitchell@example.com'), 'joanna', 'Joanna', 'Mitchell', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'TRADER', true),
+(NULL, 'david', 'David', 'Agyeman', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'OPS', true),
+(NULL, 'priya', 'Priya', 'Patel', '$2a$10$tLwtTP4HxMzpogByQUM4eOIVrG02.NIzzGpoDz2EviysE/vgF2bci', 'ANALYST', true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Joanna funds her account in two deposits and takes a little out. Sam tops up so he can hold
@@ -192,7 +192,14 @@ CROSS JOIN LATERAL generate_series(v.fills, 1, -1) AS g;
 -- rules accept it or reject it straight away, then after a short delay the system fills it or marks
 -- it failed. created_by is the trader for their own steps and NULL for system steps.
 INSERT INTO order_events (order_id, created_by, from_status, to_status, created_at, details)
-SELECT o.order_id, u.user_id, from_status, to_status, o.submitted_at, details
+SELECT o.order_id, u.user_id, NULL,
+    CASE WHEN o.order_status IN ('REJECTED', 'SUBMITTED') THEN o.order_status ELSE 'ACCEPTED' END,
+       o.submitted_at,
+       CASE o.order_status
+           WHEN 'REJECTED' THEN o.rejection_reason
+           WHEN 'SUBMITTED'  THEN 'Waiting to be executed'
+           ELSE 'Passed trading checks'
+       END
 FROM orders o
 JOIN accounts a ON a.account_id = o.account_id
 LEFT JOIN LATERAL (
