@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.exception.GlobalExceptionHandler;
 import com.neueda.leap.exception.InvalidCredentialsException;
 import com.neueda.leap.exception.InvalidInputException;
-import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.model.dto.AuthenticationResponse;
 import com.neueda.leap.model.dto.LoginRequest;
 import com.neueda.leap.model.dto.RegisterRequest;
@@ -170,17 +169,16 @@ class AuthControllerTest {
     }
 
     @Test
-    // Tests that the /auth/login endpoint returns a Not Found response when the user does not exist
-    void loginReturnsNotFoundWhenUserDoesNotExist() throws Exception {
-        authService.loginException = new UserNotFoundException("User not found");
+    // Tests that an unknown username gets the same answer as a wrong password, so usernames can't be probed
+    void loginReturnsUnauthorizedWhenUserDoesNotExist() throws Exception {
+        authService.loginException = new InvalidCredentialsException("Invalid username or password");
         //Performs a POST request to the /auth/login endpoint with a non-existent user and verifies the response
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest("missinguser", "SecretPass1!"))))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value("User not found"))
-                .andExpect(jsonPath("$.error").value("UserNotFoundException"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Invalid username or password"));
     }
 
     @Test
@@ -241,7 +239,7 @@ class AuthControllerTest {
         private RuntimeException loginException;
 
         private FakeAuthService() {
-            super(null, null, null, null);
+            super(null, null, null, null, null, null, java.math.BigDecimal.ZERO);
         }
 
         private void reset() {

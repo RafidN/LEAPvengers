@@ -141,7 +141,7 @@ class InstrumentControllerTest {
         private java.util.Set<Integer> notFoundIds = new java.util.HashSet<>();
 
         StubInstrumentService() {
-            super(null, null);
+            super(null, null, null, null);
         }
 
         void setInstruments(List<Instruments> instruments) {

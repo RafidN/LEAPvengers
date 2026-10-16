@@ -1,0 +1,152 @@
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Reporting</p>
+    <h1 class="text-3xl font-medium tracking-tight">Trading activity</h1>
+    <p class="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-sm">
+      <ng-icon name="lucideDatabase" class="text-xs" />
+      From the reporting store, kept apart from live trading and refreshed every minute
+      @if (report()?.dataAsOf; as asOf) { · data as of {{ asOf | date: 'MMM d, HH:mm:ss' }} }
+    </p>
+  </div>
+  <button hlmBtn variant="outline" [disabled]="!report()" (click)="downloadCsv()">
+    <ng-icon name="lucideDownload" />
+    Download CSV
+  </button>
+</div>
+
+<!-- Filters -->
+<section class="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3" aria-label="Report filters">
+  <div class="flex flex-col gap-1.5">
+    <span hlmLabel id="range-label">Range</span>
+    <div class="flex flex-wrap items-center gap-1" role="group" aria-labelledby="range-label">
+      @for (r of ranges; track r.days) {
+        <button hlmBtn size="sm" [variant]="activeRange() === r.days ? 'default' : 'outline'"
+          [attr.aria-pressed]="activeRange() === r.days" (click)="setRange(r.days)">{{ r.label }}</button>
+      }
+      <input hlmInput type="date" class="h-7 w-36" aria-label="From" [max]="to()"
+        [ngModel]="from()" (ngModelChange)="from.set($event)" />
+      <span class="text-muted-foreground text-sm">to</span>
+      <input hlmInput type="date" class="h-7 w-36" aria-label="To" [min]="from()"
+        [ngModel]="to()" (ngModelChange)="to.set($event)" />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-1.5">
+    <span hlmLabel id="group-label">Group by</span>
+    <div class="flex flex-wrap gap-1" role="group" aria-labelledby="group-label">
+      @for (g of groupings; track g.value) {
+        <button hlmBtn size="sm" [variant]="groupBy() === g.value ? 'default' : 'outline'"
+          [attr.aria-pressed]="groupBy() === g.value" (click)="groupBy.set(g.value)">{{ g.label }}</button>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-1.5">
+    <label hlmLabel for="segment-filter">Client segment</label>
+    <select hlmInput id="segment-filter" class="h-7 w-36" [ngModel]="segment()" (ngModelChange)="segment.set($event)">
+      <option value="">All segments</option>
+      @for (s of segments; track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+  </div>
+</section>
+
+@if (error()) {
+  <div hlmAlert variant="destructive" class="mb-6" role="alert">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+}
+
+@if (report(); as r) {
+  <!-- Totals for the whole range -->
+  <section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Totals">
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Trades</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ r.totals.trades | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Traded value</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ r.totals.tradedValue | currency }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Active clients</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ r.totals.activeClients | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Buys / sells</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ r.totals.buys | number }} / {{ r.totals.sells | number }}</p>
+    </div>
+  </section>
+
+  <section class="grid items-start gap-4 lg:grid-cols-5">
+    <!-- Chart -->
+    <div hlmCard class="lg:col-span-3">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>Traded value by {{ grouping().label.toLowerCase() }}</h2>
+        <p hlmCardDescription>
+          {{ r.from | date: 'MMM d, y' }} to {{ r.to | date: 'MMM d, y' }}
+          @if (r.segment) { · {{ r.segment }} clients only }
+        </p>
+      </div>
+      <div hlmCardContent>
+        @if (r.totals.trades > 0) {
+          <app-activity-chart [bars]="bars()" [overTime]="grouping().overTime" />
+        } @else {
+          <div class="text-muted-foreground flex h-48 items-center justify-center rounded-lg border border-dashed text-sm">
+            No trades in this range.
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Exact figures -->
+    <div hlmCard class="lg:col-span-2">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>Figures</h2>
+        <p hlmCardDescription>Active clients counts each client once per row and in the total</p>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer class="max-h-[28rem] overflow-y-auto">
+          <table hlmTable>
+            <thead hlmTableHeader>
+              <tr hlmTableRow>
+                <th hlmTableHead>{{ grouping().column }}</th>
+                <th hlmTableHead class="text-right">Trades</th>
+                <th hlmTableHead class="text-right">Value</th>
+                <th hlmTableHead class="text-right">Clients</th>
+              </tr>
+            </thead>
+            <tbody hlmTableBody>
+              @for (row of r.rows; track row.key) {
+                <tr hlmTableRow [class.text-muted-foreground]="row.trades === 0">
+                  <td hlmTableCell class="whitespace-nowrap">{{ row.label }}</td>
+                  <td hlmTableCell class="text-right tabular-nums" [attr.title]="row.buys + ' buys, ' + row.sells + ' sells'">
+                    {{ row.trades | number }}
+                  </td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ row.tradedValue | currency }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ row.activeClients | number }}</td>
+                </tr>
+              } @empty {
+                <tr hlmTableRow>
+                  <td hlmTableCell colspan="4" class="text-muted-foreground py-6 text-center">No trades in this range.</td>
+                </tr>
+              }
+            </tbody>
+            <!-- Kept in view while the rows scroll -->
+            <tfoot class="bg-card sticky bottom-0">
+              <tr hlmTableRow class="font-semibold">
+                <td hlmTableCell>Total</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ r.totals.trades | number }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ r.totals.tradedValue | currency }}</td>
+                <td hlmTableCell class="text-right tabular-nums">{{ r.totals.activeClients | number }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+} @else if (loading()) {
+  <div class="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">Loading report…</div>
+}

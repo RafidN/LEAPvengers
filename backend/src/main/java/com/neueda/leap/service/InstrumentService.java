@@ -1,5 +1,6 @@
 package com.neueda.leap.service;
 
+import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.exception.UserNotFoundException;
 import com.neueda.leap.model.Instruments;
 import com.neueda.leap.model.LatestPriceQuotes;
@@ -18,11 +19,16 @@ public class InstrumentService {
 
     private final InstrumentsRepository instrumentsRepository;
     private final LatestPriceQuotesRepository latestPriceQuotesRepository;
+    private final TradingRules tradingRules;
+    private final MarketHours marketHours;
 
     public InstrumentService(InstrumentsRepository instrumentsRepository, 
-                            LatestPriceQuotesRepository latestPriceQuotesRepository) {
+                            LatestPriceQuotesRepository latestPriceQuotesRepository,
+                            TradingRules tradingRules, MarketHours marketHours) {
         this.instrumentsRepository = instrumentsRepository;
         this.latestPriceQuotesRepository = latestPriceQuotesRepository;
+        this.tradingRules = tradingRules;
+        this.marketHours = marketHours;
     }
 
     /**
@@ -45,7 +51,27 @@ public class InstrumentService {
         LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrumentId)
             .orElseThrow(() -> new UserNotFoundException("No quote found for instrument ID: " + instrumentId));
         
-        return new QuoteResponse(quote.getPrice(), quote.getQuoteTimestamp());
+        QuoteResponse response = new QuoteResponse(quote.getPrice(), quote.getQuoteTimestamp());
+        response.setSource(quote.getSource());
+        instrumentsRepository.findById(instrumentId).ifPresent(instrument -> describeTradability(instrument, response));
+        return response;
+    }
+
+    /** Whether an order would get past the tradability rule right now, using the same rule the order goes through. */
+    private void describeTradability(Instruments instrument, QuoteResponse response) {
+        MarketHours.Status market = marketHours.statusOf(instrument);
+        response.setDelayMinutes(instrument.getQuoteDelayMinutes());
+        response.setMarketOpen(market.open());
+        response.setMarket(market.venue());
+        response.setOpensAt(market.opensAt() == null ? null : market.opensAt().toOffsetDateTime());
+        response.setClosesAt(market.closesAt() == null ? null : market.closesAt().toOffsetDateTime());
+        try {
+            tradingRules.checkTradable(instrument, market);
+            response.setTradable(true);
+        } catch (TradingRuleException e) {
+            response.setTradable(false);
+            response.setNotTradableReason(e.getMessage());
+        }
     }
 
 }

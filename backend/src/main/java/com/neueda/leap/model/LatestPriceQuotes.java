@@ -23,6 +23,10 @@ public class LatestPriceQuotes {
     @Column(name = "quote_timestamp", nullable = false)
     private LocalDateTime quoteTimestamp;
 
+    // YAHOO_LIVE, YAHOO_HISTORY or SIMULATED (see price_quotes.source)
+    @Column(name = "source")
+    private String source;
+
     public Integer getInstrumentId() {
         return instrumentId;
     }
@@ -45,5 +49,13 @@ public class LatestPriceQuotes {
 
     public void setQuoteTimestamp(LocalDateTime quoteTimestamp) {
         this.quoteTimestamp = quoteTimestamp;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 }

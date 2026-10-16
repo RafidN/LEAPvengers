@@ -1,9 +1,11 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { catchError, combineLatest, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
+import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, defer, forkJoin, map, of, repeat, switchMap, timer } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideArrowLeftRight,
   lucideBan,
   lucideCircleCheck,
   lucideCircleX,
@@ -47,16 +49,23 @@ const CASH_META: Record<string, { label: string; incoming: boolean }> = {
   SELL: { label: 'Sell', incoming: true }
 };
 
-/** Trader blotter: every order and cash movement for the chosen period, refreshed automatically. */
+/** Reload every 15 seconds, or every second while an order is still on its way to FILLED, REJECTED or FAILED. */
+const REFRESH_MS = 15_000;
+const IN_PROGRESS_REFRESH_MS = 1_000;
+
+/**
+ * Trader blotter: every order and cash movement for the chosen period, refreshed automatically.
+ * /history?order=<id> opens that order's timeline, e.g. when coming from the trade page.
+ */
 @Component({
   selector: 'app-history',
   templateUrl: './history.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, NgIcon,
+    CurrencyPipe, DatePipe, DecimalPipe, NgIcon, RouterLink,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw
+    lucideArrowLeftRight, lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideRefreshCw
   })]
 })
 export class HistoryComponent {
@@ -96,6 +105,13 @@ export class HistoryComponent {
   protected readonly selectedOrder = computed(() =>
     this.orders().find(o => o.orderId === this.selectedOrderId()) ?? null);
 
+  /** True while some order is still SUBMITTED or ACCEPTED, so the page refreshes faster. */
+  protected readonly inProgress = computed(() =>
+    this.orders().some(o => o.orderStatus === 'SUBMITTED' || o.orderStatus === 'ACCEPTED'));
+
+  /** The order opened from the URL, highlighted until another is opened. */
+  protected readonly linkedOrderId = signal<number | null>(null);
+
   protected countFor(status: OrderStatus): number {
     return this.orders().filter(o => o.orderStatus === status).length;
   }
@@ -114,24 +130,38 @@ export class HistoryComponent {
   }
 
   constructor() {
-    // Reload when the period changes, and every 15 seconds so status changes show without a refresh (BR-07)
-    combineLatest([toObservable(this.period), interval(15_000).pipe(startWith(0))]).pipe(
-      switchMap(([period]) => forkJoin({
+    const document = inject(DOCUMENT);
+    const linked = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('order'));
+    let scrollToLinked = Number.isInteger(linked) && linked > 0;
+    if (scrollToLinked) {
+      this.selectedOrderId.set(linked);
+      this.linkedOrderId.set(linked);
+    }
+
+    // Reload when the period changes, then again after each load so status changes show without a refresh (BR-07)
+    toObservable(this.period).pipe(
+      switchMap(period => defer(() => forkJoin({
         orders: this.orderService.getOrders(period),
         cash: this.history.getCashHistory(period)
-      })),
+      }).pipe(catchError(() => of(null)))).pipe(
+        repeat({ delay: () => timer(this.inProgress() ? IN_PROGRESS_REFRESH_MS : REFRESH_MS) })
+      )),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: ({ orders, cash }) => {
-        this.orders.set(orders);
-        this.cash.set(cash);
-        this.loading.set(false);
-        this.error.set('');
-        this.lastUpdated.set(new Date());
-      },
-      error: () => {
+    ).subscribe(result => {
+      this.loading.set(false);
+      if (!result) {
         this.error.set('Could not load your history. Is the backend running?');
-        this.loading.set(false);
+        return;
+      }
+      this.orders.set(result.orders);
+      this.cash.set(result.cash);
+      this.error.set('');
+      this.lastUpdated.set(new Date());
+
+      if (scrollToLinked) {
+        scrollToLinked = false;
+        // Wait a tick for the row to render
+        setTimeout(() => document.getElementById(`order-row-${linked}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
       }
     });
 
@@ -170,6 +200,7 @@ export class HistoryComponent {
     // Clear the previous order's steps so they never show under a different order while loading
     this.events.set([]);
     this.eventsError.set('');
+    this.linkedOrderId.set(null);
     this.selectedOrderId.update(current => (current === orderId ? null : orderId));
   }
 }

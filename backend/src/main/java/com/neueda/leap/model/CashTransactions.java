@@ -3,6 +3,7 @@ package com.neueda.leap.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cash_transactions")
@@ -31,6 +32,10 @@ public class CashTransactions {
     // The filled order behind a BUY or SELL row; null for deposits and withdrawals
     @Column(name = "order_id")
     private Integer orderId;
+
+    // When the cash moved; set once, and the row can never change after it is written (BR-14)
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     // Constructors
     public CashTransactions() {
@@ -112,5 +117,20 @@ public class CashTransactions {
 
     public void setOrderId(Integer orderId) {
         this.orderId = orderId;
+    }
+
+    @PrePersist
+    void stampTime() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

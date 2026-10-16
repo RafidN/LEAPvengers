@@ -14,6 +14,11 @@
     }
 
     <div class="ml-auto flex items-center gap-3">
+      <button hlmBtn variant="ghost" size="icon" (click)="themeService.toggle()"
+        [attr.aria-label]="themeService.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        [attr.title]="themeService.theme() === 'dark' ? 'Light mode' : 'Dark mode'">
+        <ng-icon [name]="themeService.theme() === 'dark' ? 'lucideSun' : 'lucideMoon'" />
+      </button>
       @if (username) {
         <span class="hidden items-center gap-2 text-sm md:flex">
           <b>{{ username }}</b>

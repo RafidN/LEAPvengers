@@ -17,6 +17,11 @@ class InstrumentMapping:
 
 
 INTRADAY_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"}
+
+# The platform holds and trades everything in US dollars, so prices quoted in another currency (e.g.
+# NSE stocks in rupees) are converted on the way in. Yahoo quotes some markets in a minor unit; those
+# are scaled to the major currency first (e.g. London stocks in pence -> pounds).
+MINOR_UNITS = {"GBp": ("GBP", 100), "GBX": ("GBP", 100), "ILA": ("ILS", 100), "ZAc": ("ZAR", 100)}
 MAX_INTRADAY_LOOKBACK_DAYS = 60
 
 
@@ -159,9 +164,48 @@ def normalize_timestamp(index_value) -> str:
     return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def load_history_rows(instrument: InstrumentMapping, args: argparse.Namespace) -> list[tuple[int, float, int | None, str]]:
+def load_usd_rates(currency: str, args: argparse.Namespace, cache: dict) -> list[tuple]:
+    """
+    (date, units of currency per US dollar) for the backfill window, oldest first, from Yahoo's
+    "<CCY>=X" series (e.g. INR=X is rupees per dollar). Read once per currency.
+    """
+    if currency in cache:
+        return cache[currency]
     yfinance = get_yfinance_module()
-    history = yfinance.Ticker(instrument.ticker).history(
+    history = yfinance.Ticker(f"{currency}=X").history(
+        start=args.start_date,
+        end=args.end_date,
+        interval="1d",
+        auto_adjust=False,
+        actions=False,
+        raise_errors=False,
+    )
+    rates = [
+        (index_value.date(), float(quote["Close"]))
+        for index_value, quote in history.iterrows()
+        if quote.get("Close") is not None and not math.isnan(float(quote["Close"])) and float(quote["Close"]) > 0
+    ]
+    if not rates:
+        raise RuntimeError(f"No {currency}=X exchange rates from Yahoo; cannot convert {currency} prices to USD.")
+    cache[currency] = rates
+    return rates
+
+
+def rate_on(rates: list[tuple], day) -> float:
+    """The rate on that day, else the last one before it (weekends, holidays), else the first one after."""
+    chosen = rates[0][1]
+    for rate_day, rate in rates:
+        if rate_day > day:
+            break
+        chosen = rate
+    return chosen
+
+
+def load_history_rows(instrument: InstrumentMapping, args: argparse.Namespace,
+                      rate_cache: dict | None = None) -> list[tuple[int, float, int | None, str]]:
+    yfinance = get_yfinance_module()
+    yahoo_ticker = yfinance.Ticker(instrument.ticker)
+    history = yahoo_ticker.history(
         start=args.start_date,
         end=args.end_date,
         interval=args.interval,
@@ -178,11 +222,22 @@ def load_history_rows(instrument: InstrumentMapping, args: argparse.Namespace) -
         )
         return []
 
+    currency = (getattr(yahoo_ticker, "history_metadata", None) or {}).get("currency") or "USD"
+    currency, minor_unit_divisor = MINOR_UNITS.get(currency, (currency, 1))
+    rates = None
+    if currency != "USD":
+        rates = load_usd_rates(currency, args, rate_cache if rate_cache is not None else {})
+        print(f"Converting {instrument.ticker} from {currency} to USD at each day's {currency}=X rate", flush=True)
+
     rows = []
     for index_value, quote in history.iterrows():
         close_price = quote.get("Close")
         if close_price is None or math.isnan(float(close_price)):
             continue
+        close_price = float(close_price) / minor_unit_divisor
+        if rates is not None:
+            day = (index_value.to_pydatetime() if hasattr(index_value, "to_pydatetime") else index_value).date()
+            close_price = close_price / rate_on(rates, day)
 
         raw_volume = quote.get("Volume")
         volume = None
@@ -252,8 +307,9 @@ def main() -> int:
             return 1
 
         total_insert_candidates = 0
+        rate_cache: dict = {}
         for instrument in instruments:
-            rows = load_history_rows(instrument, args)
+            rows = load_history_rows(instrument, args, rate_cache)
             insert_rows(args, rows)
             total_insert_candidates += len(rows)
             print(

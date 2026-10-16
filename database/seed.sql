@@ -21,25 +21,31 @@ ON CONFLICT (email) DO NOTHING;
 
 -- Instruments for Yahoo Finance historical backfill.
 -- market reflects where the ticker is quoted/listed: US-listed names (including ADRs for SAP, ASML
--- and NVO), Shell's UK primary listing, and NSE-listed (.NS) Indian equities. Crypto and FX pairs
--- are USD-quoted and global, so they're recorded as US market (no better fit in the US/UK/IN set).
-INSERT INTO instruments (ticker, instrument_name, asset_class, market) VALUES
-('NFLX', 'Netflix, Inc.', 'Equity', 'US'),
-('AMD', 'Advanced Micro Devices, Inc.', 'Equity', 'US'),
-('ORCL', 'Oracle Corporation', 'Equity', 'US'),
-('SAP', 'SAP SE', 'Equity', 'US'),
-('ASML', 'ASML Holding N.V.', 'Equity', 'US'),
-('SHEL', 'Shell plc', 'Equity', 'UK'),
-('NVO', 'Novo Nordisk A/S', 'Equity', 'US'),
-('RELIANCE.NS', 'Reliance Industries Limited', 'Equity', 'IN'),
-('TCS.NS', 'Tata Consultancy Services Limited', 'Equity', 'IN'),
-('HDFCBANK.NS', 'HDFC Bank Limited', 'Equity', 'IN'),
-('BTC-USD', 'Bitcoin / US Dollar', 'Crypto', 'US'),
-('ETH-USD', 'Ethereum / US Dollar', 'Crypto', 'US'),
-('SOL-USD', 'Solana / US Dollar', 'Crypto', 'US'),
-('EURUSD=X', 'Euro / US Dollar', 'FX', 'US'),
-('GBPUSD=X', 'British Pound / US Dollar', 'FX', 'US'),
-('USDJPY=X', 'US Dollar / Japanese Yen', 'FX', 'US')
+-- and NVO), London Stock Exchange (.L) listings, and NSE-listed (.NS) Indian equities. Crypto and FX
+-- pairs are USD-quoted and global, so they're recorded as US market (no better fit in the US/UK/IN set);
+-- their trading hours come from the asset class instead (crypto 24/7, FX 24/5), see MarketHours.java.
+-- Every price on the platform is in US dollars: the quote scripts convert the pence-quoted .L and
+-- rupee-quoted .NS stocks at the exchange rate of the moment, and each FX pair is priced as US dollars
+-- per unit (XXX/USD).
+-- quote_delay_minutes: Yahoo's free feed for London and NSE runs 15 minutes behind (the others are real time).
+INSERT INTO instruments (ticker, instrument_name, asset_class, market, quote_delay_minutes) VALUES
+('NFLX', 'Netflix, Inc.', 'Equity', 'US', 0),
+('AMD', 'Advanced Micro Devices, Inc.', 'Equity', 'US', 0),
+('ORCL', 'Oracle Corporation', 'Equity', 'US', 0),
+('SAP', 'SAP SE', 'Equity', 'US', 0),
+('ASML', 'ASML Holding N.V.', 'Equity', 'US', 0),
+('SHEL.L', 'Shell plc (London)', 'Equity', 'UK', 15),
+('HSBA.L', 'HSBC Holdings plc (London)', 'Equity', 'UK', 15),
+('NVO', 'Novo Nordisk A/S', 'Equity', 'US', 0),
+('RELIANCE.NS', 'Reliance Industries Limited', 'Equity', 'IN', 15),
+('TCS.NS', 'Tata Consultancy Services Limited', 'Equity', 'IN', 15),
+('HDFCBANK.NS', 'HDFC Bank Limited', 'Equity', 'IN', 15),
+('BTC-USD', 'Bitcoin / US Dollar', 'Crypto', 'US', 0),
+('ETH-USD', 'Ethereum / US Dollar', 'Crypto', 'US', 0),
+('SOL-USD', 'Solana / US Dollar', 'Crypto', 'US', 0),
+('EURUSD=X', 'Euro / US Dollar', 'FX', 'US', 0),
+('GBPUSD=X', 'British Pound / US Dollar', 'FX', 'US', 0),
+('AUDUSD=X', 'Australian Dollar / US Dollar', 'FX', 'US', 0)
 ON CONFLICT (ticker) DO NOTHING;
 
 -- Accounts
@@ -67,13 +73,13 @@ INSERT INTO users (client_id, username, password, role, is_active) VALUES
 ON CONFLICT (username) DO NOTHING;
 
 -- Cash Transactions (Deposits)
-INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date) VALUES
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'test@test.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 100000.00, '2026-01-01'),
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 150000.00, '2026-01-15'),
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 125000.00, '2026-01-20'),
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'sam.onwukeme@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 200000.00, '2026-01-25'),
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 175000.00, '2026-02-01'),
-((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 180000.00, '2026-02-05')
+INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date, created_at) VALUES
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'test@test.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 100000.00, '2026-01-01', '2026-01-01 09:00'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'paula.agyeman@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 150000.00, '2026-01-15', '2026-01-15 09:00'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'rafid.nasery@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 125000.00, '2026-01-20', '2026-01-20 09:00'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'sam.onwukeme@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 200000.00, '2026-01-25', '2026-01-25 09:00'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'bryan.nguyen@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 175000.00, '2026-02-01', '2026-02-01 09:00'),
+((SELECT account_id FROM accounts WHERE client_id = (SELECT client_id FROM clients WHERE email = 'mark.bounheuangvilay@lol.com') ORDER BY account_id LIMIT 1), 'DEPOSIT', 180000.00, '2026-02-05', '2026-02-05 09:00')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -99,8 +105,8 @@ ON CONFLICT (username) DO NOTHING;
 
 -- Joanna funds her account in two deposits and takes a little out. Sam tops up so he can hold
 -- enough Bitcoin to land in the Premier segment.
-INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date)
-SELECT a.account_id, v.txn_type, v.amount, CURRENT_DATE - v.days_ago
+INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date, created_at)
+SELECT a.account_id, v.txn_type, v.amount, CURRENT_DATE - v.days_ago, (CURRENT_DATE - v.days_ago) + time '09:00'
 FROM (VALUES
     ('joanna.mitchell@example.com', 'DEPOSIT',    50000.00, 118),
     ('joanna.mitchell@example.com', 'DEPOSIT',    10000.00,  40),
@@ -111,8 +117,10 @@ JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id;
 
 -- Orders. Holdings and cash balances are worked out from the filled ones further down.
--- Joanna's history covers every instrument class and every current status, including a sell that
--- was rejected because she tried to sell more SHEL than she holds.
+-- Joanna's history covers every instrument class and every final status, including a sell that
+-- was rejected because she tried to sell more Shell than she holds. Every order here is finished:
+-- an order left SUBMITTED or ACCEPTED is one the platform lost track of, and OrderRecoveryService
+-- would close it at startup.
 INSERT INTO orders (
     account_id,
     instrument_id,
@@ -135,20 +143,19 @@ FROM (VALUES
     ('joanna.mitchell@example.com', 'NFLX',        'BUY',    40,      76.50, 'FILLED',   NULL,                                      interval '85 days 3 hours'),
     ('joanna.mitchell@example.com', 'AMD',         'BUY',    10,     590.00, 'FILLED',   NULL,                                      interval '60 days 5 hours'),
     ('joanna.mitchell@example.com', 'BTC-USD',     'BUY',     0.05, 91000.00, 'FILLED',   NULL,                                      interval '45 days 2 hours'),
-    ('joanna.mitchell@example.com', 'SHEL',        'BUY',    20,      96.10, 'FILLED',   NULL,                                      interval '30 days 4 hours'),
-    ('joanna.mitchell@example.com', 'RELIANCE.NS', 'BUY',     5,    1520.00, 'FILLED',   NULL,                                      interval '20 days 6 hours'),
+    ('joanna.mitchell@example.com', 'SHEL.L',      'BUY',    20,      48.60, 'FILLED',   NULL,                                      interval '30 days 4 hours'),
+    ('joanna.mitchell@example.com', 'RELIANCE.NS', 'BUY',     5,      16.00, 'FILLED',   NULL,                                      interval '20 days 6 hours'),
     ('joanna.mitchell@example.com', 'NFLX',        'SELL',   10,      79.20, 'FILLED',   NULL,                                      interval '10 days 1 hour'),
     ('joanna.mitchell@example.com', 'SAP',         'BUY',     5,     224.00, 'FAILED',   'Order canceled before execution',         interval '7 days 2 hours'),
     ('joanna.mitchell@example.com', 'ETH-USD',     'BUY',     1,    3120.00, 'FILLED',   NULL,                                      interval '5 days 3 hours'),
     ('joanna.mitchell@example.com', 'EURUSD=X',    'BUY',  1000,       1.1310, 'FILLED', NULL,                                      interval '3 days 2 hours'),
     ('joanna.mitchell@example.com', 'ASML',        'BUY',    20,    1850.00, 'REJECTED', 'Insufficient buying power for the order', interval '2 days 1 hour'),
-    ('joanna.mitchell@example.com', 'SHEL',        'SELL',   30,      98.00, 'REJECTED', 'Insufficient holdings to complete sale',  interval '1 day 2 hours'),
-    ('joanna.mitchell@example.com', 'ORCL',        'BUY',     2,     158.00, 'SUBMITTED', NULL,                                      interval '20 minutes'),
+    ('joanna.mitchell@example.com', 'SHEL.L',      'SELL',   30,      51.40, 'REJECTED', 'Insufficient holdings to complete sale',  interval '1 day 2 hours'),
     -- Sam: one large Bitcoin position -> Premier once he also has 12 recent fills (below)
     ('sam.onwukeme@lol.com',        'BTC-USD',     'BUY',     3,   90000.00, 'FILLED',   NULL,                                      interval '70 days'),
     -- Bryan: a couple of trades -> Core
     ('bryan.nguyen@lol.com',        'ASML',        'BUY',    15,    1800.00, 'FILLED',   NULL,                                      interval '50 days'),
-    ('bryan.nguyen@lol.com',        'TCS.NS',      'BUY',    10,    2250.00, 'FILLED',   NULL,                                      interval '15 days')
+    ('bryan.nguyen@lol.com',        'TCS.NS',      'BUY',    10,      23.70, 'FILLED',   NULL,                                      interval '15 days')
 ) AS v(email, ticker, side, quantity, price, status, rejection_reason, ago)
 JOIN clients c ON c.email = v.email
 JOIN accounts a ON a.client_id = c.client_id
@@ -206,6 +213,14 @@ SELECT o.order_id, NULL, 'ACCEPTED', o.order_status,
 FROM orders o
 WHERE o.order_status IN ('FILLED', 'FAILED')
 ORDER BY o.submitted_at;
+
+-- The cash paid or received for each seeded fill, recorded the way OrderExecutionService does it, so the
+-- seeded history has the same complete record of cash movements as live trading.
+INSERT INTO cash_transactions (account_id, txn_type, amount, txn_date, order_id, created_at)
+SELECT o.account_id, o.order_type, round(o.quantity * o.execution_price, 4), o.executed_at::date, o.order_id, o.executed_at
+FROM orders o
+WHERE o.order_status = 'FILLED'
+ORDER BY o.executed_at;
 
 -- Holdings = filled buys - filled sells per account and instrument, the same way OrderExecutionService
 -- moves them for live trades. Fully sold positions are left out, as OrderExecutionService removes them.

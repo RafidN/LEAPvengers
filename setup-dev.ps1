@@ -79,7 +79,7 @@ $yahooBackfillScript = "$scriptPath\scripts\yahoo_backfill.py"
 $liveQuoteGeneratorScript = "$scriptPath\scripts\live_quote_generator.py"
 $pythonRequirementsFile = "$scriptPath\scripts\requirements.txt"
 $historicalInterval = "auto"
-$liveQuoteIntervalSeconds = 15
+$liveQuoteIntervalSeconds = 3
 $historicalStartDate = (Get-Date).AddDays(-365).ToString("yyyy-MM-dd")
 $historicalEndDate = (Get-Date).AddDays(1).ToString("yyyy-MM-dd")
 
@@ -263,7 +263,7 @@ try {
     $generatorPID = $generatorProcess.Id
 
     Write-Success "OK - Live quote generator started (PID: $generatorPID)"
-    Write-Info "  The live quote generator will append simulated updates every 15 seconds"
+    Write-Info "  The live quote generator streams real Yahoo Finance prices, written every 3 seconds while each market is open"
 } catch {
     Write-Error-Custom "ERROR - Failed to start live quote generator: $_"
     exit 1

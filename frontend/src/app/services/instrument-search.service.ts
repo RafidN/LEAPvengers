@@ -8,7 +8,7 @@ import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 /** A spread of seeded instruments (US, UK, Indian stocks, crypto, FX) shown on the dashboard and markets pages. */
-export const WATCHLIST = ['NFLX', 'AMD', 'SHEL', 'RELIANCE.NS', 'BTC-USD', 'EURUSD=X'];
+export const WATCHLIST = ['NFLX', 'AMD', 'SHEL.L', 'RELIANCE.NS', 'BTC-USD', 'EURUSD=X'];
 
 export interface TickerSearchResult {
   holdingId: number;

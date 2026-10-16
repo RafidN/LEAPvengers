@@ -1,0 +1,352 @@
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Order ticket</p>
+    <h1 class="text-3xl font-medium tracking-tight">Trade</h1>
+    <p class="text-muted-foreground mt-1 text-sm">Buy or sell at the live price and watch your order go through.</p>
+  </div>
+  <a hlmBtn variant="outline" routerLink="/history">
+    <ng-icon name="lucideHistory" />
+    Order history
+  </a>
+</div>
+
+@if (loadError()) {
+  <div hlmAlert variant="destructive" class="mb-6">
+    <p hlmAlertDescription>{{ loadError() }}</p>
+  </div>
+}
+
+<section class="grid items-start gap-4 lg:grid-cols-5">
+  <!-- New order -->
+  <form hlmCard class="lg:col-span-3" (ngSubmit)="submit()" aria-labelledby="new-order-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="new-order-title">New order</h2>
+      <p hlmCardDescription>Orders fill at the live price in about half a second.</p>
+    </div>
+
+    <div hlmCardContent class="flex flex-col gap-5">
+      <!-- Account and instrument -->
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="trade-account">Account</label>
+          <select hlmInput id="trade-account" name="account" class="h-9"
+            [disabled]="loading() || accounts().length < 2"
+            [ngModel]="accountId()" (ngModelChange)="setAccount($event)">
+            @for (a of accounts(); track a.accountId) {
+              <option [ngValue]="a.accountId">Account #{{ a.accountId }}</option>
+            }
+          </select>
+          <p class="text-muted-foreground text-xs">
+            Cash available:
+            <b class="text-foreground tabular-nums">{{ portfolio() ? (cash() | currency) : '…' }}</b>
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="trade-instrument">Instrument</label>
+          <!-- Searchable: type a ticker or name, e.g. "eth" or "tata" -->
+          <hlm-combobox [value]="instrument()" (valueChange)="selectInstrument($event)" [disabled]="loading()" autoHighlight
+            [itemToString]="instrumentLabel" [isItemEqualToValue]="sameInstrument">
+            <hlm-combobox-input inputId="trade-instrument" class="h-9" placeholder="Search ticker or name"
+              triggerAriaLabel="Show instruments" />
+            <hlm-combobox-content *hlmComboboxPortal>
+              <hlm-combobox-empty>No matching instruments.</hlm-combobox-empty>
+              <div hlmComboboxList>
+                @for (group of instrumentGroups(); track group.label) {
+                  <div hlmComboboxGroup>
+                    <div hlmComboboxLabel>{{ group.label }}</div>
+                    @for (i of group.instruments; track i.instrumentId) {
+                      <hlm-combobox-item [value]="i">
+                        <span class="w-24 shrink-0 font-medium">{{ i.ticker }}</span>
+                        <span class="text-muted-foreground truncate">{{ i.instrumentName }}</span>
+                      </hlm-combobox-item>
+                    }
+                  </div>
+                }
+              </div>
+            </hlm-combobox-content>
+          </hlm-combobox>
+          <p class="text-muted-foreground text-xs">
+            You hold:
+            <b class="text-foreground tabular-nums">{{ owned() | number: '1.0-2' }}</b> {{ instrument()?.ticker }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Live price -->
+      <div class="bg-muted/50 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3" aria-live="polite">
+        <div>
+          <p class="text-sm font-medium">{{ instrument()?.ticker ?? '—' }}</p>
+          <p class="text-muted-foreground max-w-60 truncate text-xs">{{ instrument()?.instrumentName }}</p>
+        </div>
+        <div class="text-right">
+          @if (quote(); as q) {
+            <p class="flex items-center justify-end gap-1 text-2xl font-semibold tabular-nums">
+              @if (priceMove() === 'up') {
+                <ng-icon name="lucideArrowUp" class="text-base" [style.color]="'var(--profit)'" aria-label="Price went up" />
+              } @else if (priceMove() === 'down') {
+                <ng-icon name="lucideArrowDown" class="text-base" [style.color]="'var(--loss)'" aria-label="Price went down" />
+              }
+              {{ q.price | currency }}
+            </p>
+            <p class="text-muted-foreground flex items-center justify-end gap-1.5 text-xs">
+              @if (q.source === 'SIMULATED') {
+                <ng-icon name="lucideTriangleAlert" />
+                Simulated price, not market data · {{ q.timestamp | date: 'HH:mm:ss' }}
+              } @else if (quoteIsLive() && q.marketOpen !== false) {
+                <span class="relative flex h-2 w-2">
+                  <span class="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"></span>
+                  <span class="bg-primary relative inline-flex h-2 w-2 rounded-full"></span>
+                </span>
+                Live{{ q.delayMinutes ? ' · delayed ' + q.delayMinutes + ' min' : '' }} · price from {{ q.timestamp | date: 'HH:mm:ss' }}
+              } @else {
+                <ng-icon name="lucideClock" />
+                {{ q.marketOpen === false ? 'Closing price' : 'Last price' }} · {{ q.timestamp | date: 'MMM d, HH:mm' }}
+              }
+            </p>
+          } @else if (quoteError()) {
+            <p class="text-destructive text-sm">{{ quoteError() }}</p>
+          } @else {
+            <p class="text-muted-foreground text-sm">Loading price…</p>
+          }
+        </div>
+      </div>
+
+      @if (notTradable(); as reason) {
+        <div hlmAlert role="status" class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+          <ng-icon name="lucideClock" />
+          <h3 hlmAlertTitle>{{ headline(reason) }}</h3>
+          <p hlmAlertDescription class="text-amber-900 dark:text-amber-200">
+            {{ reason }}
+            @if (quote()?.opensAt; as opens) { That's {{ opens | date: 'EEE d MMM, HH:mm' }} your time. }
+          </p>
+        </div>
+      }
+
+      <!-- Buy or sell -->
+      <div class="flex flex-col gap-1.5">
+        <span hlmLabel id="trade-side-label">Side</span>
+        <div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="trade-side-label">
+          <button type="button" class="h-10 rounded-lg border text-sm font-semibold transition-colors"
+            [attr.aria-pressed]="side() === 'BUY'"
+            [class]="side() === 'BUY' ? 'text-white border-transparent' : 'bg-background text-muted-foreground hover:bg-muted'"
+            [style.background-color]="side() === 'BUY' ? 'var(--buy)' : null"
+            (click)="setSide('BUY')">
+            Buy
+          </button>
+          <button type="button" class="h-10 rounded-lg border text-sm font-semibold transition-colors"
+            [attr.aria-pressed]="side() === 'SELL'"
+            [class]="side() === 'SELL' ? 'text-white border-transparent' : 'bg-background text-muted-foreground hover:bg-muted'"
+            [style.background-color]="side() === 'SELL' ? 'var(--sell)' : null"
+            (click)="setSide('SELL')">
+            Sell
+          </button>
+        </div>
+      </div>
+
+      <!-- Quantity -->
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="trade-quantity">Quantity</label>
+        <div class="flex gap-2">
+          <input hlmInput id="trade-quantity" name="quantity" type="number" inputmode="decimal" min="0" step="any"
+            class="h-9 tabular-nums" placeholder="e.g. 10" autocomplete="off"
+            [attr.aria-invalid]="!!quantityError()" aria-describedby="trade-quantity-help"
+            [ngModel]="quantity()" (ngModelChange)="setQuantity($event)" />
+          <button hlmBtn type="button" variant="outline" class="h-9" [disabled]="maxQuantity() <= 0" (click)="useMax()">
+            Max
+          </button>
+        </div>
+        <p id="trade-quantity-help" class="text-xs" [class.text-destructive]="!!quantityError()"
+          [class.text-muted-foreground]="!quantityError()">
+          @if (quantityError()) {
+            {{ quantityError() }}
+          } @else if (side() === 'BUY') {
+            Your cash covers up to {{ maxQuantity() | number: '1.0-2' }} {{ instrument()?.ticker }} at this price.
+          } @else {
+            You can sell up to {{ maxQuantity() | number: '1.0-2' }} {{ instrument()?.ticker }}.
+          }
+        </p>
+      </div>
+
+      <!-- Summary -->
+      <dl class="grid gap-2 rounded-lg border p-4 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">{{ side() === 'BUY' ? 'Estimated cost' : 'Estimated proceeds' }}</dt>
+          <dd class="text-base font-semibold tabular-nums">{{ estimate() != null ? (estimate() | currency) : '—' }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Cash after</dt>
+          <dd class="tabular-nums" [class.text-destructive]="cashAfter() < 0">
+            {{ estimate() != null ? (cashAfter() | currency) : '—' }}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">{{ instrument()?.ticker ?? 'Holding' }} after</dt>
+          <dd class="tabular-nums" [class.text-destructive]="ownedAfter() < 0">
+            {{ validQuantity() != null ? (ownedAfter() | number: '1.0-2') : '—' }}
+          </dd>
+        </div>
+      </dl>
+
+      @if (warning()) {
+        <div hlmAlert class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+          <ng-icon name="lucideTriangleAlert" />
+          <p hlmAlertDescription class="text-amber-900 dark:text-amber-200">{{ warning() }}</p>
+        </div>
+      }
+
+      @if (submitError(); as e) {
+        <div hlmAlert variant="destructive" role="alert">
+          <ng-icon name="lucideCircleX" />
+          <h3 hlmAlertTitle>{{ e.headline }}</h3>
+          @if (e.detail !== e.headline) {
+            <p hlmAlertDescription>{{ e.detail }}</p>
+          }
+        </div>
+      }
+
+      <button hlmBtn type="submit" size="lg" class="h-11 w-full text-base text-white"
+        [style.background-color]="side() === 'BUY' ? 'var(--buy)' : 'var(--sell)'"
+        [disabled]="!canSubmit()">
+        @if (submitting()) {
+          <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+          Sending order…
+        } @else {
+          {{ side() === 'BUY' ? 'Buy' : 'Sell' }}
+          {{ validQuantity() != null ? (validQuantity() | number: '1.0-2') : '' }}
+          {{ instrument()?.ticker ?? '' }}
+          @if (estimate() != null) { · {{ estimate() | currency }} }
+        }
+      </button>
+    </div>
+  </form>
+
+  <div class="flex flex-col gap-4 lg:col-span-2">
+    <!-- Order tracker -->
+    <section hlmCard aria-labelledby="tracker-title">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle id="tracker-title">Order status</h2>
+        @if (trackedOrder(); as o) {
+          <p hlmCardDescription>Order #{{ o.orderId }} · {{ o.orderType === 'BUY' ? 'Buy' : 'Sell' }} {{ o.quantity | number: '1.0-2' }} {{ o.ticker }}</p>
+        } @else {
+          <p hlmCardDescription>Your order's progress shows here.</p>
+        }
+      </div>
+
+      <div hlmCardContent>
+        @if (trackedOrder(); as o) {
+          <ol class="flex flex-col" aria-live="polite">
+            @for (step of steps(); track step.title; let last = $last) {
+              <li class="relative flex gap-3 pb-5 last:pb-0">
+                @if (!last) {
+                  <span class="absolute top-7 bottom-0 left-[13px] w-px"
+                    [class]="step.state === 'done' ? 'bg-primary' : 'bg-border'"></span>
+                }
+                <span class="relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-sm"
+                  [class.bg-primary]="step.state === 'done'" [class.border-primary]="step.state === 'done' || step.state === 'current'"
+                  [class.text-primary-foreground]="step.state === 'done'" [class.text-primary]="step.state === 'current'"
+                  [class.border-destructive]="step.state === 'failed'" [class.text-destructive]="step.state === 'failed'"
+                  [class.bg-background]="step.state !== 'done'"
+                  [class.text-muted-foreground]="step.state === 'skipped'">
+                  @switch (step.state) {
+                    @case ('done') { <ng-icon name="lucideCircleCheck" /> }
+                    @case ('current') { <ng-icon name="lucideLoaderCircle" class="animate-spin" /> }
+                    @case ('failed') { <ng-icon [name]="o.orderStatus === 'FAILED' ? 'lucideBan' : 'lucideCircleX'" /> }
+                    @default { <ng-icon name="lucideClock" /> }
+                  }
+                </span>
+                <div class="min-w-0 pt-0.5">
+                  <p class="flex flex-wrap items-baseline gap-x-2 text-sm font-medium"
+                    [class.text-muted-foreground]="step.state === 'skipped'"
+                    [class.text-destructive]="step.state === 'failed'">
+                    {{ step.title }}
+                    @if (step.time) {
+                      <time class="text-muted-foreground text-xs font-normal tabular-nums" [attr.datetime]="step.time">
+                        {{ step.time | date: 'HH:mm:ss' }}
+                      </time>
+                    }
+                  </p>
+                  <p class="text-muted-foreground text-sm">{{ step.detail }}</p>
+                </div>
+              </li>
+            }
+          </ol>
+
+          <!-- Outcome -->
+          @switch (o.orderStatus) {
+            @case ('FILLED') {
+              <div hlmAlert class="mt-4" [style.border-color]="'var(--profit)'">
+                <ng-icon name="lucideCircleCheck" [style.color]="'var(--profit)'" />
+                <h3 hlmAlertTitle>Order filled</h3>
+                <p hlmAlertDescription>Your cash and holdings have been updated.</p>
+              </div>
+            }
+            @case ('REJECTED') {
+              <div hlmAlert variant="destructive" class="mt-4">
+                <ng-icon name="lucideCircleX" />
+                <h3 hlmAlertTitle>{{ headline(o.rejectionReason) }}</h3>
+                <p hlmAlertDescription>{{ o.rejectionReason }}. Nothing was bought or sold.</p>
+              </div>
+            }
+            @case ('FAILED') {
+              <div hlmAlert variant="destructive" class="mt-4">
+                <ng-icon name="lucideBan" />
+                <h3 hlmAlertTitle>{{ headline(o.rejectionReason) }}</h3>
+                <p hlmAlertDescription>{{ o.rejectionReason }}. Nothing was bought or sold, so you can try again at the new price.</p>
+              </div>
+            }
+          }
+
+          <div class="mt-4 flex flex-wrap gap-2">
+            <a hlmBtn variant="outline" size="sm" routerLink="/history" [queryParams]="{ order: o.orderId }">
+              <ng-icon name="lucideHistory" />
+              View in history
+            </a>
+            @if ((o.orderStatus === 'FAILED' || o.orderStatus === 'REJECTED') && trackedOrderId() === o.orderId) {
+              <button hlmBtn variant="secondary" size="sm" type="button" [disabled]="submitting()" (click)="retry()">
+                <ng-icon name="lucideRotateCcw" />
+                Try again
+              </button>
+            }
+            @if (o.orderStatus === 'FILLED') {
+              <a hlmBtn variant="ghost" size="sm" routerLink="/dashboard">See portfolio</a>
+            }
+          </div>
+        } @else {
+          <ol class="text-muted-foreground flex flex-col gap-3 text-sm">
+            <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full border text-xs">1</span>Submitted</li>
+            <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full border text-xs">2</span>Checked: accepted or rejected</li>
+            <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full border text-xs">3</span>Filled at the live price</li>
+          </ol>
+        }
+      </div>
+    </section>
+
+    <!-- Today's orders -->
+    <section hlmCard aria-labelledby="today-title">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle id="today-title">Today's orders</h2>
+        <div hlmCardAction>
+          <a hlmBtn variant="ghost" size="sm" routerLink="/history">See all</a>
+        </div>
+      </div>
+      <ul hlmCardContent class="flex flex-col gap-1">
+        @for (o of todaysOrders().slice(0, 6); track o.orderId) {
+          <li>
+            <button type="button" class="hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm"
+              [class.bg-muted]="o.orderId === trackedOrderId()" (click)="track(o)">
+              <span class="min-w-0 truncate">
+                <b [style.color]="o.orderType === 'BUY' ? 'var(--profit)' : 'var(--loss)'">{{ o.orderType === 'BUY' ? 'Buy' : 'Sell' }}</b>
+                {{ o.quantity | number: '1.0-2' }} {{ o.ticker }}
+                <span class="text-muted-foreground text-xs">· {{ o.submittedAt | date: 'HH:mm' }}</span>
+              </span>
+              <span hlmBadge [variant]="statusVariant(o.orderStatus)" class="shrink-0">{{ o.orderStatus | titlecase }}</span>
+            </button>
+          </li>
+        } @empty {
+          <li class="text-muted-foreground text-sm">No orders yet today.</li>
+        }
+      </ul>
+    </section>
+  </div>
+</section>

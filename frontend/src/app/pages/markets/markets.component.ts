@@ -2,28 +2,32 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, combineLatest, debounceTime, distinctUntilChanged, interval, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideSearch } from '@ng-icons/lucide';
+import { lucideArrowLeftRight, lucideSearch } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { PriceChartComponent, PricePoint } from '../../components/price-chart/price-chart.component';
+import { MarketMoversComponent } from '../../components/market-movers/market-movers.component';
+import { MarketNewsComponent } from '../../components/market-news/market-news.component';
 import { HistoryPeriod, HistoryService } from '../../services/history.service';
 import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../services/instrument-search.service';
+import { PRICE_REFRESH_MS } from '../../services/instrument.service';
+import { AuthService } from '../../services/auth.service';
 
-/** Search instruments and chart their price history. */
+/** Search instruments and chart their price history; below, today's top movers and market news. */
 @Component({
   selector: 'app-markets',
   templateUrl: './markets.component.html',
   imports: [
-    CurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent,
+    CurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent, RouterLink, MarketMoversComponent, MarketNewsComponent,
     HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
   ],
-  providers: [provideIcons({ lucideSearch })]
+  providers: [provideIcons({ lucideArrowLeftRight, lucideSearch })]
 })
 export class MarketsComponent {
   private readonly instruments = inject(InstrumentSearchService);
@@ -35,6 +39,9 @@ export class MarketsComponent {
     { value: '1m', label: '1M' },
     { value: '1y', label: '1Y' }
   ];
+
+  /** Markets is open to every role, but only Traders can place orders. */
+  protected readonly canTrade = inject(AuthService).getRole() === 'TRADER';
 
   protected readonly query = signal('');
   protected readonly results = signal<PriceQuoteResult[]>([]);
@@ -62,7 +69,7 @@ export class MarketsComponent {
     // Search results; an empty box shows the watchlist. Refreshes with the live quote generator.
     combineLatest([
       toObservable(this.query).pipe(debounceTime(300), distinctUntilChanged()),
-      interval(15_000).pipe(startWith(0))
+      interval(PRICE_REFRESH_MS).pipe(startWith(0))
     ]).pipe(
       switchMap(([query]) => query.trim()
         ? this.instruments.searchInstrumentPriceQuote(query.trim()).pipe(catchError(() => of([])))

@@ -11,6 +11,7 @@ import com.neueda.leap.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,9 +45,15 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Unauthorized: " + e.getMessage());
         } catch (TradingRuleException e) {
-            // The order broke a trading rule: say which one, with a code clients can match on
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(Map.of("code", e.getCode(), "message", e.getMessage()));
+            // The order broke a trading rule: say which one, with a code clients can match on,
+            // and the id of the REJECTED order when one was saved
+            Map<String, Object> body = new HashMap<>();
+            body.put("code", e.getCode());
+            body.put("message", e.getMessage());
+            if (e.getOrderId() != null) {
+                body.put("orderId", e.getOrderId());
+            }
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
         } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Forbidden: " + e.getMessage());

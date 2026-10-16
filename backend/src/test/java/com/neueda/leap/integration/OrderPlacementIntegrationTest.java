@@ -210,7 +210,8 @@ class OrderPlacementIntegrationTest {
         // 1000 x 50 = 50,000 > 10,000
         placeOrder("BUY", "1000")
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("INSUFFICIENT_CASH"));
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_CASH"))
+                .andExpect(jsonPath("$.orderId").value(theOnlyOrder().getOrderId()));
 
         Orders order = theOnlyOrder();
         assertEquals("REJECTED", order.getOrderStatus());

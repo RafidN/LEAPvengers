@@ -30,9 +30,9 @@ $endDate = (Get-Date).AddDays(1).ToString('yyyy-MM-dd')
 python scripts/yahoo_backfill.py --host localhost --port 5432 --database leapvengersdb --user postgres --start-date $startDate --end-date $endDate --interval auto
 ```
 
-### 5. Start the 15-second live quote generator
+### 5. Start live prices (real Yahoo Finance quotes, every 3 seconds while each market is open)
 ```bash
-python scripts/live_quote_generator.py --host localhost --port 5432 --database leapvengersdb --user postgres --interval-seconds 15 --iterations 0
+python scripts/live_quote_generator.py --host localhost --port 5432 --database leapvengersdb --user postgres --interval-seconds 3 --iterations 0
 ```
 
 Instrument tickers are stored in Yahoo Finance format so the backfill script can query them directly.
@@ -60,5 +60,5 @@ To confirm the historical load:
 psql -h localhost -p 5432 -U postgres -d leapvengersdb -c "SELECT instrument_id, COUNT(*), MIN(quote_timestamp), MAX(quote_timestamp) FROM price_quotes GROUP BY instrument_id ORDER BY instrument_id;"
 ```
 
-This setup now relies on Yahoo Finance backfill for quote history and does not start a local quote simulator.
+Quote history comes from the Yahoo Finance backfill, and live prices from `live_quote_generator.py` (real Yahoo Finance quotes). `--source simulated` is an offline fallback whose prices are labelled `SIMULATED`.
 

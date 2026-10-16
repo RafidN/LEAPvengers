@@ -1,5 +1,6 @@
 package com.neueda.leap.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -23,12 +24,25 @@ public class Instruments {
     @Column(name = "market", nullable = false)
     private String market;
 
+    // false while the trading desk has suspended the instrument; orders in it are rejected (BR-05)
+    @Column(name = "tradable", nullable = false)
+    private boolean tradable = true;
+
+    // How many minutes behind real time this instrument's market data is (15 for London and NSE on Yahoo's
+    // free feed); the current-price rule allows that much extra age
+    @Column(name = "quote_delay_minutes", nullable = false)
+    private int quoteDelayMinutes;
+
+    // The lists below are left out of JSON: they are lazy, large, and point back at this instrument
+    @JsonIgnore
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Holdings> holdings;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Orders> orders;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PriceQuotes> priceQuotes;
 
@@ -90,6 +104,22 @@ public class Instruments {
 
     public void setMarket(String market) {
         this.market = market;
+    }
+
+    public boolean isTradable() {
+        return tradable;
+    }
+
+    public void setTradable(boolean tradable) {
+        this.tradable = tradable;
+    }
+
+    public int getQuoteDelayMinutes() {
+        return quoteDelayMinutes;
+    }
+
+    public void setQuoteDelayMinutes(int quoteDelayMinutes) {
+        this.quoteDelayMinutes = quoteDelayMinutes;
     }
 
     public List<Holdings> getHoldings() {

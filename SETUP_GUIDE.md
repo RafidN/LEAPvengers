@@ -18,7 +18,7 @@ The `setup-dev.ps1` script automates your entire local development setup:
 4. ✓ **Loads Seed Data** - Executes `database/seed.sql` to populate test data (clients, accounts, instruments, orders, etc.)
 5. ✓ **Installs Python Market Data Dependencies** - Installs `yfinance` for historical market-data backfill
 6. ✓ **Backfills One Year Of Prices** - Loads one year of Yahoo Finance history at the finest interval Yahoo supports for that date range
-7. ✓ **Starts Live Quote Generator** - Appends simulated live quotes every 15 seconds using the latest imported quote as the base
+7. ✓ **Starts Live Quote Generator** - Streams real Yahoo Finance prices for every open market and writes them every 3 seconds (see [Market data and trading hours](#market-data-and-trading-hours))
 8. ✓ **Builds Backend** - Runs `mvn clean install` for the Spring Boot application
 9. ✓ **Installs Frontend Dependencies** - Installs npm packages for Angular
 10. ✓ **Starts Backend** - Launches Spring Boot on `http://localhost:8081/api` in a new terminal
@@ -86,7 +86,7 @@ The setup automatically loads test data that includes:
 - **Test Users** - Different usernames and hashed passwords for each client
 - **Historical Orders** - Mix of BUY/SELL orders with different statuses
 - **Holdings** - Portfolio positions based on filled orders
-- **Price Quotes** - One year of Yahoo Finance history plus simulated live updates every 15 seconds
+- **Price Quotes** - One year of Yahoo Finance history plus live Yahoo Finance prices every 3 seconds while each market is open
 
 Instrument tickers are seeded in Yahoo Finance format so the backfill script uses the same symbols.
 
@@ -156,8 +156,8 @@ $startDate = (Get-Date).AddDays(-365).ToString('yyyy-MM-dd')
 $endDate = (Get-Date).AddDays(1).ToString('yyyy-MM-dd')
 python scripts/yahoo_backfill.py --host localhost --port 5432 --database leapvengersdb --user postgres --start-date $startDate --end-date $endDate --interval auto
 
-# Optional: start 15-second simulated live updates from the latest stored quotes
-python scripts/live_quote_generator.py --host localhost --port 5432 --database leapvengersdb --user postgres --interval-seconds 15 --iterations 0
+# Start live prices (real Yahoo Finance quotes; orders are rejected without a current price)
+python scripts/live_quote_generator.py --host localhost --port 5432 --database leapvengersdb --user postgres --interval-seconds 3 --iterations 0
 
 # Build backend
 cd backend
@@ -204,3 +204,20 @@ For more details, see individual README files:
 - Backend: `backend/README.md`
 - Frontend: `frontend/README.md`
 - Database: `database/LOCALDB.md`
+
+## Market data and trading hours
+
+Orders are priced on current market quotes (BR-08, BR-12) and only accepted while the instrument can be traded (BR-05):
+
+- **Live prices.** `scripts/live_quote_generator.py` streams real trade prices from Yahoo Finance and writes each instrument's latest one every 3 seconds, converted to US dollars at the live exchange rate. Every quote row records where it came from (`price_quotes.source`), and every order step records the quote it was priced against (`order_events.quote_price`, `quote_time`, `quote_source`).
+- **Delayed exchanges.** Yahoo's free feed is real time for US stocks, FX and crypto, but 15 minutes behind for London (`.L`) and NSE (`.NS`). Those instruments have `quote_delay_minutes = 15`; the ticket and the audit trail say the price is delayed, and the "current price" limit allows the extra 15 minutes.
+- **Market hours.** US stocks trade 09:30-16:00 New York time, London 08:00-16:30 London time, NSE 09:15-15:30 India time, FX from Sunday 17:00 to Friday 17:00 New York time, and crypto always. Outside those hours the order ticket explains when the market opens and orders are rejected. Exchange holidays aren't listed; on a holiday no prices arrive, so orders are rejected because the latest price is too old.
+- **Current price.** An order is rejected if the latest quote is older than `leap.trading.max-price-age` (1 minute, plus any exchange delay). If the generator isn't running, every order is rejected for this reason.
+- **Suspending an instrument.** The trading desk can stop trading in one instrument: `UPDATE instruments SET tradable = false WHERE ticker = 'NFLX';`
+- **Demo outside market hours.** Run the generator with `--source simulated --all-hours` and start the backend with `--leap.trading.enforce-market-hours=false`. Simulated prices are labelled `SIMULATED` everywhere, so they're never mistaken for market data.
+
+## Trade records
+
+- **Permanent.** Database triggers stop orders and cash movements from being edited or deleted. An order can only move forward (SUBMITTED → ACCEPTED or REJECTED → FILLED or FAILED), and order events are append-only. Corrections are new records. The triggers stop the application and anyone using its database login; in production, the application should also connect as a role without rights to drop the triggers.
+- **Restart recovery.** If the backend stops during an order's half-second fill delay, `OrderRecoveryService` finishes the order when the backend next starts. It also checks every 10 seconds after that. The order is filled if its price still holds, or marked FAILED with "The platform restarted before this order was filled…". An order left mid-check is REJECTED, and nothing moves.
+

@@ -54,7 +54,10 @@
     </div>
     <div hlmCardContent class="flex flex-col gap-4">
       <div class="relative h-48 w-full">
-        <canvas baseChart type="bar" [data]="chartData()" [options]="chartOptions"></canvas>
+        <!-- Rebuilt when the theme changes: Chart.js only reads its options when created -->
+        @for (key of [theme()]; track key) {
+          <canvas baseChart type="bar" [data]="chartData()" [options]="chartOptions()"></canvas>
+        }
       </div>
 
       <div hlmTableContainer>
@@ -145,7 +148,9 @@
 
     <div hlmCardContent class="flex flex-col gap-4">
       <div class="relative h-48 w-full">
-        <canvas baseChart type="bar" [data]="instrumentChartData()" [options]="instrumentChartOptions"></canvas>
+        @for (key of [theme()]; track key) {
+          <canvas baseChart type="bar" [data]="instrumentChartData()" [options]="chartOptions()"></canvas>
+        }
       </div>
 
       <div hlmTableContainer>

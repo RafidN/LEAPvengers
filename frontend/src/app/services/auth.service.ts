@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { BalanceVisibilityService } from './balance-visibility.service';
 
 interface LoginRequest {
   username: string;
@@ -36,8 +37,9 @@ interface AuthenticationResponse {
 
 /**
  * Owns the JWT and related session data in localStorage. This is the only
- * service that should read or write localStorage directly - everything else
+ * service that should read or write session data in localStorage - everything else
  * (e.g. the auth interceptor) goes through getToken()/isLoggedIn() here.
+ * (ThemeService keeps the unrelated 'theme' preference there too.)
  */
 @Injectable({
   providedIn: 'root'
@@ -45,6 +47,7 @@ interface AuthenticationResponse {
 export class AuthService {
   private apiUrl = '/api/auth';
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly balanceVisibility = inject(BalanceVisibilityService);
 
   constructor(private http: HttpClient) {}
 
@@ -71,6 +74,8 @@ export class AuthService {
   }
 
   logout(): void {
+    // Balances start hidden for whoever signs in next
+    this.balanceVisibility.hideAll();
     if (!this.isBrowser) {
       return;
     }

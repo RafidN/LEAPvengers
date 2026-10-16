@@ -2,6 +2,8 @@ package com.neueda.leap.repository;
 
 import com.neueda.leap.model.CashTransactions;
 import com.neueda.leap.model.dto.CashTransactionResult;
+import java.util.Collection;
+import java.time.LocalDate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,12 +22,13 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findAllTransactionHistory(@Param("clientId") Integer clientId);
 
@@ -34,13 +37,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate BETWEEN :startDate AND :endDate
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsByDateRange(
         @Param("clientId") Integer clientId,
@@ -53,13 +57,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate >= CURRENT_DATE - 1 YEAR
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsPastYear(@Param("clientId") Integer clientId);
 
@@ -68,13 +73,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate >= CURRENT_DATE - 1 MONTH
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsPastMonth(@Param("clientId") Integer clientId);
 
@@ -83,13 +89,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate >= CURRENT_DATE - 7 DAY
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsPast7Days(@Param("clientId") Integer clientId);
 
@@ -98,13 +105,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate >= CURRENT_DATE - 1 DAY
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsPastDay(@Param("clientId") Integer clientId);
 
@@ -113,13 +121,18 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             ct.cashTransactionId,
             ct.txnType,
             ct.amount,
-            ct.txnDate
+            ct.txnDate,
+            ct.createdAt
         )
         FROM CashTransactions ct
         JOIN ct.account a
         WHERE a.clientId = :clientId
             AND ct.txnDate = CURRENT_DATE
-        ORDER BY ct.txnDate DESC
+        ORDER BY ct.createdAt DESC, ct.cashTransactionId DESC
     """)
     List<CashTransactionResult> findTransactionsToday(@Param("clientId") Integer clientId);
+
+    /** Deposits and withdrawals (the transactions not tied to an order) in the given accounts on or after a date. */
+    List<CashTransactions> findByAccountIdInAndOrderIdIsNullAndTxnDateGreaterThanEqual(
+            Collection<Integer> accountIds, LocalDate from);
 }

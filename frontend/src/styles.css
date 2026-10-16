@@ -36,6 +36,38 @@
   /* Money colours used by the dashboard and markets pages */
   --profit: #0f6a46;
   --loss: #8f2d2d;
+  /* Filled Buy / Sell buttons, which carry white text */
+  --buy: #0f6a46;
+  --sell: #8f2d2d;
+}
+
+/* Dark theme: ThemeService puts .dark on <html>. Components using dark: variants follow it too. */
+.dark {
+  color-scheme: dark;
+
+  --background: #111416;
+  --foreground: #e7e5e0;
+  --card: #1c2024;
+  --card-foreground: #e7e5e0;
+  --popover: #1c2024;
+  --popover-foreground: #e7e5e0;
+  --primary: #3fb67f;
+  --primary-foreground: #08170f;
+  --secondary: #262b30;
+  --secondary-foreground: #e7e5e0;
+  --muted: #262b30;
+  --muted-foreground: #9aa3ab;
+  --accent: #262b30;
+  --accent-foreground: #e7e5e0;
+  --destructive: #f07a7a;
+  --border: #30363c;
+  --input: #3a4148;
+  --ring: #37b87b;
+
+  --profit: #4cc38a;
+  --loss: #f07a7a;
+  --buy: #1f7a52;
+  --sell: #b03a3a;
 }
 
 @layer base {
@@ -56,5 +88,12 @@
   h2,
   h3 {
     font-family: var(--font-heading);
+  }
+
+  /* A native <select>'s open list is drawn by the browser; give it the theme's popover colours */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
   }
 }

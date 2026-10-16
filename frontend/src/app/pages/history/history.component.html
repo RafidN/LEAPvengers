@@ -4,12 +4,16 @@
     <h1 class="text-3xl font-medium tracking-tight">History</h1>
     <p class="text-muted-foreground mt-1 flex items-center gap-1.5 text-sm">
       <ng-icon name="lucideRefreshCw" class="text-xs" />
-      Updates by itself every 15 seconds
+      @if (inProgress()) { Order in progress, updating every second } @else { Updates by itself every 15 seconds }
       @if (lastUpdated(); as t) { · last checked {{ t | date: 'HH:mm:ss' }} }
     </p>
   </div>
 
-  <div class="flex gap-1">
+  <div class="flex flex-wrap items-center gap-1">
+    <a hlmBtn size="sm" variant="secondary" routerLink="/trade" class="mr-2">
+      <ng-icon name="lucideArrowLeftRight" />
+      New order
+    </a>
     @for (p of periods; track p.value) {
       <button hlmBtn size="sm" [variant]="period() === p.value ? 'default' : 'outline'" (click)="setPeriod(p.value)">
         {{ p.label }}
@@ -48,7 +52,7 @@
       }
     </div>
 
-    <p class="text-muted-foreground text-sm">Click an order to see each step it went through.</p>
+    <p class="text-muted-foreground text-sm">Click an order to see each step it went through, including why it was rejected or failed.</p>
 
     <div hlmCard class="py-2">
       <div hlmCardContent>
@@ -68,7 +72,8 @@
             </thead>
             <tbody hlmTableBody>
               @for (o of visibleOrders(); track o.orderId) {
-                <tr hlmTableRow class="cursor-pointer" (click)="toggleTimeline(o.orderId)">
+                <tr hlmTableRow class="cursor-pointer scroll-mt-20" [id]="'order-row-' + o.orderId"
+                  [class]="linkedOrderId() === o.orderId ? 'bg-primary/5' : ''" (click)="toggleTimeline(o.orderId)">
                   <td hlmTableCell>
                     <button type="button" class="text-muted-foreground hover:text-foreground flex rounded p-0.5"
                       [attr.aria-expanded]="selectedOrderId() === o.orderId"
@@ -87,17 +92,14 @@
                     <span class="text-muted-foreground text-xs"> #{{ o.orderId }}</span>
                   </td>
                   <td hlmTableCell class="font-medium">{{ o.ticker }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-4' }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-2' }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | currency }}</td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * effectivePrice(o) | currency }}</td>
                   <td hlmTableCell>
                     <span hlmBadge [variant]="statusMeta(o.orderStatus).variant">
                       <ng-icon [name]="statusMeta(o.orderStatus).icon" />
                       {{ statusMeta(o.orderStatus).label }}
                     </span>
-                    @if (o.rejectionReason) {
-                      <p class="text-muted-foreground mt-1 max-w-64 text-xs whitespace-normal">{{ o.rejectionReason }}</p>
-                    }
                   </td>
                 </tr>
 
@@ -113,7 +115,7 @@
                             Submitted {{ o.submittedAt | date: 'MMM d, y, HH:mm:ss' }}
                             @if (o.executedAt) {
                               · Executed {{ o.executedAt | date: 'MMM d, y, HH:mm:ss' }}
-                              @if (o.executionPrice) { at {{ o.executionPrice | currency: 'USD' : 'symbol' : '1.2-4' }} }
+                              @if (o.executionPrice) { at {{ o.executionPrice | currency }} }
                             }
                           </p>
                         </div>
@@ -184,7 +186,7 @@
             <tbody hlmTableBody>
               @for (t of cash(); track t.cashTransactionId) {
                 <tr hlmTableRow>
-                  <td hlmTableCell class="text-muted-foreground tabular-nums">{{ t.transactionDate | date: 'MMM d, y' }}</td>
+                  <td hlmTableCell class="text-muted-foreground tabular-nums">{{ (t.transactionTime ?? t.transactionDate) | date: t.transactionTime ? 'MMM d, y, HH:mm' : 'MMM d, y' }}</td>
                   <td hlmTableCell>
                     <span hlmBadge variant="outline">{{ cashMeta(t.transactionType).label }}</span>
                   </td>
