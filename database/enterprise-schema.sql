@@ -48,6 +48,8 @@ CREATE TABLE users (
     user_id               SERIAL PRIMARY KEY,
     client_id             INTEGER REFERENCES clients(client_id), -- NULL for internal (OPS/ANALYST) users
     username              TEXT NOT NULL UNIQUE,
+    first_name            TEXT,
+    last_name             TEXT,
     password              VARCHAR(255) NOT NULL,
     role                  TEXT NOT NULL DEFAULT 'TRADER' CHECK (role IN ('TRADER', 'OPS', 'ANALYST')),
     is_active             BOOLEAN DEFAULT true,

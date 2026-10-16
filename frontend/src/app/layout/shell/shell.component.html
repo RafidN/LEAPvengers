@@ -14,11 +14,15 @@
     }
 
     <div class="ml-auto flex items-center gap-3">
-      @if (username) {
+      @if (firstName) {
         <span class="hidden items-center gap-2 text-sm md:flex">
-          <b>{{ username }}</b>
-          <span hlmBadge variant="secondary">{{ roleLabel }}</span>
+          <b> {{ firstName }}</b>
         </span>
+        @if (role === 'OPS' || role === 'ANALYST') {
+          <span hlmBadge variant="secondary">
+            {{ roleLabel }}
+          </span>
+        }
       }
       <button hlmBtn variant="outline" (click)="signOut()">
         <ng-icon name="lucideLogOut" />
