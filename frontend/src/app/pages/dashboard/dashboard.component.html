@@ -181,7 +181,7 @@
   <!-- Recent activity -->
   <div hlmCard>
     <div hlmCardHeader>
-      <h2 hlmCardTitle>Recent activity</h2>
+      <h2 hlmCardTitle>Recent Activity</h2>
       <div hlmCardAction>
         <a hlmBtn variant="ghost" size="sm" routerLink="/history">See all</a>
       </div>
@@ -190,7 +190,12 @@
       @for (item of activity(); track item.key) {
         <li class="flex items-center justify-between gap-3 text-sm">
           <div class="min-w-0">
-            <p class="truncate font-medium">{{ item.title }}</p>
+            <p class="flex items-center gap-2 truncate font-medium">
+              @if (item.isSuccessfulBuy) {
+                <span class="size-2 shrink-0 rounded-full bg-[color:var(--profit)]" aria-hidden="true"></span>
+              }
+              <span>{{ item.title }}</span>
+            </p>
             <p class="text-muted-foreground text-xs">
               @if (item.detail) { {{ item.detail }} · }{{ item.date | date: 'MMM d' }}
             </p>
