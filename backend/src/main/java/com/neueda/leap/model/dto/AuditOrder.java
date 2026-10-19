@@ -23,6 +23,8 @@ public class AuditOrder {
     private LocalDate orderDate;
     private LocalDateTime submittedAt;
     private LocalDateTime executedAt;
+    private String orderKind;  // MARKET, LIMIT or STOP
+    private BigDecimal triggerPrice;  // the limit or stop price
 
     public AuditOrder() {
     }
@@ -53,6 +55,17 @@ public class AuditOrder {
         this(orderId, clientId, clientName, ticker, instrumentName, orderType, quantity, price,
                 orderStatus, rejectionReason, orderDate, submittedAt, executedAt);
         this.executionPrice = executionPrice;
+    }
+
+    public AuditOrder(Integer orderId, Integer clientId, String clientName, String ticker,
+                      String instrumentName, String orderType, BigDecimal quantity,
+                      BigDecimal price, String orderStatus, String rejectionReason, LocalDate orderDate,
+                      LocalDateTime submittedAt, LocalDateTime executedAt, BigDecimal executionPrice,
+                      String orderKind, BigDecimal triggerPrice) {
+        this(orderId, clientId, clientName, ticker, instrumentName, orderType, quantity, price,
+                orderStatus, rejectionReason, orderDate, submittedAt, executedAt, executionPrice);
+        this.orderKind = orderKind;
+        this.triggerPrice = triggerPrice;
     }
 
     // Getters and Setters
@@ -166,5 +179,21 @@ public class AuditOrder {
 
     public void setExecutedAt(LocalDateTime executedAt) {
         this.executedAt = executedAt;
+    }
+
+    public String getOrderKind() {
+        return orderKind;
+    }
+
+    public void setOrderKind(String orderKind) {
+        this.orderKind = orderKind;
+    }
+
+    public BigDecimal getTriggerPrice() {
+        return triggerPrice;
+    }
+
+    public void setTriggerPrice(BigDecimal triggerPrice) {
+        this.triggerPrice = triggerPrice;
     }
 }

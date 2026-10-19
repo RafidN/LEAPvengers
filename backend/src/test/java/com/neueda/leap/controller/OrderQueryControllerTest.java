@@ -68,7 +68,7 @@ class OrderQueryControllerTest {
         String lastOrder;
 
         StubOrderQueryService() {
-            super(null, null, null, null);
+            super(null, null, null, null, null);
         }
 
         @Override

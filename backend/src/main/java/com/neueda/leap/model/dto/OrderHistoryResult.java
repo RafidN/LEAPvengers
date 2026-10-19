@@ -1,5 +1,7 @@
 package com.neueda.leap.model.dto;
 
+import com.neueda.leap.model.Orders;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,13 +16,16 @@ public class OrderHistoryResult {
     private String orderType;  // BUY or SELL
     private BigDecimal quantity;
     private BigDecimal price;
-    private String orderStatus;  // SUBMITTED, ACCEPTED, FILLED, REJECTED, FAILED
+    private String orderStatus;  // SUBMITTED, WORKING, ACCEPTED, FILLED, REJECTED, FAILED, CANCELED
     private LocalDate orderDate;
     private LocalDateTime submittedAt;
     private Integer accountId;
-    private String rejectionReason;  // set for REJECTED and FAILED orders
+    private String rejectionReason;  // set for REJECTED, FAILED and CANCELED orders
     private BigDecimal executionPrice;  // set for FILLED orders
     private LocalDateTime executedAt;
+    private String orderKind;  // MARKET, LIMIT or STOP
+    private BigDecimal triggerPrice;  // the limit or stop price, for LIMIT and STOP orders
+    private LocalDateTime triggeredAt;  // when a LIMIT or STOP order's price was reached
 
     public OrderHistoryResult() {
     }
@@ -48,6 +53,27 @@ public class OrderHistoryResult {
         this.rejectionReason = rejectionReason;
         this.executionPrice = executionPrice;
         this.executedAt = executedAt;
+    }
+
+    public OrderHistoryResult(Integer orderId, String ticker, String orderType,
+                             BigDecimal quantity, BigDecimal price, String orderStatus,
+                             LocalDate orderDate, LocalDateTime submittedAt,
+                             Integer accountId, String rejectionReason,
+                             BigDecimal executionPrice, LocalDateTime executedAt,
+                             String orderKind, BigDecimal triggerPrice, LocalDateTime triggeredAt) {
+        this(orderId, ticker, orderType, quantity, price, orderStatus, orderDate, submittedAt, accountId,
+                rejectionReason, executionPrice, executedAt);
+        this.orderKind = orderKind;
+        this.triggerPrice = triggerPrice;
+        this.triggeredAt = triggeredAt;
+    }
+
+    /** An order as the trader sees it. */
+    public static OrderHistoryResult of(Orders order, String ticker) {
+        return new OrderHistoryResult(order.getOrderId(), ticker, order.getOrderType(), order.getQuantity(),
+                order.getPrice(), order.getOrderStatus(), order.getOrderDate(), order.getSubmittedAt(),
+                order.getAccountId(), order.getRejectionReason(), order.getExecutionPrice(), order.getExecutedAt(),
+                order.getOrderKind(), order.getTriggerPrice(), order.getTriggeredAt());
     }
 
     // Getters and Setters
@@ -145,5 +171,29 @@ public class OrderHistoryResult {
 
     public void setExecutedAt(LocalDateTime executedAt) {
         this.executedAt = executedAt;
+    }
+
+    public String getOrderKind() {
+        return orderKind;
+    }
+
+    public void setOrderKind(String orderKind) {
+        this.orderKind = orderKind;
+    }
+
+    public BigDecimal getTriggerPrice() {
+        return triggerPrice;
+    }
+
+    public void setTriggerPrice(BigDecimal triggerPrice) {
+        this.triggerPrice = triggerPrice;
+    }
+
+    public LocalDateTime getTriggeredAt() {
+        return triggeredAt;
+    }
+
+    public void setTriggeredAt(LocalDateTime triggeredAt) {
+        this.triggeredAt = triggeredAt;
     }
 }

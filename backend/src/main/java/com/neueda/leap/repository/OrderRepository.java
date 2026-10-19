@@ -5,9 +5,11 @@ import com.neueda.leap.model.dto.OrderHistoryResult;
 import java.util.Collection;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
@@ -35,7 +37,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -58,7 +63,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -86,7 +94,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -110,7 +121,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -134,7 +148,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -158,7 +175,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -182,7 +202,10 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
             o.accountId,
             o.rejectionReason,
             o.executionPrice,
-            o.executedAt
+            o.executedAt,
+            o.orderKind,
+            o.triggerPrice,
+            o.triggeredAt
         )
         FROM Orders o
         JOIN o.instrument i
@@ -214,9 +237,75 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
     @Query("SELECT o FROM Orders o WHERE o.orderId = :orderId")
     Optional<Orders> findByIdForUpdate(@Param("orderId") Integer orderId);
 
-    /** Orders still in this status that were submitted before a moment, oldest first: ones the platform lost track of. */
-    @Query("SELECT o.orderId FROM Orders o WHERE o.orderStatus = :status AND o.submittedAt < :before ORDER BY o.submittedAt")
+    /** The order, locked as above, or empty if another transaction holds it (SELECT ... FOR UPDATE SKIP LOCKED). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
+    @Query("SELECT o FROM Orders o WHERE o.orderId = :orderId")
+    Optional<Orders> findByIdForUpdateSkipLocked(@Param("orderId") Integer orderId);
+
+    /**
+     * Orders still in this status that were submitted before a moment, oldest first: ones the platform lost track
+     * of. A limit or stop order counts from when its price was reached, since it only started filling then.
+     */
+    @Query("""
+        SELECT o.orderId FROM Orders o
+        WHERE o.orderStatus = :status AND COALESCE(o.triggeredAt, o.submittedAt) < :before
+        ORDER BY o.submittedAt
+    """)
     List<Integer> findIdsByStatusSubmittedBefore(@Param("status") String status, @Param("before") LocalDateTime before);
+
+    /**
+     * WORKING orders whose price the latest quote has reached, oldest first: a limit buy or stop sell when the
+     * price is at or below its trigger price, a limit sell or stop buy when it is at or above it.
+     */
+    @Query("""
+        SELECT o.orderId FROM Orders o, LatestPriceQuotes q
+        WHERE q.instrumentId = o.instrumentId
+            AND o.orderStatus = 'WORKING'
+            AND (((o.orderKind = 'LIMIT' AND o.orderType = 'BUY') OR (o.orderKind = 'STOP' AND o.orderType = 'SELL'))
+                    AND q.price <= o.triggerPrice
+                OR ((o.orderKind = 'LIMIT' AND o.orderType = 'SELL') OR (o.orderKind = 'STOP' AND o.orderType = 'BUY'))
+                    AND q.price >= o.triggerPrice)
+        ORDER BY o.submittedAt
+    """)
+    List<Integer> findWorkingOrderIdsAtTriggerPrice();
+
+    /**
+     * Cash the account's WORKING buy orders could spend: quantity x limit or stop price, summed. An order is left
+     * out by id, e.g. the one being replaced; pass null to count them all.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(o.quantity * o.triggerPrice), 0) FROM Orders o
+        WHERE o.accountId = :accountId AND o.orderStatus = 'WORKING' AND o.orderType = 'BUY'
+            AND (:excludedOrderId IS NULL OR o.orderId <> :excludedOrderId)
+    """)
+    BigDecimal cashHeldForWorkingBuys(@Param("accountId") Integer accountId,
+                                      @Param("excludedOrderId") Integer excludedOrderId);
+
+    /** The account's WORKING sell orders for an instrument that are for more than quantity. */
+    @Query("""
+        SELECT o.orderId FROM Orders o
+        WHERE o.accountId = :accountId AND o.instrumentId = :instrumentId AND o.orderStatus = 'WORKING'
+            AND o.orderType = 'SELL' AND o.quantity > :quantity
+        ORDER BY o.submittedAt
+    """)
+    List<Integer> findWorkingSellIdsLargerThan(@Param("accountId") Integer accountId,
+                                               @Param("instrumentId") Integer instrumentId,
+                                               @Param("quantity") BigDecimal quantity);
+
+    /** The client's WORKING orders across their accounts, oldest first. */
+    @Query("""
+        SELECT new com.neueda.leap.model.dto.OrderHistoryResult(
+            o.orderId, i.ticker, o.orderType, o.quantity, o.price, o.orderStatus, o.orderDate, o.submittedAt,
+            o.accountId, o.rejectionReason, o.executionPrice, o.executedAt, o.orderKind, o.triggerPrice, o.triggeredAt
+        )
+        FROM Orders o
+        JOIN o.instrument i
+        JOIN o.account a
+        WHERE a.clientId = :clientId AND o.orderStatus = 'WORKING'
+        ORDER BY o.submittedAt
+    """)
+    List<OrderHistoryResult> findWorkingOrders(@Param("clientId") Integer clientId);
 
     /** Orders in the given accounts with this status that executed after a moment, e.g. FILLED since a week ago. */
     List<Orders> findByAccountIdInAndOrderStatusAndExecutedAtAfter(

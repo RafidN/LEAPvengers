@@ -35,6 +35,12 @@ public class OrderQueryController {
         return ResponseEntity.ok(orderQueryService.getOrdersForCurrentUser(period, order));
     }
 
+    /** Limit and stop orders still waiting for their price, oldest first. */
+    @GetMapping("/working")
+    public ResponseEntity<List<OrderHistoryResult>> getWorkingOrders() {
+        return ResponseEntity.ok(orderQueryService.getWorkingOrdersForCurrentUser());
+    }
+
     @GetMapping("/{id}/events")
     public ResponseEntity<List<OrderEventResult>> getOrderEvents(@PathVariable("id") Integer orderId) {
         return ResponseEntity.ok(orderQueryService.getOrderEvents(orderId));

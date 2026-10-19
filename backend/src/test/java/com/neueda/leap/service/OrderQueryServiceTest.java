@@ -6,6 +6,7 @@ import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.OrderEventResult;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import com.neueda.leap.repository.OrderEventsRepository;
+import com.neueda.leap.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -32,6 +33,9 @@ class OrderQueryServiceTest {
     @Mock
     private OrderEventsRepository orderEventsRepository;
 
+    @Mock
+    private OrderRepository orderRepository;
+
     private StubHistoryService historyService;
 
     private OrderQueryService orderQueryService;
@@ -41,7 +45,7 @@ class OrderQueryServiceTest {
         MockitoAnnotations.openMocks(this);
         historyService = new StubHistoryService();
         orderQueryService = new OrderQueryService(
-            historyService, orderEventsRepository, new StubOwnershipService(Set.of(42)), new StubCurrentUserService());
+            historyService, orderEventsRepository, orderRepository, new StubOwnershipService(Set.of(42)), new StubCurrentUserService());
     }
 
     @Test

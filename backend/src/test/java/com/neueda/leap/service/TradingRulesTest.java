@@ -14,6 +14,7 @@ import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -202,5 +203,80 @@ class TradingRulesTest {
     void sellWithNoHoldingFails() {
         assertFailsWith(TradingRules.INSUFFICIENT_HOLDINGS,
                 () -> rules.checkSufficientHoldings(null, BigDecimal.ONE));
+    }
+
+    // Limit and stop orders
+
+    @Test
+    void limitBuysAndStopSellsAreReachedAtOrBelowTheirPrice() {
+        BigDecimal at = new BigDecimal("100");
+        assertTrue(TradingRules.isReached("BUY", TradingRules.LIMIT, at, new BigDecimal("100")));
+        assertTrue(TradingRules.isReached("BUY", TradingRules.LIMIT, at, new BigDecimal("99.99")));
+        assertFalse(TradingRules.isReached("BUY", TradingRules.LIMIT, at, new BigDecimal("100.01")));
+        assertTrue(TradingRules.isReached("SELL", TradingRules.STOP, at, new BigDecimal("99")));
+        assertFalse(TradingRules.isReached("SELL", TradingRules.STOP, at, new BigDecimal("101")));
+    }
+
+    @Test
+    void limitSellsAndStopBuysAreReachedAtOrAboveTheirPrice() {
+        BigDecimal at = new BigDecimal("100");
+        assertTrue(TradingRules.isReached("SELL", TradingRules.LIMIT, at, new BigDecimal("100")));
+        assertFalse(TradingRules.isReached("SELL", TradingRules.LIMIT, at, new BigDecimal("99.99")));
+        assertTrue(TradingRules.isReached("BUY", TradingRules.STOP, at, new BigDecimal("100.5")));
+        assertFalse(TradingRules.isReached("BUY", TradingRules.STOP, at, new BigDecimal("99")));
+    }
+
+    @Test
+    void limitBuyBelowTheMarketPasses() {
+        assertDoesNotThrow(() -> rules.checkPriceNotReached("BUY", TradingRules.LIMIT, new BigDecimal("95"), quote("100", NOW)));
+    }
+
+    @Test
+    void stopLossAboveTheMarketFailsSayingToPutItBelow() {
+        TradingRuleException e = assertThrows(TradingRuleException.class,
+                () -> rules.checkPriceNotReached("SELL", TradingRules.STOP, new BigDecimal("101"), quote("100", NOW)));
+        assertEquals(TradingRules.PRICE_ALREADY_REACHED, e.getCode());
+        assertEquals("A stop-loss waits for the price to fall to your stop, so set it below the current price of $100.00."
+                + " To sell at the current price, place a market order", e.getMessage());
+    }
+
+    @Test
+    void limitSellBelowTheMarketFailsSayingToPutItAbove() {
+        TradingRuleException e = assertThrows(TradingRuleException.class,
+                () -> rules.checkPriceNotReached("SELL", TradingRules.LIMIT, new BigDecimal("99"), quote("100", NOW)));
+        assertTrue(e.getMessage().contains("above the current price of $100.00"), e.getMessage());
+    }
+
+    @Test
+    void limitStillMetAtABetterPricePasses() {
+        assertDoesNotThrow(() -> rules.checkLimitStillMet("BUY", new BigDecimal("100"), quote("99.50", NOW)));
+    }
+
+    @Test
+    void limitNoLongerMetFails() {
+        assertFailsWith(TradingRules.LIMIT_NOT_MET,
+                () -> rules.checkLimitStillMet("BUY", new BigDecimal("100"), quote("100.20", NOW)));
+    }
+
+    @Test
+    void triggerDescriptionsSayWhatTheOrderWaitsFor() {
+        assertEquals("sells if the price falls to $140.00 or lower (stop-loss)",
+                TradingRules.describeTrigger("SELL", TradingRules.STOP, new BigDecimal("140")));
+        assertEquals("buys if the price falls to $95.50 or lower",
+                TradingRules.describeTrigger("BUY", TradingRules.LIMIT, new BigDecimal("95.5")));
+        assertEquals("buys if the price rises to $210.00 or higher",
+                TradingRules.describeTrigger("BUY", TradingRules.STOP, new BigDecimal("210")));
+    }
+
+    @Test
+    void cashHeldForWorkingBuysCantBeSpentAgain() {
+        // 1,000 cash, 700 of it held: a 400 buy doesn't fit
+        TradingRuleException e = assertThrows(TradingRuleException.class, () -> rules.checkSufficientCash(
+                new BigDecimal("1000"), new BigDecimal("700"), new BigDecimal("4"), new BigDecimal("100")));
+        assertEquals(TradingRules.INSUFFICIENT_CASH, e.getCode());
+        assertEquals("This order costs $400.00 but the account only has $300.00 available, as $700.00 of its $1,000.00"
+                + " is held for working buy orders", e.getMessage());
+        assertDoesNotThrow(() -> rules.checkSufficientCash(
+                new BigDecimal("1000"), new BigDecimal("700"), new BigDecimal("3"), new BigDecimal("100")));
     }
 }

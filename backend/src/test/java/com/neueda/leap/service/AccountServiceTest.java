@@ -7,6 +7,7 @@ import com.neueda.leap.model.dto.AccountHoldingResponse;
 import com.neueda.leap.model.dto.AccountPortfolioResponse;
 import com.neueda.leap.model.dto.AccountResponse;
 import com.neueda.leap.repository.AccountRepository;
+import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.PortfolioRepository;
 import com.neueda.leap.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +43,9 @@ class AccountServiceTest {
     @Mock
     private PortfolioRepository portfolioRepository;
 
+    @Mock
+    private OrderRepository orderRepository;
+
     private StubOwnershipService ownershipService;
 
     private AccountService accountService;
@@ -51,7 +55,7 @@ class AccountServiceTest {
         MockitoAnnotations.openMocks(this);
         CurrentUserService currentUserService = new CurrentUserService(userRepository);
         ownershipService = new StubOwnershipService();
-        accountService = new AccountService(accountRepository, currentUserService, portfolioRepository, ownershipService);
+        accountService = new AccountService(accountRepository, currentUserService, portfolioRepository, ownershipService, orderRepository);
     }
 
     @AfterEach

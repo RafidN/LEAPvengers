@@ -5,6 +5,7 @@ import com.neueda.leap.model.Users;
 import com.neueda.leap.model.dto.OrderEventResult;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import com.neueda.leap.repository.OrderEventsRepository;
+import com.neueda.leap.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,15 +23,18 @@ public class OrderQueryService {
 
     private final HistoryService historyService;
     private final OrderEventsRepository orderEventsRepository;
+    private final OrderRepository orderRepository;
     private final OwnershipService ownershipService;
     private final CurrentUserService currentUserService;
 
     public OrderQueryService(HistoryService historyService,
                              OrderEventsRepository orderEventsRepository,
+                             OrderRepository orderRepository,
                              OwnershipService ownershipService,
                              CurrentUserService currentUserService) {
         this.historyService = historyService;
         this.orderEventsRepository = orderEventsRepository;
+        this.orderRepository = orderRepository;
         this.ownershipService = ownershipService;
         this.currentUserService = currentUserService;
     }
@@ -49,6 +53,12 @@ public class OrderQueryService {
             Collections.reverse(orders);
         }
         return orders;
+    }
+
+    /** The trader's limit and stop orders still waiting for their price, across all their accounts, oldest first. */
+    @Transactional(readOnly = true)
+    public List<OrderHistoryResult> getWorkingOrdersForCurrentUser() {
+        return orderRepository.findWorkingOrders(currentUserService.getCurrentUser().getClientId());
     }
 
     /**

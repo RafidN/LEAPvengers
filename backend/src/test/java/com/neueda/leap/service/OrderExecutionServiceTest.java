@@ -452,4 +452,104 @@ class OrderExecutionServiceTest {
         assertThrows(IllegalStateException.class, () -> orderExecutionService.execute(ORDER_ID));
         assertNothingChanged();
     }
+
+    // Limit and stop orders
+
+    /** Order 500, placed at 6.70, as a limit or stop order waiting for triggerPrice. */
+    private Orders givenWaitingOrder(String status, String side, String kind, String triggerPrice) {
+        return givenOrder(status, side, "5").waitingFor(kind, new BigDecimal(triggerPrice));
+    }
+
+    @Test
+    void workingLimitBuyIsTriggeredOnceThePriceFallsToIt() {
+        Orders order = givenWaitingOrder("WORKING", "BUY", TradingRules.LIMIT, "6.75");
+
+        assertTrue(orderExecutionService.trigger(ORDER_ID));
+
+        assertEquals("ACCEPTED", order.getOrderStatus());
+        assertNotNull(order.getTriggeredAt());
+        OrderEvents event = savedEvent();
+        assertEquals("WORKING", event.getFromStatus());
+        assertEquals("ACCEPTED", event.getToStatus());
+        assertTrue(event.getDetails().startsWith("Triggered: the price reached $6.70 against your limit of $6.75"), event.getDetails());
+    }
+
+    @Test
+    void workingOrderWhosePriceIsNotReachedKeepsWorking() {
+        Orders order = givenWaitingOrder("WORKING", "BUY", TradingRules.LIMIT, "6.50");
+
+        assertFalse(orderExecutionService.trigger(ORDER_ID));
+
+        assertEquals("WORKING", order.getOrderStatus());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void workingOrderKeepsWorkingWhileItsMarketIsClosed() {
+        // Saturday: NFLX's market is closed, though the price has fallen through the stop
+        LocalDateTime saturday = LocalDateTime.of(2026, 10, 10, 14, 0);
+        Clock clock = Clock.fixed(saturday.atZone(ZONE).toInstant(), ZONE);
+        OrderExecutionService weekend = new OrderExecutionService(orderRepository, orderEventsRepository, accountRepository,
+                holdingsRepository, cashTransactionRepository, latestPriceQuotesRepository, instrumentsRepository,
+                new TradingRules(clock, Duration.ofMinutes(5)), new MarketHours(clock, true));
+        givenQuote("6.00", saturday.minusSeconds(3));
+        Orders order = givenWaitingOrder("WORKING", "SELL", TradingRules.STOP, "6.50");
+
+        assertFalse(weekend.trigger(ORDER_ID));
+
+        assertEquals("WORKING", order.getOrderStatus());
+    }
+
+    @Test
+    void workingOrderOnASuspendedInstrumentKeepsWorking() {
+        instrument.setTradable(false);
+        Orders order = givenWaitingOrder("WORKING", "BUY", TradingRules.LIMIT, "6.75");
+
+        assertFalse(orderExecutionService.trigger(ORDER_ID));
+
+        assertEquals("WORKING", order.getOrderStatus());
+    }
+
+    @Test
+    void canceledOrderIsNeverTriggered() {
+        givenWaitingOrder("CANCELED", "BUY", TradingRules.LIMIT, "6.75");
+
+        assertFalse(orderExecutionService.trigger(ORDER_ID));
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void triggeredLimitBuyFillsAtABetterPrice() {
+        Orders order = givenWaitingOrder("ACCEPTED", "BUY", TradingRules.LIMIT, "6.75");
+
+        orderExecutionService.execute(ORDER_ID);
+
+        assertEquals("FILLED", order.getOrderStatus());
+        assertEquals(0, new BigDecimal("6.70").compareTo(order.getExecutionPrice()));
+    }
+
+    @Test
+    void triggeredLimitBuyFailsIfThePriceMovedBackAboveTheLimit() {
+        givenWaitingOrder("ACCEPTED", "BUY", TradingRules.LIMIT, "6.75");
+        givenQuote("6.80", NOW.minusSeconds(1));
+
+        TradingRuleException e = assertThrows(TradingRuleException.class, () -> orderExecutionService.execute(ORDER_ID));
+
+        assertEquals(TradingRules.LIMIT_NOT_MET, e.getCode());
+        assertNothingChanged();
+    }
+
+    @Test
+    void triggeredStopLossSellsAtWhateverThePriceNowIs() {
+        // Placed at 6.70 with a stop at 6.50; the price has dropped past it to 6.20
+        Orders order = givenWaitingOrder("ACCEPTED", "SELL", TradingRules.STOP, "6.50");
+        givenQuote("6.20", NOW.minusSeconds(1));
+
+        orderExecutionService.execute(ORDER_ID);
+
+        assertEquals("FILLED", order.getOrderStatus());
+        assertEquals(0, new BigDecimal("6.20").compareTo(order.getExecutionPrice()));
+        assertEquals(0, new BigDecimal("1").compareTo(savedHolding().getQuantity()));
+    }
 }
