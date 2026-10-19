@@ -1,6 +1,6 @@
-# LEAPvengers
+# S.H.I.E.L.D. and it's Mission
 
-LEAPvengers is a full-stack trading platform MVP built with Angular, Spring Boot, PostgreSQL, Docker, and a small set of Python data scripts. It supports sign-in, role-based navigation, live market data, trading, portfolio views, order history, audit trails, and reporting.
+Strategic Hopping Investing & Equity Listing Depository (S.H.I.E.L.D.) is a full-stack trading platform MVP built with Angular, Spring Boot, PostgreSQL, Docker, and a small set of Python data scripts. It supports sign-in, role-based navigation, live market data, trading, portfolio views, order history, audit trails, and reporting. Our mission is to create a real time secure trading platfrom that is smooth, reliable, and allows clients to independently make trades.
 
 ## Team
 
