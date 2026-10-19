@@ -98,16 +98,24 @@ CREATE TABLE orders (
     quantity         NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
     price            NUMERIC(14,4) NOT NULL CHECK (price > 0),
     order_date       DATE NOT NULL,
-    order_status     TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK (order_status IN ('SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED')),
-    rejection_reason TEXT,
+    order_status     TEXT NOT NULL DEFAULT 'SUBMITTED'
+                     CHECK (order_status IN ('SUBMITTED', 'WORKING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED', 'CANCELED')),
+    rejection_reason TEXT, -- why a REJECTED, FAILED or CANCELED order ended
     execution_price  NUMERIC(14,4),
     submitted_at     TIMESTAMP NOT NULL DEFAULT now(),
     executed_at      TIMESTAMP, -- set by application/business logic when the order is executed
+    -- MARKET fills now at the live price. LIMIT and STOP wait as WORKING until the price reaches trigger_price:
+    -- a limit buy at or below it, a limit sell at or above it, a stop sell (stop-loss) at or below it and a
+    -- stop buy at or above it. price is still the live price when the order was placed.
+    order_kind       TEXT NOT NULL DEFAULT 'MARKET' CHECK (order_kind IN ('MARKET', 'LIMIT', 'STOP')),
+    trigger_price    NUMERIC(14,4) CHECK (trigger_price > 0),
+    triggered_at     TIMESTAMP, -- when a WORKING order's price was reached and it went on to be filled
 
     CONSTRAINT rejection_reason_required CHECK (
-        ((order_status = 'REJECTED' OR order_status = 'FAILED') AND rejection_reason IS NOT NULL)
-        OR (order_status != 'REJECTED' AND order_status != 'FAILED')
+        (order_status IN ('REJECTED', 'FAILED', 'CANCELED') AND rejection_reason IS NOT NULL)
+        OR order_status NOT IN ('REJECTED', 'FAILED', 'CANCELED')
     ),
+    CONSTRAINT trigger_price_for_limit_and_stop CHECK ((order_kind = 'MARKET') = (trigger_price IS NULL)),
     CONSTRAINT execution_price_filled_only CHECK (
         (order_status = 'FILLED' AND execution_price IS NOT NULL)
         OR (order_status != 'FILLED' AND execution_price IS NULL)
@@ -117,8 +125,8 @@ CREATE TABLE order_events(
     event_id        SERIAL PRIMARY KEY,
     order_id        INTEGER NOT NULL REFERENCES orders(order_id),
     created_by      INTEGER REFERENCES users(user_id),
-    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
-    to_status       TEXT NOT NULL CHECK (to_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    from_status     TEXT CHECK (from_status IS NULL OR from_status IN ('SUBMITTED', 'WORKING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
+    to_status       TEXT NOT NULL CHECK (to_status IN ('SUBMITTED', 'WORKING', 'FILLED', 'CANCELED', 'ACCEPTED', 'REJECTED', 'FAILED')),
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     details         TEXT, -- optional field to annotate the event with additional context
     -- The quote this step was priced against (BR-15: how was it priced?). A copy, not a reference, so the
@@ -142,9 +150,15 @@ CREATE TRIGGER order_events_append_only
     EXECUTE FUNCTION prevent_order_event_mutation();
 
 -- Trade records can't be altered after the fact (BR-14, section 9.4). An order may only move forward through
--- its lifecycle (SUBMITTED -> ACCEPTED or REJECTED, ACCEPTED -> FILLED or FAILED), the fill details may only be
--- written by that step, and what the client asked for (account, instrument, side, quantity, price, when) never
--- changes. A FILLED, REJECTED or FAILED order is final. Orders are never deleted.
+-- its lifecycle, the fill details may only be written by the fill, and what the client asked for (account,
+-- instrument, side, quantity, kind, prices, when) never changes. Orders are never deleted.
+--   SUBMITTED -> ACCEPTED or REJECTED      a market order, checked
+--   SUBMITTED -> WORKING                   a limit or stop order, checked and waiting for its price
+--   WORKING   -> ACCEPTED or CANCELED      its price was reached (triggered_at), or the client canceled it
+--   ACCEPTED  -> FILLED or FAILED
+-- Moving a working order to a new price is a cancel and a new order, so the old price stays on record.
+-- FILLED, REJECTED, FAILED and CANCELED are final.
+-- Kept in step with database/migrations/001_limit_and_stop_orders.sql, which upgrades existing databases.
 CREATE OR REPLACE FUNCTION protect_order_record() RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
@@ -157,22 +171,31 @@ BEGIN
        OR NEW.quantity IS DISTINCT FROM OLD.quantity
        OR NEW.price IS DISTINCT FROM OLD.price
        OR NEW.order_date IS DISTINCT FROM OLD.order_date
-       OR NEW.submitted_at IS DISTINCT FROM OLD.submitted_at THEN
+       OR NEW.submitted_at IS DISTINCT FROM OLD.submitted_at
+       OR NEW.order_kind IS DISTINCT FROM OLD.order_kind
+       OR NEW.trigger_price IS DISTINCT FROM OLD.trigger_price THEN
         RAISE EXCEPTION 'order % : what was ordered can never change', OLD.order_id;
     END IF;
     IF NEW.order_status = OLD.order_status THEN
         -- Saving an order without changing it is harmless, but nothing else may change while it waits
         IF NEW.rejection_reason IS DISTINCT FROM OLD.rejection_reason
            OR NEW.execution_price IS DISTINCT FROM OLD.execution_price
-           OR NEW.executed_at IS DISTINCT FROM OLD.executed_at THEN
+           OR NEW.executed_at IS DISTINCT FROM OLD.executed_at
+           OR NEW.triggered_at IS DISTINCT FROM OLD.triggered_at THEN
             RAISE EXCEPTION 'order % is % ; its outcome can only be written by a status change', OLD.order_id, OLD.order_status;
         END IF;
         RETURN NEW;
     END IF;
-    IF NOT ((OLD.order_status = 'SUBMITTED' AND NEW.order_status IN ('ACCEPTED', 'REJECTED'))
+    IF NOT ((OLD.order_status = 'SUBMITTED' AND NEW.order_status IN ('ACCEPTED', 'REJECTED', 'WORKING'))
+         OR (OLD.order_status = 'WORKING' AND NEW.order_status IN ('ACCEPTED', 'CANCELED'))
          OR (OLD.order_status = 'ACCEPTED' AND NEW.order_status IN ('FILLED', 'FAILED'))) THEN
-        RAISE EXCEPTION 'order % cannot go from % to % ; orders only move SUBMITTED -> ACCEPTED or REJECTED, then ACCEPTED -> FILLED or FAILED',
+        RAISE EXCEPTION 'order % cannot go from % to % ; orders only move SUBMITTED -> ACCEPTED, REJECTED or WORKING, WORKING -> ACCEPTED or CANCELED, then ACCEPTED -> FILLED or FAILED',
             OLD.order_id, OLD.order_status, NEW.order_status;
+    END IF;
+    -- When a working order was triggered is written once, by that step
+    IF NEW.triggered_at IS DISTINCT FROM OLD.triggered_at
+       AND NOT (OLD.order_status = 'WORKING' AND NEW.order_status = 'ACCEPTED' AND OLD.triggered_at IS NULL) THEN
+        RAISE EXCEPTION 'order % : triggered_at is only written when a working order is triggered', OLD.order_id;
     END IF;
     RETURN NEW;
 END;
@@ -192,11 +215,14 @@ CREATE INDEX orders_submitted_at_idx ON orders (submitted_at);
 CREATE INDEX orders_unfinished_idx ON orders (submitted_at) WHERE order_status IN ('SUBMITTED', 'ACCEPTED');
 -- Supports client segmentation queries that count recent filled orders per account.
 CREATE INDEX orders_account_status_submitted_at_idx ON orders (account_id, order_status, submitted_at DESC);
+-- Lets the working-order monitor (WorkingOrderService) check only the orders still waiting for a price.
+CREATE INDEX orders_working_idx ON orders (instrument_id) WHERE order_status = 'WORKING';
 
 -- Blocks duplicate submissions (e.g. accidental double-click/retry) by rejecting an identical
--- order for the same account+instrument+type+quantity+price within the same second.
+-- order for the same account+instrument+type+quantity+price+kind+trigger within the same second.
 CREATE UNIQUE INDEX orders_dedup_idx ON orders (
-    account_id, instrument_id, order_type, quantity, price, date_trunc('second', submitted_at)
+    account_id, instrument_id, order_type, quantity, price, order_kind, COALESCE(trigger_price, 0),
+    date_trunc('second', submitted_at)
 );
 
 -- Holdings and cash are not moved by a trigger: OrderExecutionService updates them in Java, in the

@@ -18,6 +18,11 @@ psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE leapvengersdb;"
 psql -h localhost -p 5432 -U postgres -d leapvengersdb -f database/enterprise-schema.sql
 ```
 
+A database created before a schema change catches up with the files in `database/migrations`, oldest first, without losing data. Each one is safe to run again:
+```bash
+psql -h localhost -p 5432 -U postgres -d leapvengersdb -v ON_ERROR_STOP=1 -f database/migrations/001_limit_and_stop_orders.sql
+```
+
 ### 3. Install Python market data dependency
 ```bash
 python -m pip install -r scripts/requirements.txt
