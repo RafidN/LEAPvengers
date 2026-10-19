@@ -50,6 +50,10 @@ export class SignInComponent {
       next: () => {
         this.isLoading.set(false);
         this.router.navigateByUrl(this.authService.homePage());
+        let audio = new Audio();
+        audio.src = "loginsuccess.mp3";
+        audio.load();
+        audio.play();
       },
       error: (error) => {
         this.isLoading.set(false);

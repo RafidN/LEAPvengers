@@ -281,9 +281,8 @@
                 <p hlmAlertDescription>Your cash and holdings have been updated.</p>
               </div>
               <audio controls autoplay hidden>
-                <source src="success.mp3" type="audio/mp3">
+                <source src="ordersuccess.mp3" type="audio/mp3">
               </audio>
-
             }
             @case ('REJECTED') {
               <div hlmAlert variant="destructive" class="mt-4">
@@ -291,6 +290,9 @@
                 <h3 hlmAlertTitle>{{ headline(o.rejectionReason) }}</h3>
                 <p hlmAlertDescription>{{ o.rejectionReason }}. Nothing was bought or sold.</p>
               </div>
+              <audio controls autoplay hidden>
+                <source src="orderfailure.mp3" type="audio/mp3">
+              </audio>
             }
             @case ('FAILED') {
               <div hlmAlert variant="destructive" class="mt-4">
@@ -298,6 +300,9 @@
                 <h3 hlmAlertTitle>{{ headline(o.rejectionReason) }}</h3>
                 <p hlmAlertDescription>{{ o.rejectionReason }}. Nothing was bought or sold, so you can try again at the new price.</p>
               </div>
+              <audio controls autoplay hidden>
+                <source src="orderfailure.mp3" type="audio/mp3">
+              </audio>
             }
           }
 
