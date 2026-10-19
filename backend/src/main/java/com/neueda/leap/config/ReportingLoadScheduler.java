@@ -23,7 +23,7 @@ public class ReportingLoadScheduler {
         this.reportingLoadService = reportingLoadService;
     }
 
-    @Scheduled(initialDelayString = "${leap.reporting.initial-delay:PT5S}",
+    @Scheduled(initialDelayString = "${leap.reporting.initial-delay:PT1.5S}",
                fixedDelayString = "${leap.reporting.load-interval:PT1M}")
     public void loadReportingStore() {
         try {
