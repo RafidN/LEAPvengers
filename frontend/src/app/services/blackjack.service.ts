@@ -1,36 +1,82 @@
+/**
+ * Risk Lab blackjack (GET/POST /api/games/blackjack/...). Play money only: nothing here touches an account.
+ * Every call answers with the whole table.
+ */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { AuthService } from './auth.service';
+import { Observable } from 'rxjs';
 
-export interface BlackjackPlayRequest {
-  accountId: number;
-  ticker: string;
-  betQuantity: number;
+export type BlackjackAction = 'HIT' | 'STAND' | 'DOUBLE' | 'SPLIT';
+export type HandOutcome = 'PLAYING' | 'BLACKJACK' | 'WIN' | 'PUSH' | 'LOSE' | 'BUST';
+
+export interface BlackjackHand {
+  cards: string[];          // e.g. "10H", "AS"
+  total: number;
+  soft: boolean;            // an ace counting 11
+  bet: number;
+  doubled: boolean;
+  outcome: HandOutcome;
+  payout: number;           // chips back when settled, stake included
 }
 
-export interface BlackjackRoundResult {
-  roundId: string;
-  status: 'IN_PROGRESS' | 'RESOLVED';
-  accountId: number;
-  ticker: string;
-  betQuantity: number;
-  priceSnapshot: number;
-  wagerValue: number;
-  outcomeSummary: 'PENDING' | 'WIN' | 'LOSE' | 'PUSH' | 'MIXED';
-  playerHands: { cards: string[]; total: number; outcome: string }[];
-  dealerCards: string[];
-  dealerTotal: number;
-  currentHandIndex?: number;
+export interface BlackjackTableView {
+  chips: number;
+  onTable: number;
+  inRound: boolean;
+  hands: BlackjackHand[];
+  currentHand?: number;
+  dealerCards: (string | null)[];   // null = the face-down hole card
+  dealerShowing: number;
+  canDeal: boolean;
   canHit: boolean;
   canStand: boolean;
+  canDouble: boolean;
   canSplit: boolean;
-  quantityBefore: number;
-  quantityCurrent: number;
-  quantityAfter?: number;
-  playedAt: string;
   message: string;
+  cardsLeftInShoe: number;
+  minBet: number;
+  maxBet: number;
+}
+
+export interface BlackjackCoach {
+  recommended?: BlackjackAction;   // the book's play for the hand waiting on a decision
+  situation?: string;              // e.g. "hard 11 against a 6"
+  lastTaken?: BlackjackAction;
+  lastRecommended?: BlackjackAction;
+  lastSituation?: string;
+  lastFollowed: boolean;
+}
+
+export interface BlackjackStats {
+  roundsPlayed: number;
+  wagered: number;
+  net: number;
+  netPercent: number;
+  decisions: number;
+  decisionsByTheBook: number;
+  houseEdgePercent: number;
+  expectedLoss: number;
+}
+
+export interface BlackjackRealityCheck {
+  seatedAt: string;
+  minutesAtTable: number;
+  portfolioAtStart: number;
+  portfolioNow: number;
+  portfolioChange: number;
+  portfolioChangePercent: number;
+  stakeTicker?: string;
+  stakeQuantity?: number;
+  stakePrice?: number;
+  stakeQuantityNow?: number;
+}
+
+export interface BlackjackState {
+  seated: boolean;
+  table?: BlackjackTableView;
+  coach?: BlackjackCoach;
+  stats?: BlackjackStats;
+  realityCheck?: BlackjackRealityCheck;
 }
 
 @Injectable({
@@ -38,39 +84,27 @@ export interface BlackjackRoundResult {
 })
 export class BlackjackService {
   private readonly http = inject(HttpClient);
-  private readonly authService = inject(AuthService);
+  private readonly base = '/api/games/blackjack';
 
-  start(request: BlackjackPlayRequest): Observable<BlackjackRoundResult> {
-    return this.http.post<BlackjackRoundResult>('/api/games/blackjack/start', request).pipe(
-      catchError(error => {
-        if (error.status === 401) {
-          this.authService.logout();
-        }
-        return throwError(() => error);
-      })
-    );
+  state(): Observable<BlackjackState> {
+    return this.http.get<BlackjackState>(this.base);
   }
 
-  hit(roundId: string): Observable<BlackjackRoundResult> {
-    return this.callAction(`/api/games/blackjack/${roundId}/hit`);
+  /** Fresh chips: 1,000, or the value of a holding when stakeTicker names one (pretend: nothing moves). */
+  sitDown(stakeTicker?: string): Observable<BlackjackState> {
+    return this.http.post<BlackjackState>(`${this.base}/seat`, { stakeTicker: stakeTicker || null });
   }
 
-  stand(roundId: string): Observable<BlackjackRoundResult> {
-    return this.callAction(`/api/games/blackjack/${roundId}/stand`);
+  leave(): Observable<void> {
+    return this.http.delete<void>(`${this.base}/seat`);
   }
 
-  split(roundId: string): Observable<BlackjackRoundResult> {
-    return this.callAction(`/api/games/blackjack/${roundId}/split`);
+  deal(bet: number): Observable<BlackjackState> {
+    return this.http.post<BlackjackState>(`${this.base}/deal`, { bet });
   }
 
-  private callAction(url: string): Observable<BlackjackRoundResult> {
-    return this.http.post<BlackjackRoundResult>(url, {}).pipe(
-      catchError(error => {
-        if (error.status === 401) {
-          this.authService.logout();
-        }
-        return throwError(() => error);
-      })
-    );
+  act(action: BlackjackAction): Observable<BlackjackState> {
+    const path = { HIT: 'hit', STAND: 'stand', DOUBLE: 'double', SPLIT: 'split' }[action];
+    return this.http.post<BlackjackState>(`${this.base}/${path}`, {});
   }
 }

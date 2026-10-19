@@ -1,507 +1,211 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.exception.InvalidInputException;
-import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.model.Holdings;
-import com.neueda.leap.model.Instruments;
-import com.neueda.leap.model.LatestPriceQuotes;
-import com.neueda.leap.model.dto.BlackjackHandState;
-import com.neueda.leap.model.dto.BlackjackPlayRequest;
-import com.neueda.leap.model.dto.BlackjackRoundResult;
-import com.neueda.leap.repository.HoldingsRepository;
-import com.neueda.leap.repository.InstrumentsRepository;
-import com.neueda.leap.repository.LatestPriceQuotesRepository;
-import com.neueda.leap.repository.UserRepository;
+import com.neueda.leap.model.dto.AccountHoldingResponse;
+import com.neueda.leap.model.dto.AccountResponse;
+import com.neueda.leap.model.dto.BlackjackState;
+import com.neueda.leap.security.SecurityContextHelper;
+import com.neueda.leap.service.blackjack.BasicStrategy;
+import com.neueda.leap.service.blackjack.BlackjackTable;
+import com.neueda.leap.service.blackjack.Hand;
+import com.neueda.leap.service.blackjack.Shoe;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 /**
- * Stateful blackjack rounds tied to real holdings quantity.
+ * Risk Lab: blackjack with play money, as a lesson in expected value. A trader sits down with 1,000 chips, or
+ * "pretend-stakes" one of their real holdings (chips = its value, nothing is moved), plays real blackjack with a
+ * basic-strategy coach, and is shown their chips against what their real portfolio did over the same minutes.
+ * <p>
+ * It never touches an account, a holding, cash or a trade record. Seats live in memory: a restart clears them,
+ * which costs nothing because nothing real was at stake. Seats idle for 12 hours are cleared too.
  */
 @Service
 public class BlackjackService {
-    private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
-    private static final BigDecimal NATURAL_BLACKJACK_PAYOUT = new BigDecimal("2.5");
+    static final BigDecimal DEFAULT_CHIPS = new BigDecimal("1000");
+    private static final Duration IDLE_LIMIT = Duration.ofHours(12);
 
-    private final UserRepository userRepository;
-    private final OwnershipService ownershipService;
-    private final InstrumentsRepository instrumentsRepository;
-    private final LatestPriceQuotesRepository latestPriceQuotesRepository;
-    private final HoldingsRepository holdingsRepository;
+    private final AccountService accountService;
+    private final SecurityContextHelper securityContextHelper;
+    private final Clock clock;
+    private final SecureRandom random = new SecureRandom();
+    private final Map<Integer, Seat> seats = new ConcurrentHashMap<>();
 
-    private final Map<String, RoundState> rounds = new ConcurrentHashMap<>();
-
-    public BlackjackService(UserRepository userRepository,
-                            OwnershipService ownershipService,
-                            InstrumentsRepository instrumentsRepository,
-                            LatestPriceQuotesRepository latestPriceQuotesRepository,
-                            HoldingsRepository holdingsRepository) {
-        this.userRepository = userRepository;
-        this.ownershipService = ownershipService;
-        this.instrumentsRepository = instrumentsRepository;
-        this.latestPriceQuotesRepository = latestPriceQuotesRepository;
-        this.holdingsRepository = holdingsRepository;
+    private static final class Seat {
+        BlackjackTable table;
+        LocalDateTime seatedAt;
+        LocalDateTime lastActive;
+        BigDecimal portfolioAtStart;
+        String stakeTicker;
+        BigDecimal stakeQuantity;
+        BigDecimal stakePrice;
     }
 
-    @Transactional
-    public BlackjackRoundResult startRound(Integer userId, BlackjackPlayRequest request)
-            throws UserNotFoundException, InvalidInputException {
-        if (userId == null || userId <= 0) {
-            throw new InvalidInputException("User is not authenticated");
-        }
-        userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        if (request == null) {
-            throw new InvalidInputException("Request body is required");
-        }
-        if (request.getAccountId() == null || request.getAccountId() <= 0) {
-            throw new InvalidInputException("Account is required");
-        }
-        if (request.getTicker() == null || request.getTicker().trim().isEmpty()) {
-            throw new InvalidInputException("Ticker is required");
-        }
-        if (request.getBetQuantity() == null || request.getBetQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidInputException("Bet quantity must be greater than 0");
-        }
-
-        Integer accountId = request.getAccountId();
-        String ticker = request.getTicker().trim().toUpperCase();
-        BigDecimal betQuantity = request.getBetQuantity().setScale(4, RoundingMode.HALF_UP);
-
-        ownershipService.requireAccount(accountId);
-
-        Instruments instrument = instrumentsRepository.findByTickerIgnoreCase(ticker)
-                .orElseThrow(() -> new InvalidInputException("Ticker not found"));
-        LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId())
-                .orElseThrow(() -> new InvalidInputException("No market price found for ticker"));
-
-        Holdings lockedHolding = holdingsRepository
-                .findByAccountIdAndInstrumentIdForUpdate(accountId, instrument.getInstrumentId())
-                .orElseThrow(() -> new InvalidInputException("No holding found for this account and ticker"));
-
-        BigDecimal quantityBefore = lockedHolding.getQuantity().setScale(4, RoundingMode.HALF_UP);
-        if (quantityBefore.compareTo(betQuantity) < 0) {
-            throw new InvalidInputException("Bet exceeds available holding quantity");
-        }
-
-        BigDecimal quantityCurrent = applyHoldingDelta(accountId, instrument.getInstrumentId(), betQuantity.negate());
-
-        RoundState round = new RoundState();
-        round.roundId = UUID.randomUUID().toString();
-        round.userId = userId;
-        round.accountId = accountId;
-        round.instrumentId = instrument.getInstrumentId();
-        round.ticker = ticker;
-        round.betQuantity = betQuantity;
-        round.priceSnapshot = quote.getPrice().setScale(4, RoundingMode.HALF_UP);
-        round.quantityBefore = quantityBefore;
-        round.quantityCurrent = quantityCurrent;
-        round.reservedQuantity = betQuantity;
-        round.startedAt = LocalDateTime.now();
-
-        PlayerHand firstHand = new PlayerHand();
-        firstHand.draw();
-        firstHand.draw();
-        round.playerHands.add(firstHand);
-        round.dealerCards.add(drawCard());
-        round.dealerCards.add(drawCard());
-
-        if (isNaturalBlackjack(firstHand)) {
-            firstHand.stood = true;
-            settleRound(round);
-            rounds.put(round.roundId, round);
-            return toResponse(round, round.message);
-        }
-
-        rounds.put(round.roundId, round);
-
-        return toResponse(round, "Round started. Choose hit, stand, or split if available.");
+    @Autowired
+    public BlackjackService(AccountService accountService, SecurityContextHelper securityContextHelper) {
+        this(accountService, securityContextHelper, Clock.systemDefaultZone());
     }
 
-    @Transactional
-    public BlackjackRoundResult hit(Integer userId, String roundId) {
-        RoundState round = getActiveRound(userId, roundId);
-        ensureActionable(round);
-
-        PlayerHand hand = currentHand(round);
-        hand.draw();
-
-        int total = hand.total();
-        if (total > 21) {
-            hand.outcome = "LOSE";
-            hand.stood = true;
-            moveToNextHand(round);
-        } else if (total == 21) {
-            hand.stood = true;
-            moveToNextHand(round);
-        }
-
-        if (allHandsClosed(round)) {
-            settleRound(round);
-            return toResponse(round, round.message);
-        }
-
-        return toResponse(round, "Card drawn.");
+    BlackjackService(AccountService accountService, SecurityContextHelper securityContextHelper, Clock clock) {
+        this.accountService = accountService;
+        this.securityContextHelper = securityContextHelper;
+        this.clock = clock;
     }
 
-    @Transactional
-    public BlackjackRoundResult stand(Integer userId, String roundId) {
-        RoundState round = getActiveRound(userId, roundId);
-        ensureActionable(round);
-
-        PlayerHand hand = currentHand(round);
-        hand.stood = true;
-        moveToNextHand(round);
-
-        if (allHandsClosed(round)) {
-            settleRound(round);
-            return toResponse(round, round.message);
-        }
-
-        return toResponse(round, "Hand stood. Move to next hand.");
+    public BlackjackState state() {
+        Seat seat = seats.get(userId());
+        return seat == null ? BlackjackState.notSeated() : view(seat);
     }
 
-    @Transactional
-    public BlackjackRoundResult split(Integer userId, String roundId) {
-        RoundState round = getActiveRound(userId, roundId);
-        ensureActionable(round);
+    /**
+     * Sits down with fresh chips: 1,000, or the value of one of the trader's holdings when stakeTicker names one
+     * ("what if I'd brought my 30 NFLX to the casino?"). Leaving and sitting down again starts over.
+     */
+    public BlackjackState sitDown(String stakeTicker) {
+        Integer userId = userId();
+        Seat seat = new Seat();
+        seat.seatedAt = seat.lastActive = LocalDateTime.now(clock);
+        seat.portfolioAtStart = portfolioValue();
 
-        PlayerHand hand = currentHand(round);
-        if (!canSplit(round)) {
-            throw new InvalidInputException("Split is not available for this hand");
-        }
-
-        Optional<Holdings> lockedHolding = holdingsRepository
-                .findByAccountIdAndInstrumentIdForUpdate(round.accountId, round.instrumentId);
-        BigDecimal available = lockedHolding.map(h -> h.getQuantity().setScale(4, RoundingMode.HALF_UP)).orElse(ZERO);
-        if (available.compareTo(round.betQuantity) < 0) {
-            throw new InvalidInputException("Not enough remaining holding quantity to split");
-        }
-
-        round.quantityCurrent = applyHoldingDelta(round.accountId, round.instrumentId, round.betQuantity.negate());
-        round.reservedQuantity = round.reservedQuantity.add(round.betQuantity).setScale(4, RoundingMode.HALF_UP);
-
-        String movedCard = hand.cards.remove(1);
-
-        PlayerHand splitHand = new PlayerHand();
-        splitHand.cards.add(movedCard);
-
-        hand.draw();
-        splitHand.draw();
-
-        hand.fromSplit = true;
-        splitHand.fromSplit = true;
-
-        round.playerHands.add(round.currentHandIndex + 1, splitHand);
-
-        return toResponse(round, "Hand split. Play current hand first.");
-    }
-
-    private void settleRound(RoundState round) {
-        while (dealerTotal(round) < 17) {
-            round.dealerCards.add(drawCard());
-        }
-
-        int dealerTotal = dealerTotal(round);
-        int wins = 0;
-        int blackjackWins = 0;
-        int pushes = 0;
-
-        for (PlayerHand hand : round.playerHands) {
-            int playerTotal = hand.total();
-            boolean naturalBlackjack = isNaturalBlackjack(hand);
-            if (playerTotal > 21) {
-                hand.outcome = "LOSE";
-                continue;
+        BigDecimal chips = DEFAULT_CHIPS;
+        if (stakeTicker != null && !stakeTicker.isBlank()) {
+            AccountHoldingResponse holding = holdings().stream()
+                    .filter(h -> h.getTicker().equalsIgnoreCase(stakeTicker.trim()))
+                    .filter(h -> h.getLatestPrice() != null && h.getQuantity().signum() > 0)
+                    .findFirst()
+                    .orElseThrow(() -> new InvalidInputException("You don't hold any " + stakeTicker.trim()));
+            chips = holding.getQuantity().multiply(holding.getLatestPrice()).setScale(0, RoundingMode.DOWN);
+            if (chips.compareTo(BlackjackTable.MIN_BET) < 0) {
+                throw new InvalidInputException("Your " + holding.getTicker() + " is worth less than one bet");
             }
-            if (dealerTotal > 21 || playerTotal > dealerTotal) {
-                hand.outcome = "WIN";
-                if (naturalBlackjack) {
-                    blackjackWins++;
-                } else {
-                    wins++;
-                }
-                continue;
-            }
-            if (playerTotal == dealerTotal) {
-                hand.outcome = "PUSH";
-                pushes++;
-                continue;
-            }
-            hand.outcome = "LOSE";
+            seat.stakeTicker = holding.getTicker();
+            seat.stakeQuantity = holding.getQuantity();
+            seat.stakePrice = holding.getLatestPrice();
         }
+        seat.table = new BlackjackTable(chips, () -> Shoe.shuffled(random));
+        seats.put(userId, seat);
+        evictIdleSeats();
+        return view(seat);
+    }
 
-        BigDecimal basePayoutMultiplier = BigDecimal.valueOf((wins * 2L) + pushes)
-            .add(BigDecimal.valueOf(blackjackWins).multiply(NATURAL_BLACKJACK_PAYOUT));
+    public BlackjackState deal(BigDecimal bet) {
+        return play(table -> table.deal(bet));
+    }
 
-        BigDecimal payoutQuantity = round.betQuantity
-            .multiply(basePayoutMultiplier)
-                .setScale(4, RoundingMode.HALF_UP);
+    public BlackjackState hit() {
+        return play(BlackjackTable::hit);
+    }
 
-        round.quantityCurrent = applyHoldingDelta(round.accountId, round.instrumentId, payoutQuantity);
-        round.quantityAfter = round.quantityCurrent;
-        round.resolved = true;
-        round.currentHandIndex = -1;
+    public BlackjackState stand() {
+        return play(BlackjackTable::stand);
+    }
 
-        int totalWins = wins + blackjackWins;
+    public BlackjackState doubleDown() {
+        return play(BlackjackTable::doubleDown);
+    }
 
-        if (blackjackWins > 0 && totalWins == 1 && pushes == 0 && round.playerHands.size() == 1) {
-            round.outcomeSummary = "WIN";
-            round.message = "Blackjack! Dealer played out. Payout is 2.5x your bet.";
-        } else if (totalWins > 0 && pushes == 0) {
-            round.outcomeSummary = "WIN";
-            round.message = "You won at least one hand and doubled those stakes.";
-        } else if (totalWins == 0 && pushes > 0) {
-            round.outcomeSummary = "PUSH";
-            round.message = "Push or loss only. Push hands returned stake.";
-        } else if (totalWins > 0) {
-            round.outcomeSummary = "MIXED";
-            round.message = "Mixed result across split hands.";
-        } else {
-            round.outcomeSummary = "LOSE";
-            round.message = "You lost this round.";
+    public BlackjackState split() {
+        return play(BlackjackTable::split);
+    }
+
+    public void leave() {
+        seats.remove(userId());
+    }
+
+    private BlackjackState play(Consumer<BlackjackTable> move) {
+        Seat seat = seats.get(userId());
+        if (seat == null) {
+            throw new InvalidInputException("Sit down at the table first");
+        }
+        // One move at a time per seat, even if the page double-clicks
+        synchronized (seat) {
+            move.accept(seat.table);
+            seat.lastActive = LocalDateTime.now(clock);
+            return view(seat);
         }
     }
 
-    private BlackjackRoundResult toResponse(RoundState round, String message) {
-        List<BlackjackHandState> handStates = new ArrayList<>();
-        for (PlayerHand hand : round.playerHands) {
-            handStates.add(new BlackjackHandState(new ArrayList<>(hand.cards), hand.total(), hand.outcome));
-        }
+    private BlackjackState view(Seat seat) {
+        BlackjackTable t = seat.table;
+        List<Hand> hands = t.hands();
+        List<BlackjackState.HandView> handViews = hands.stream()
+                .map(h -> new BlackjackState.HandView(h.cards().stream().map(c -> c.code()).toList(), h.total(), h.soft(),
+                        h.bet(), h.doubled(), h.outcome().name(), h.payout()))
+                .toList();
+        List<String> dealerCards = t.dealerCards().stream().map(c -> c == null ? null : c.code()).toList();
+        BlackjackState.Table table = new BlackjackState.Table(t.chips(), t.onTable(), t.inRound(), handViews,
+                t.inRound() ? t.currentHand() : null, dealerCards, t.dealerShowing(), t.canDeal(), t.canHitOrStand(),
+                t.canHitOrStand(), t.canDouble(), t.canSplit(), t.message(), t.cardsLeftInShoe(),
+                BlackjackTable.MIN_BET, BlackjackTable.MAX_BET);
 
-        BigDecimal wagerValue = round.reservedQuantity.multiply(round.priceSnapshot).setScale(4, RoundingMode.HALF_UP);
+        BasicStrategy.Advice advice = t.advice();
+        BlackjackTable.Feedback last = t.lastFeedback();
+        BlackjackState.Coach coach = new BlackjackState.Coach(
+                advice == null ? null : advice.action().name(), advice == null ? null : advice.situation(),
+                last == null ? null : last.taken().name(), last == null ? null : last.recommended().name(),
+                last == null ? null : last.situation(), last != null && last.followed());
 
-        return new BlackjackRoundResult(
-                round.roundId,
-                round.resolved ? "RESOLVED" : "IN_PROGRESS",
-                round.accountId,
-                round.ticker,
-                round.betQuantity,
-                round.priceSnapshot,
-                wagerValue,
-                round.outcomeSummary,
-                handStates,
-                new ArrayList<>(round.dealerCards),
-                dealerTotal(round),
-                round.resolved ? null : round.currentHandIndex,
-                !round.resolved,
-                !round.resolved,
-                canSplit(round),
-                round.quantityBefore,
-                round.quantityCurrent,
-                round.resolved ? round.quantityAfter : null,
-                LocalDateTime.now(),
-                message
-        );
+        BigDecimal stack = t.chips().add(t.onTable());
+        BigDecimal net = stack.subtract(t.startingChips());
+        BlackjackState.Stats stats = new BlackjackState.Stats(t.roundsPlayed(), t.wagered(), net,
+                percent(net, t.startingChips()), t.decisions(), t.decisionsByTheBook(),
+                BlackjackTable.HOUSE_EDGE.movePointRight(2),
+                t.wagered().multiply(BlackjackTable.HOUSE_EDGE).setScale(2, RoundingMode.HALF_UP));
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        BigDecimal portfolioNow = portfolioValue();
+        BigDecimal change = portfolioNow.subtract(seat.portfolioAtStart);
+        BigDecimal stakeNow = seat.stakePrice == null ? null : stack.divide(seat.stakePrice, 4, RoundingMode.DOWN);
+        BlackjackState.RealityCheck reality = new BlackjackState.RealityCheck(seat.seatedAt,
+                Duration.between(seat.seatedAt, now).toMinutes(), seat.portfolioAtStart, portfolioNow, change,
+                percent(change, seat.portfolioAtStart), seat.stakeTicker, seat.stakeQuantity, seat.stakePrice, stakeNow);
+
+        return new BlackjackState(true, table, coach, stats, reality);
     }
 
-    private RoundState getActiveRound(Integer userId, String roundId) {
-        if (roundId == null || roundId.isBlank()) {
-            throw new InvalidInputException("Round ID is required");
-        }
-        RoundState round = rounds.get(roundId);
-        if (round == null) {
-            throw new InvalidInputException("Round not found");
-        }
-        if (!round.userId.equals(userId)) {
-            throw new InvalidInputException("Round does not belong to current user");
-        }
-        ownershipService.requireAccount(round.accountId);
-        return round;
+    /** The trader's cash plus holdings at live prices, across their accounts. */
+    private BigDecimal portfolioValue() {
+        return accountService.getAccountsForCurrentUser().stream()
+                .map(AccountResponse::getAccountId)
+                .map(accountService::getPortfolioForAccount)
+                .map(p -> p.getTotalBalance())
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private void ensureActionable(RoundState round) {
-        if (round.resolved) {
-            throw new InvalidInputException("Round is already resolved");
-        }
-        if (round.currentHandIndex < 0 || round.currentHandIndex >= round.playerHands.size()) {
-            throw new InvalidInputException("No active hand to play");
-        }
+    private List<AccountHoldingResponse> holdings() {
+        return accountService.getAccountsForCurrentUser().stream()
+                .flatMap(a -> accountService.getAccountHoldingsForCurrentUser(a.getAccountId()).stream())
+                .toList();
     }
 
-    private PlayerHand currentHand(RoundState round) {
-        return round.playerHands.get(round.currentHandIndex);
+    private Integer userId() {
+        Integer userId = securityContextHelper.getUserIdFromContext();
+        if (userId == null) {
+            throw new InvalidInputException("Sign in to play");
+        }
+        return userId;
     }
 
-    private boolean allHandsClosed(RoundState round) {
-        for (PlayerHand hand : round.playerHands) {
-            if (!hand.stood && hand.total() <= 21) {
-                return false;
-            }
-        }
-        return true;
+    private void evictIdleSeats() {
+        LocalDateTime cutoff = LocalDateTime.now(clock).minus(IDLE_LIMIT);
+        seats.values().removeIf(s -> s.lastActive.isBefore(cutoff));
     }
 
-    private void moveToNextHand(RoundState round) {
-        for (int i = round.currentHandIndex + 1; i < round.playerHands.size(); i++) {
-            PlayerHand hand = round.playerHands.get(i);
-            if (!hand.stood && hand.total() <= 21) {
-                round.currentHandIndex = i;
-                return;
-            }
-        }
-        round.currentHandIndex = round.playerHands.size();
-    }
-
-    private boolean canSplit(RoundState round) {
-        if (round.resolved) {
-            return false;
-        }
-        if (round.currentHandIndex < 0 || round.currentHandIndex >= round.playerHands.size()) {
-            return false;
-        }
-        PlayerHand hand = round.playerHands.get(round.currentHandIndex);
-        if (hand.cards.size() != 2 || hand.stood) {
-            return false;
-        }
-        String rank1 = rank(hand.cards.get(0));
-        String rank2 = rank(hand.cards.get(1));
-        return rank1.equals(rank2);
-    }
-
-    private boolean isNaturalBlackjack(PlayerHand hand) {
-        return !hand.fromSplit && hand.cards.size() == 2 && hand.total() == 21;
-    }
-
-    private BigDecimal applyHoldingDelta(Integer accountId, Integer instrumentId, BigDecimal delta) {
-        if (delta == null || delta.compareTo(BigDecimal.ZERO) == 0) {
-            return holdingsRepository
-                    .findByAccountIdAndInstrumentIdForUpdate(accountId, instrumentId)
-                    .map(h -> h.getQuantity().setScale(4, RoundingMode.HALF_UP))
-                    .orElse(ZERO);
-        }
-
-        Holdings holding = holdingsRepository
-                .findByAccountIdAndInstrumentIdForUpdate(accountId, instrumentId)
-                .orElse(null);
-
-        if (holding == null) {
-            if (delta.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new InvalidInputException("No holding available for deduction");
-            }
-            Holdings created = new Holdings(accountId, instrumentId, delta.setScale(4, RoundingMode.HALF_UP), LocalDate.now());
-            holdingsRepository.save(created);
-            return created.getQuantity().setScale(4, RoundingMode.HALF_UP);
-        }
-
-        BigDecimal current = holding.getQuantity().setScale(4, RoundingMode.HALF_UP);
-        BigDecimal next = current.add(delta).setScale(4, RoundingMode.HALF_UP);
-        if (next.compareTo(BigDecimal.ZERO) < 0) {
-            throw new InvalidInputException("Holding quantity cannot go below zero");
-        }
-        if (next.compareTo(BigDecimal.ZERO) == 0) {
-            holdingsRepository.delete(holding);
-            return ZERO;
-        }
-        holding.setQuantity(next);
-        holding.setAsOfDate(LocalDate.now());
-        holdingsRepository.save(holding);
-        return next;
-    }
-
-    private int dealerTotal(RoundState round) {
-        return total(round.dealerCards);
-    }
-
-    private int total(List<String> cards) {
-        int sum = 0;
-        int aces = 0;
-        for (String card : cards) {
-            String cardRank = rank(card);
-            switch (cardRank) {
-                case "A" -> {
-                    sum += 11;
-                    aces++;
-                }
-                case "K", "Q", "J" -> sum += 10;
-                default -> sum += Integer.parseInt(cardRank);
-            }
-        }
-        while (sum > 21 && aces > 0) {
-            sum -= 10;
-            aces--;
-        }
-        return sum;
-    }
-
-    private String drawCard() {
-        String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
-        String[] suits = {"H", "D", "C", "S"};
-        String cardRank = ranks[ThreadLocalRandom.current().nextInt(ranks.length)];
-        String suit = suits[ThreadLocalRandom.current().nextInt(suits.length)];
-        return cardRank + suit;
-    }
-
-    private String rank(String card) {
-        return card.substring(0, card.length() - 1);
-    }
-
-    private static final class PlayerHand {
-        private final List<String> cards = new ArrayList<>();
-        private boolean stood;
-        private boolean fromSplit;
-        private String outcome = "PENDING";
-
-        void draw() {
-            String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
-            String[] suits = {"H", "D", "C", "S"};
-            String cardRank = ranks[ThreadLocalRandom.current().nextInt(ranks.length)];
-            String suit = suits[ThreadLocalRandom.current().nextInt(suits.length)];
-            cards.add(cardRank + suit);
-        }
-
-        int total() {
-            int sum = 0;
-            int aces = 0;
-            for (String card : cards) {
-                String cardRank = card.substring(0, card.length() - 1);
-                switch (cardRank) {
-                    case "A" -> {
-                        sum += 11;
-                        aces++;
-                    }
-                    case "K", "Q", "J" -> sum += 10;
-                    default -> sum += Integer.parseInt(cardRank);
-                }
-            }
-            while (sum > 21 && aces > 0) {
-                sum -= 10;
-                aces--;
-            }
-            return sum;
-        }
-    }
-
-    private static final class RoundState {
-        private String roundId;
-        private Integer userId;
-        private Integer accountId;
-        private Integer instrumentId;
-        private String ticker;
-        private BigDecimal betQuantity;
-        private BigDecimal priceSnapshot;
-        private BigDecimal quantityBefore;
-        private BigDecimal quantityCurrent;
-        private BigDecimal quantityAfter;
-        private BigDecimal reservedQuantity;
-        private String outcomeSummary = "PENDING";
-        private String message = "Round started";
-        private LocalDateTime startedAt;
-        private final List<PlayerHand> playerHands = new ArrayList<>();
-        private final List<String> dealerCards = new ArrayList<>();
-        private int currentHandIndex = 0;
-        private boolean resolved;
+    private static BigDecimal percent(BigDecimal part, BigDecimal whole) {
+        return whole == null || whole.signum() == 0 ? BigDecimal.ZERO
+                : part.multiply(BigDecimal.valueOf(100)).divide(whole, 2, RoundingMode.HALF_UP);
     }
 }

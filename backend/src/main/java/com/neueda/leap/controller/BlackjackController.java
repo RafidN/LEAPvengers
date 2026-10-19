@@ -1,99 +1,72 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.exception.ForbiddenException;
-import com.neueda.leap.exception.InvalidInputException;
-import com.neueda.leap.exception.TokenValidationException;
-import com.neueda.leap.exception.UserNotFoundException;
-import com.neueda.leap.model.dto.BlackjackPlayRequest;
-import com.neueda.leap.model.dto.BlackjackRoundResult;
-import com.neueda.leap.security.SecurityContextHelper;
+import com.neueda.leap.model.dto.BlackjackState;
 import com.neueda.leap.service.BlackjackService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+
 /**
- * REST endpoint for trader blackjack rounds.
+ * Risk Lab blackjack (traders only, like the rest of /games). Play money: no endpoint here touches an account.
+ * Every call answers with the whole table, so the page just shows what comes back.
  */
 @RestController
 @RequestMapping("/games/blackjack")
 public class BlackjackController {
-
     private final BlackjackService blackjackService;
-    private final SecurityContextHelper securityContextHelper;
 
-    public BlackjackController(BlackjackService blackjackService,
-                               SecurityContextHelper securityContextHelper) {
+    public BlackjackController(BlackjackService blackjackService) {
         this.blackjackService = blackjackService;
-        this.securityContextHelper = securityContextHelper;
     }
 
-    @PostMapping("/start")
-    public ResponseEntity<?> start(@RequestBody BlackjackPlayRequest request) {
-        try {
-            Integer userId = securityContextHelper.getUserIdFromContext();
-            BlackjackRoundResult result = blackjackService.startRound(userId, request);
-            return ResponseEntity.ok(result);
-        } catch (InvalidInputException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid input: " + e.getMessage());
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (ForbiddenException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Forbidden: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
+    /** Request bodies: {"stakeTicker": "NFLX"} to sit down (optional), {"bet": 25} to deal. */
+    public record Move(String stakeTicker, BigDecimal bet) {
     }
 
-    @PostMapping("/{roundId}/hit")
-    public ResponseEntity<?> hit(@PathVariable String roundId) {
-        return runAction(() -> blackjackService.hit(securityContextHelper.getUserIdFromContext(), roundId));
+    @GetMapping
+    public ResponseEntity<BlackjackState> state() {
+        return ResponseEntity.ok(blackjackService.state());
     }
 
-    @PostMapping("/{roundId}/stand")
-    public ResponseEntity<?> stand(@PathVariable String roundId) {
-        return runAction(() -> blackjackService.stand(securityContextHelper.getUserIdFromContext(), roundId));
+    @PostMapping("/seat")
+    public ResponseEntity<BlackjackState> sitDown(@RequestBody(required = false) Move move) {
+        return ResponseEntity.ok(blackjackService.sitDown(move == null ? null : move.stakeTicker()));
     }
 
-    @PostMapping("/{roundId}/split")
-    public ResponseEntity<?> split(@PathVariable String roundId) {
-        return runAction(() -> blackjackService.split(securityContextHelper.getUserIdFromContext(), roundId));
+    @DeleteMapping("/seat")
+    public ResponseEntity<Void> leave() {
+        blackjackService.leave();
+        return ResponseEntity.noContent().build();
     }
 
-    private ResponseEntity<?> runAction(Action action) {
-        try {
-            return ResponseEntity.ok(action.run());
-        } catch (InvalidInputException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid input: " + e.getMessage());
-        } catch (TokenValidationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Unauthorized: " + e.getMessage());
-        } catch (ForbiddenException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Forbidden: " + e.getMessage());
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Server error");
-        }
+    @PostMapping("/deal")
+    public ResponseEntity<BlackjackState> deal(@RequestBody Move move) {
+        return ResponseEntity.ok(blackjackService.deal(move.bet()));
     }
 
-    @FunctionalInterface
-    private interface Action {
-        BlackjackRoundResult run();
+    @PostMapping("/hit")
+    public ResponseEntity<BlackjackState> hit() {
+        return ResponseEntity.ok(blackjackService.hit());
+    }
+
+    @PostMapping("/stand")
+    public ResponseEntity<BlackjackState> stand() {
+        return ResponseEntity.ok(blackjackService.stand());
+    }
+
+    @PostMapping("/double")
+    public ResponseEntity<BlackjackState> doubleDown() {
+        return ResponseEntity.ok(blackjackService.doubleDown());
+    }
+
+    @PostMapping("/split")
+    public ResponseEntity<BlackjackState> split() {
+        return ResponseEntity.ok(blackjackService.split());
     }
 }
