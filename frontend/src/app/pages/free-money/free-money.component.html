@@ -1,0 +1,89 @@
+<section class="space-y-5" tabindex="0" (window:keydown)="onKeyDown($event)" (window:keyup)="onKeyUp($event)">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Free Money</h1>
+      <p class="text-muted-foreground mt-1 text-sm">Arrow keys to move, hold Z to shoot, press X to bomb-clear all bullets, hold Shift to focus (slower movement + true hitbox).</p>
+      <p class="text-muted-foreground text-xs">Defeat the boss in 100 shots to double your selected holding.</p>
+    </div>
+    <ng-icon name="lucideShieldAlert" class="text-primary text-2xl" />
+  </div>
+
+  <div class="grid gap-3 md:grid-cols-2">
+    <label class="grid gap-1 text-sm">
+      <span class="text-muted-foreground">Account</span>
+      <select class="border-input bg-background rounded-md border px-3 py-2"
+        [ngModel]="selectedAccountId()"
+        (ngModelChange)="onAccountChange($event)">
+        @for (account of accounts(); track account.accountId) {
+          <option [ngValue]="account.accountId">Account #{{ account.accountId }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="grid gap-1 text-sm">
+      <span class="text-muted-foreground">Holding Ticker</span>
+      <select class="border-input bg-background rounded-md border px-3 py-2"
+        [ngModel]="selectedTicker()"
+        (ngModelChange)="onTickerChange($event)">
+        @for (holding of holdings(); track holding.ticker) {
+          <option [ngValue]="holding.ticker">
+            {{ holding.ticker }} ({{ holding.quantity | number:'1.4-4' }} shares)
+          </option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)_200px] xl:items-start">
+    <div class="grid gap-3">
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Boss HP</p>
+        <p class="mt-1 text-2xl font-semibold">{{ bossHealth() }} / {{ bossMaxHealth() }}</p>
+      </article>
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Hits Taken</p>
+        <p class="mt-1 text-2xl font-semibold">{{ hits() }}</p>
+      </article>
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Bombs Left</p>
+        <p class="mt-1 text-2xl font-semibold">{{ bombsLeft() }}</p>
+      </article>
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Total Money Lost</p>
+        <p class="mt-1 text-2xl font-semibold">{{ totalMoneyLost() | currency:'USD':'symbol':'1.2-2' }}</p>
+      </article>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border shadow-sm flex justify-center bg-black/30 p-2 sm:p-3">
+      <canvas #gameCanvas width="720" height="1080" class="bg-black block h-[80vh] w-auto max-w-full rounded-md"></canvas>
+    </div>
+
+    <div class="grid gap-3">
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Score</p>
+        <p class="mt-1 text-2xl font-semibold">{{ score() }}</p>
+      </article>
+
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Starting Quantity</p>
+        <p class="mt-1 text-xl font-semibold">{{ (startingHolding() ?? 0) | number:'1.4-4' }}</p>
+      </article>
+
+      <article hlmCard class="p-4">
+        <p class="text-muted-foreground text-xs uppercase tracking-wide">Latest Quantity</p>
+        <p class="mt-1 text-xl font-semibold">{{ (holdingAfterHit() ?? 0) | number:'1.4-4' }}</p>
+      </article>
+
+      @if (penaltyStatus()) {
+        <article hlmCard class="p-4">
+          <p class="text-muted-foreground text-xs uppercase tracking-wide">Battle Status</p>
+          <p class="mt-1 text-sm">{{ penaltyStatus() }}</p>
+        </article>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-2">
+    <button hlmBtn [disabled]="running()" (click)="start()">Start</button>
+  </div>
+</section>

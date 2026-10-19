@@ -67,7 +67,7 @@ public class SecurityConfig {
                                 "/api/v3/api-docs/**")
                         .permitAll()
                         // Paths are matched after the /api context path, so no /api prefix here
-                        .requestMatchers("/accounts/**", "/orders/**").hasRole("TRADER")
+                        .requestMatchers("/accounts/**", "/orders/**", "/games/**").hasRole("TRADER")
                         .requestMatchers("/internal/audit/**").hasRole("OPS")
                         .requestMatchers("/internal/reports/**").hasAnyRole("ANALYST", "OPS")
                         .requestMatchers("/insights/**").hasRole("ANALYST")

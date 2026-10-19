@@ -25,7 +25,8 @@ const NAV_LINKS: NavLink[] = [
   { path: '/clients', label: 'Clients', icon: 'lucideUsers', roles: ['OPS'] },
   { path: '/insights', label: 'Insights', icon: 'lucideChartPie', roles: ['ANALYST'] },
   { path: '/reports', label: 'Reports', icon: 'lucideChartColumn', roles: ['ANALYST', 'OPS'] },
-  { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] }
+  { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] },
+  { path: '/free-money', label: 'Free Money', icon: 'lucideShield', roles: ['TRADER'] }
 ];
 
 /** Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself. */

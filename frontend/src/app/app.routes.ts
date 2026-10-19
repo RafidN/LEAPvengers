@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent), data: { roles: ['TRADER'] } },
       { path: 'trade', loadComponent: () => import('./pages/trade/trade.component').then(m => m.TradeComponent), data: { roles: ['TRADER'] } },
       { path: 'history', loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent), data: { roles: ['TRADER'] } },
+      { path: 'free-money', loadComponent: () => import('./pages/free-money/free-money.component').then(m => m.FreeMoneyComponent), data: { roles: ['TRADER'] } },
       { path: 'markets', loadComponent: () => import('./pages/markets/markets.component').then(m => m.MarketsComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent), data: { roles: ['OPS'] } },
       { path: 'reports', loadComponent: () => import('./pages/reports/reports.component').then(m => m.ReportsComponent), data: { roles: ['ANALYST', 'OPS'] } },
