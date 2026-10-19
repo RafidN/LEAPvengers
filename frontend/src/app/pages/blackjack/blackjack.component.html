@@ -1,0 +1,127 @@
+<div class="mb-6">
+  <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Trader Fun</p>
+  <h1 class="text-3xl font-medium tracking-tight">Blackjack</h1>
+  <p class="text-muted-foreground mt-1 text-sm">Stake a portion of one holding. Start a round, then choose hit, stand, or split.</p>
+</div>
+
+@if (error()) {
+  <div hlmAlert variant="destructive" class="mb-4">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+}
+
+<div class="grid gap-4 lg:grid-cols-2">
+  <div hlmCard>
+    <div hlmCardHeader>
+      <h3 hlmCardTitle>Play A Hand</h3>
+      <p hlmCardDescription>Choose account, ticker and stake quantity</p>
+    </div>
+    <div hlmCardContent class="space-y-4">
+      <label class="block text-sm">
+        <span class="mb-1 block font-medium">Account</span>
+        <select class="bg-background w-full rounded-md border px-3 py-2"
+          [ngModel]="selectedAccountId()"
+          (ngModelChange)="onAccountChange(+$event)">
+          @for (account of accounts(); track account.accountId) {
+            <option [ngValue]="account.accountId">#{{ account.accountId }} ({{ account.balance | currency }})</option>
+          }
+        </select>
+      </label>
+
+      <label class="block text-sm">
+        <span class="mb-1 block font-medium">Ticker (from your holdings)</span>
+        <select class="bg-background w-full rounded-md border px-3 py-2"
+          [ngModel]="ticker()"
+          (ngModelChange)="ticker.set($event)">
+          @for (holding of holdings(); track holding.ticker) {
+            <option [ngValue]="holding.ticker">{{ holding.ticker }} - {{ holding.quantity | number: '1.0-4' }} units</option>
+          } @empty {
+            <option [ngValue]="''" disabled>No holdings found for this account</option>
+          }
+        </select>
+      </label>
+
+      <label class="block text-sm">
+        <span class="mb-1 block font-medium">Bet Quantity</span>
+        <input type="number" min="0.0001" step="0.0001"
+          class="bg-background w-full rounded-md border px-3 py-2"
+          [ngModel]="betQuantity()"
+          (ngModelChange)="betQuantity.set(+$event)" />
+      </label>
+
+      <button hlmBtn [disabled]="loading()" (click)="startRound()">
+        {{ loading() ? 'Starting...' : 'Start Round' }}
+      </button>
+
+      @if (round(); as r) {
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button hlmBtn variant="secondary" [disabled]="loading() || !r.canHit" (click)="hit()">Hit</button>
+          <button hlmBtn variant="secondary" [disabled]="loading() || !r.canStand" (click)="stand()">Stand</button>
+          <button hlmBtn variant="outline" [disabled]="loading() || !r.canSplit" (click)="split()">Split</button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div hlmCard>
+    <div hlmCardHeader>
+      <h3 hlmCardTitle>Latest Result</h3>
+      <p hlmCardDescription>Resolved server-side against your real holding quantity</p>
+    </div>
+    <div hlmCardContent>
+      @if (round(); as result) {
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center gap-2">
+            <span hlmBadge [variant]="outcomeVariant(result.outcomeSummary)">{{ result.outcomeSummary }}</span>
+            <span hlmBadge variant="outline">{{ result.status }}</span>
+            <span class="text-muted-foreground">{{ result.playedAt | date: 'MMM d, HH:mm:ss' }}</span>
+          </div>
+
+          <p>{{ result.message }}</p>
+
+          @for (hand of result.playerHands; track $index) {
+            <div>
+              <p class="font-medium">Hand {{ $index + 1 }} ({{ hand.total }})</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                @for (card of hand.cards; track card + '-' + $index) {
+                  <app-playing-card [card]="card" />
+                }
+              </div>
+              <p class="text-xs text-muted-foreground">Outcome: {{ hand.outcome }}</p>
+            </div>
+          }
+
+          <div>
+            <p class="font-medium">Dealer ({{ result.dealerTotal }})</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              @for (card of result.dealerCards; track card) {
+                <app-playing-card [card]="card" />
+              }
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <p class="text-muted-foreground">Price snapshot</p>
+            <p class="text-right">{{ result.priceSnapshot | currency }}</p>
+
+            <p class="text-muted-foreground">Wager value</p>
+            <p class="text-right">{{ result.wagerValue | currency }}</p>
+
+            <p class="text-muted-foreground">Quantity before</p>
+            <p class="text-right">{{ result.quantityBefore | number: '1.0-4' }}</p>
+
+            <p class="text-muted-foreground">Quantity current</p>
+            <p class="text-right">{{ result.quantityCurrent | number: '1.0-4' }}</p>
+
+            @if (result.quantityAfter != null) {
+              <p class="text-muted-foreground">Quantity after</p>
+              <p class="text-right">{{ result.quantityAfter | number: '1.0-4' }}</p>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="text-muted-foreground text-sm">Start a round to see cards and settlement details.</p>
+      }
+    </div>
+  </div>
+</div>
