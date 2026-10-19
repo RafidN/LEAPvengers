@@ -42,7 +42,7 @@ type StatusMeta = {
 export class ClientsComponent {
   private readonly auditService = inject(AuditService);
   protected readonly segments: ClientSegment[] = ['Premier', 'Active', 'Core', 'Dormant'];
-  protected readonly statuses: string[] = ['SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
+  protected readonly statuses: string[] = ['SUBMITTED', 'WORKING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED', 'CANCELED'];
 
   protected readonly clients = signal<ClientSegmentResult[]>([]);
   protected readonly filter = signal<ClientSegment | null>(null);
@@ -173,19 +173,31 @@ export class ClientsComponent {
   protected loadOrders = (_client: ClientSegmentResult, _focusOrderId?: number): void => undefined;
   protected loadOrderDetails = (_order: AuditOrder): void => undefined;
 
+  /** "Buy", or "Buy limit", "Stop-loss" and so on for limit and stop orders. */
+  protected orderLabel(order: AuditOrder): string {
+    const side = order.orderType === 'BUY' ? 'Buy' : 'Sell';
+    switch (order.orderKind) {
+      case 'LIMIT': return `${side} limit`;
+      case 'STOP': return order.orderType === 'SELL' ? 'Stop-loss' : 'Buy stop';
+      default: return side;
+    }
+  }
+
   protected statusMeta(status: string): StatusMeta {
     const statusMeta: Record<string, StatusMeta> = {
       ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
       FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
       SUBMITTED: { label: 'Submitted', variant: 'secondary', icon: 'lucideClock' },
       REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' },
-      FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideCircleX' }
+      FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideCircleX' },
+      WORKING: { label: 'Working', variant: 'secondary', icon: 'lucideClock' },
+      CANCELED: { label: 'Canceled', variant: 'outline', icon: 'lucideCircleX' }
     };
     return statusMeta[status] ?? { label: status, variant: 'outline', icon: 'lucideClock' };
   }
 
   protected effectivePrice(order: AuditOrder): number {
-    return order.executionPrice ?? order.price;
+    return order.executionPrice ?? order.triggerPrice ?? order.price;
   }
 
   protected countForStatus(status: string): number {

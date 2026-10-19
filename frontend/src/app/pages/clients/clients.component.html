@@ -173,8 +173,10 @@
                   }
                 </span>
                 <span class="text-muted-foreground block text-xs">
-                  #{{ order.orderId }} · {{ order.orderType === 'BUY' ? 'Buy' : 'Sell' }} {{ order.quantity | number: '1.0-2' }}
-                  at {{ effectivePrice(order) | currency }} · {{ order.submittedAt | date: 'MMM d, HH:mm' }}
+                  #{{ order.orderId }} · {{ orderLabel(order) }} {{ order.quantity | number: '1.0-2' }}
+                  at {{ effectivePrice(order) | currency }}
+                  @if (order.triggerPrice != null && !order.executionPrice) { ({{ order.orderKind === 'STOP' ? 'stop' : 'limit' }}) }
+                  · {{ order.submittedAt | date: 'MMM d, HH:mm' }}
                 </span>
               </span>
               <ng-icon name="lucideChevronRight" class="text-muted-foreground shrink-0 transition-transform"

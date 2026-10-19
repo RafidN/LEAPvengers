@@ -87,13 +87,18 @@
                   <td hlmTableCell class="text-muted-foreground tabular-nums">{{ o.submittedAt | date: 'MMM d, HH:mm' }}</td>
                   <td hlmTableCell>
                     <span class="font-semibold" [style.color]="o.orderType === 'BUY' ? 'var(--profit)' : 'var(--loss)'">
-                      {{ o.orderType === 'BUY' ? 'Buy' : 'Sell' }}
+                      {{ orderLabel(o) }}
                     </span>
                     <span class="text-muted-foreground text-xs"> #{{ o.orderId }}</span>
                   </td>
                   <td hlmTableCell class="font-medium">{{ o.ticker }}</td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity | number: '1.0-2' }}</td>
-                  <td hlmTableCell class="text-right tabular-nums">{{ effectivePrice(o) | currency }}</td>
+                  <td hlmTableCell class="text-right tabular-nums">
+                    @if (o.triggerPrice != null && !o.executionPrice) {
+                      <span class="text-muted-foreground text-xs">{{ o.orderKind === 'STOP' ? 'stop' : 'limit' }} </span>
+                    }
+                    {{ effectivePrice(o) | currency }}
+                  </td>
                   <td hlmTableCell class="text-right tabular-nums">{{ o.quantity * effectivePrice(o) | currency }}</td>
                   <td hlmTableCell>
                     <span class="flex flex-wrap items-center gap-1.5">
@@ -121,6 +126,10 @@
                           <p class="text-muted-foreground text-xs tabular-nums">
                             @if (o.accountId) { Account #{{ o.accountId }} · }
                             Submitted {{ o.submittedAt | date: 'MMM d, y, HH:mm:ss' }}
+                            @if (o.triggerPrice != null) {
+                              · {{ o.orderKind === 'STOP' ? 'Stop' : 'Limit' }} {{ o.triggerPrice | currency }}
+                            }
+                            @if (o.triggeredAt) { · Triggered {{ o.triggeredAt | date: 'MMM d, y, HH:mm:ss' }} }
                             @if (o.executedAt) {
                               · Executed {{ o.executedAt | date: 'MMM d, y, HH:mm:ss' }}
                               @if (o.executionPrice) { at {{ o.executionPrice | currency }} }

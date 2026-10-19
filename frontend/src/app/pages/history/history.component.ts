@@ -10,10 +10,12 @@ import {
   lucideArrowLeftRight,
   lucideBan,
   lucideCircleCheck,
+  lucideCircleSlash,
   lucideCircleX,
   lucideChevronRight,
   lucideClock,
   lucideFlag,
+  lucideHourglass,
   lucideMessageSquareReply,
   lucideRefreshCw
 } from '@ng-icons/lucide';
@@ -43,9 +45,11 @@ const STATUS_META: Record<OrderStatus, {
   icon: string;
 }> = {
   ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: 'lucideCircleCheck' },
+  CANCELED: { label: 'Canceled', variant: 'outline', icon: 'lucideCircleSlash' },
   FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideBan' },
   FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
   SUBMITTED: { label: 'Submitted', variant: 'secondary', icon: 'lucideClock' },
+  WORKING: { label: 'Working', variant: 'secondary', icon: 'lucideHourglass' },
   REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' }
 };
 
@@ -74,8 +78,8 @@ const IN_PROGRESS_REFRESH_MS = 1_000;
     HlmTableImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideArrowLeftRight, lucideBan, lucideCircleCheck, lucideCircleX, lucideChevronRight, lucideClock, lucideFlag,
-    lucideMessageSquareReply, lucideRefreshCw
+    lucideArrowLeftRight, lucideBan, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideChevronRight, lucideClock,
+    lucideFlag, lucideHourglass, lucideMessageSquareReply, lucideRefreshCw
   })]
 })
 export class HistoryComponent {
@@ -89,7 +93,7 @@ export class HistoryComponent {
     { value: '1m', label: '1 month' },
     { value: '1y', label: '1 year' }
   ];
-  protected readonly statuses: OrderStatus[] = ['SUBMITTED', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED'];
+  protected readonly statuses: OrderStatus[] = ['SUBMITTED', 'WORKING', 'ACCEPTED', 'FILLED', 'REJECTED', 'FAILED', 'CANCELED'];
 
   protected readonly tab = signal('orders');
   protected readonly period = signal<HistoryPeriod>('1m');
@@ -157,9 +161,19 @@ export class HistoryComponent {
     return STATUS_META[status as OrderStatus] ?? { label: status ?? '', variant: 'secondary', icon: 'lucideClock' };
   }
 
-  /** Filled orders are valued at the price they actually executed at. */
+  /** Filled orders are valued at the price they actually executed at; unfilled limit and stop orders at theirs. */
   protected effectivePrice(o: OrderHistoryResult): number {
-    return o.executionPrice ?? o.price;
+    return o.executionPrice ?? o.triggerPrice ?? o.price;
+  }
+
+  /** "Buy", or "Buy limit", "Stop-loss" and so on for limit and stop orders. */
+  protected orderLabel(o: OrderHistoryResult): string {
+    const side = o.orderType === 'BUY' ? 'Buy' : 'Sell';
+    switch (o.orderKind) {
+      case 'LIMIT': return `${side} limit`;
+      case 'STOP': return o.orderType === 'SELL' ? 'Stop-loss' : 'Buy stop';
+      default: return side;
+    }
   }
 
   constructor() {

@@ -27,6 +27,7 @@ export interface AccountPortfolio {
   balance: number;          // cash
   holdings: AccountHolding[];
   totalBalance: number;     // cash + holdings value
+  cashHeldForOrders?: number; // what working limit and stop buys could spend; balance less this is free to trade
 }
 
 /** All of the trader's accounts together at one moment. */

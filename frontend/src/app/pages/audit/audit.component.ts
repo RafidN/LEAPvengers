@@ -19,7 +19,9 @@ const STATUS_META: Record<string, { label: string; variant: 'default' | 'seconda
   FILLED: { label: 'Filled', variant: 'default', icon: 'lucideCircleCheck' },
   SUBMITTED: { label: 'Submitted', variant: 'secondary', icon: 'lucideClock3' },
   REJECTED: { label: 'Rejected', variant: 'destructive', icon: 'lucideCircleX' },
-  FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideCircleX' }
+  FAILED: { label: 'Failed', variant: 'outline', icon: 'lucideCircleX' },
+  WORKING: { label: 'Working', variant: 'secondary', icon: 'lucideClock3' },
+  CANCELED: { label: 'Canceled', variant: 'outline', icon: 'lucideCircleX' }
 };
 
 @Component({
