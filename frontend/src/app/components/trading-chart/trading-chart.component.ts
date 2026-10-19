@@ -53,6 +53,8 @@ interface Drag {
  * that starts a limit or stop order there; it appears as a dashed line, which can be dragged too, until it is
  * placed. The chart only draws and reports: the page owning it places, moves and cancels the orders.
  *
+ * It fills the height of its container, so the page decides how big it is.
+ *
  * Keyboard: each line's label is a button; the arrow keys move it (Shift for bigger steps), Enter places the move,
  * Escape undoes it and Delete cancels the order.
  */
@@ -60,9 +62,9 @@ interface Drag {
   selector: 'app-trading-chart',
   providers: [CHART_PROVIDERS, provideIcons({ lucidePlus, lucideX })],
   imports: [BaseChartDirective, NgIcon],
-  host: { '(document:keydown.escape)': 'closeMenu()' },
+  host: { class: 'block h-full', '(document:keydown.escape)': 'closeMenu()' },
   template: `
-    <div #frame class="relative h-80 w-full touch-pan-y select-none"
+    <div #frame class="relative h-full min-h-48 w-full touch-pan-y select-none"
       (pointermove)="pointerMove($event)" (pointerdown)="pointerDown($event)" (pointerup)="pointerUp()"
       (pointercancel)="cancelDrag()" (pointerleave)="hoverY.set(null)">
       <!-- Rebuilt when the theme changes: Chart.js only reads its colours when created -->

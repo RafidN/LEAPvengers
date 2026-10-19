@@ -11,12 +11,12 @@ import {
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock,
-  lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucideRotateCcw, lucideTriangleAlert, lucideX
+  lucideChevronDown, lucideChevronUp, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
+  lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
-import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmComboboxImports } from '@spartan-ng/helm/combobox';
 import { HlmLabelImports } from '@spartan-ng/helm/label';
@@ -91,24 +91,32 @@ const STARTING_DISTANCE = { LIMIT: 0.01, STOP: 0.02 };
 /** Prices under $10 (FX, small stocks) to 4 decimal places, others to the cent. */
 const roundPrice = (price: number) => Number(price.toFixed(price < 10 ? 4 : 2));
 
+/** Which tab of the drawer under the chart is showing. */
+type BottomTab = 'working' | 'status' | 'today';
+
+/** Wide enough for the order panel to sit beside the chart; narrower, it opens over it. */
+const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches;
+
 /**
- * Order ticket with a chart to trade from. A market order fills at the live price; a limit or stop order waits as
- * WORKING until the price reaches it. Limit and stop orders can be set up in the ticket or on the chart, where
- * working orders are lines that can be dragged to a new price or canceled. The tracker beside the ticket follows
- * the latest order through Submitted, Accepted or Working, and Filled (or Rejected / Failed / Canceled).
+ * A full-window trading screen: the chart fills the page, the order ticket is a panel on the right (over the chart
+ * on small screens) and working orders, the order tracker and today's orders are tabs in a drawer under the chart.
+ * A market order fills at the live price; a limit or stop order waits as WORKING until the price reaches it. Limit
+ * and stop orders can be set up in the ticket or on the chart, where working orders are lines that can be dragged to
+ * a new price or canceled. The tracker follows the latest order through Submitted, Accepted or Working, and Filled
+ * (or Rejected / Failed / Canceled).
  */
 @Component({
   selector: 'app-trade',
   templateUrl: './trade.component.html',
   imports: [
     CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon, TradingChartComponent,
-    HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmComboboxImports, HlmInputImports,
+    HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmComboboxImports, HlmInputImports,
     HlmLabelImports
   ],
   providers: [provideIcons({
-    lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock,
-    lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucideRotateCcw, lucideTriangleAlert,
-    lucideX
+    lucideArrowDown, lucideArrowUp, lucideBan, lucideChevronDown, lucideChevronUp, lucideCircleCheck, lucideCircleSlash,
+    lucideCircleX, lucideClock, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
+    lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
   })]
 })
 export class TradeComponent {
@@ -152,6 +160,12 @@ export class TradeComponent {
   /** A problem with the request itself, when no order was recorded. */
   protected readonly submitError = signal<{ headline: string; detail: string } | null>(null);
 
+  // ---- Layout ----
+  /** The order ticket panel; open beside the chart on wide screens, closed (over the chart when opened) on small ones. */
+  protected readonly panelOpen = signal(isWide());
+  protected readonly bottomOpen = signal(true);
+  protected readonly bottomTab = signal<BottomTab>('working');
+
   // ---- Chart ----
   protected readonly chartPeriods: { value: HistoryPeriod; label: string }[] = [
     { value: '1d', label: '1D' },
@@ -162,6 +176,17 @@ export class TradeComponent {
   protected readonly chartPeriod = signal<HistoryPeriod>('1d');
   protected readonly chartPoints = signal<PricePoint[]>([]);
   protected readonly chartLoading = signal(true);
+
+  /** Change from the first to the last price on the chart. */
+  protected readonly periodChange = computed(() => {
+    const points = this.chartPoints();
+    if (points.length < 2) {
+      return null;
+    }
+    const first = points[0].value;
+    const amount = points[points.length - 1].value - first;
+    return { amount, ratio: amount / first };
+  });
 
   // ---- Working orders ----
   protected readonly workingOrders = signal<OrderHistoryResult[]>([]);
@@ -663,6 +688,23 @@ export class TradeComponent {
   /** Opens an earlier order in the tracker. */
   protected track(order: OrderHistoryResult): void {
     this.startTracking(order);
+    this.showTab('status');
+  }
+
+  protected showTab(tab: BottomTab): void {
+    this.bottomTab.set(tab);
+    this.bottomOpen.set(true);
+  }
+
+  protected tabClass(tab: BottomTab): string {
+    const base = 'flex items-center border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors';
+    return this.bottomTab() === tab && this.bottomOpen()
+      ? `${base} border-primary text-foreground`
+      : `${base} border-transparent text-muted-foreground hover:text-foreground`;
+  }
+
+  protected togglePanel(): void {
+    this.panelOpen.update(open => !open);
   }
 
   // ---- From the chart ----
@@ -673,6 +715,7 @@ export class TradeComponent {
     this.kind.set(staged.kind);
     this.triggerPrice.set(staged.price);
     this.submitError.set(null);
+    this.panelOpen.set(true);
     if (this.validQuantity() == null) {
       setTimeout(() => this.quantityInput()?.nativeElement.focus());
     }
@@ -776,6 +819,7 @@ export class TradeComponent {
       next: order => {
         this.submitting.set(false);
         this.startTracking(order);
+        this.afterSending(order.orderStatus === 'WORKING' ? 'working' : 'status');
         if (order.orderStatus === 'WORKING') {
           // Now a solid line on the chart instead of the dashed draft
           this.workingOrders.update(orders => [...orders, order]);
@@ -804,6 +848,7 @@ export class TradeComponent {
             orderKind: request.orderKind,
             triggerPrice: request.triggerPrice
           });
+          this.afterSending('status');
         } else if (rejection) {
           this.submitError.set({ headline: this.headline(rejection.message), detail: rejection.message });
         } else {
@@ -811,6 +856,14 @@ export class TradeComponent {
         }
       }
     });
+  }
+
+  /** Shows how the order went; on a small screen the ticket closes so the chart and that tab can be seen. */
+  private afterSending(tab: BottomTab): void {
+    this.showTab(tab);
+    if (!isWide()) {
+      this.panelOpen.set(false);
+    }
   }
 
   private startTracking(order: OrderHistoryResult): void {
@@ -844,6 +897,7 @@ export class TradeComponent {
       const filled = ended.filter(o => o.orderStatus === 'FILLED' || o.orderStatus === 'ACCEPTED');
       const other = ended.find(o => o.orderStatus === 'FAILED' || o.orderStatus === 'CANCELED');
       if (filled.length > 0) {
+        this.showTab('working');
         this.workingNotice.set({
           tone: 'ok',
           text: filled.map(o => `Your ${this.orderLabel(o).toLowerCase()} for ${formatQuantity(o.quantity)} ${o.ticker} `

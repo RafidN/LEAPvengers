@@ -1,5 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
@@ -28,7 +30,10 @@ const NAV_LINKS: NavLink[] = [
   { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] }
 ];
 
-/** Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself. */
+/**
+ * Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself, in a centred
+ * column. A route with data.fullBleed (the Trade page) gets the whole window under the navigation instead.
+ */
 @Component({
   selector: 'app-shell',
   templateUrl: './shell.component.html',
@@ -42,6 +47,18 @@ export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   protected readonly themeService = inject(ThemeService);
+
+  protected readonly fullBleed = toSignal(this.router.events.pipe(
+    filter(event => event instanceof NavigationEnd),
+    startWith(null),
+    map(() => {
+      let route = this.router.routerState.snapshot.root;
+      while (route.firstChild) {
+        route = route.firstChild;
+      }
+      return route.data['fullBleed'] === true;
+    })
+  ), { initialValue: false });
 
   protected get firstName(): string {
     return this.authService.getFirstName() || this.authService.getUsername() || '';

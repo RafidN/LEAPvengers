@@ -13,7 +13,8 @@ export const routes: Routes = [
   { path: 'forgot-password', component: ForgotPasswordComponent },
 
   // Signed-in pages share the top navigation in ShellComponent.
-  // data.roles lists who may open each page (see roleGuard); no roles means everyone.
+  // data.roles lists who may open each page (see roleGuard); no roles means everyone. data.fullBleed gives a page the
+  // whole window under the navigation rather than the centred column.
   {
     path: '',
     component: ShellComponent,
@@ -21,7 +22,7 @@ export const routes: Routes = [
     canActivateChild: [roleGuard],
     children: [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent), data: { roles: ['TRADER'] } },
-      { path: 'trade', loadComponent: () => import('./pages/trade/trade.component').then(m => m.TradeComponent), data: { roles: ['TRADER'] } },
+      { path: 'trade', loadComponent: () => import('./pages/trade/trade.component').then(m => m.TradeComponent), data: { roles: ['TRADER'], fullBleed: true } },
       { path: 'history', loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent), data: { roles: ['TRADER'] } },
       { path: 'markets', loadComponent: () => import('./pages/markets/markets.component').then(m => m.MarketsComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent), data: { roles: ['OPS'] } },
