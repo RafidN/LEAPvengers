@@ -8,7 +8,7 @@ import {
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
-import { ThemeService } from '../../services/theme.service';
+import { Theme, ThemeService } from '../../services/theme.service';
 
 interface NavLink {
   path: string;
@@ -63,6 +63,13 @@ export class ShellComponent {
   protected get links() {
     const role = this.authService.getRole();
     return NAV_LINKS.filter(link => role && link.roles.includes(role));
+  }
+
+  protected selectTheme(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as Theme;
+    if (this.themeService.themes.includes(value)) {
+      this.themeService.setTheme(value);
+    }
   }
 
   protected signOut(): void {

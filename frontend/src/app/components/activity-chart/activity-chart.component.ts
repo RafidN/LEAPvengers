@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
+import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
 import { formatMoney } from '../../services/format';
 
 export interface ActivityBar {
@@ -50,7 +50,7 @@ export class ActivityChartComponent {
   });
 
   protected readonly data = computed<ChartConfiguration<'bar'>['data']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     return {
       labels: this.bars().map(b => b.label),
       datasets: [{
@@ -65,7 +65,7 @@ export class ActivityChartComponent {
   });
 
   protected readonly options = computed<ChartConfiguration<'bar'>['options']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const overTime = this.overTime();
     const valueAxis = {
       grid: { color: palette.grid },

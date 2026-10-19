@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
+import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
 import { formatMoney } from '../../services/format';
 
 export interface PricePoint {
@@ -51,7 +51,7 @@ export class PriceChartComponent {
   private readonly fewLabels = computed(() => new Set(this.labels()).size <= 8);
 
   protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const points = this.points();
     const up = points.length < 2 || points[points.length - 1].value >= points[0].value;
 
@@ -71,7 +71,7 @@ export class PriceChartComponent {
   });
 
   protected readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const labels = this.labels();
     return {
       responsive: true,

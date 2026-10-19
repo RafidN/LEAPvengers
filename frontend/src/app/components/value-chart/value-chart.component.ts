@@ -3,7 +3,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, Plugin } from 'chart.js';
 import { AccountValuePoint } from '../../services/account.service';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
+import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
 import { formatMoney } from '../../services/format';
 
 const money = formatMoney;
@@ -64,7 +64,7 @@ export class ValueChartComponent {
   readonly masked = input(false);
 
   protected readonly plugins = [crosshair];
-  private readonly palette = computed(() => CHART_PALETTES[this.theme()]);
+  private readonly palette = computed(() => chartPalette(this.theme()));
   protected readonly renderKey = computed(() => `${this.theme()}:${this.masked()}`);
 
   /** Times for a single day, dates for anything longer. */

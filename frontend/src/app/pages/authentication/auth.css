@@ -1,29 +1,19 @@
 /*
  * Shared by sign-in, register and forgot-password.
- * Re-themes the Spartan components on these pages dark green by overriding the tokens from styles.css.
+ * Layout stays local, while colors inherit the active global theme tokens.
  */
 :host {
-  --card: #0a230f;
-  --card-foreground: #ffffff;
-  --foreground: #ffffff;
-  --muted-foreground: #8a938c;
-  --input: #0d290d;
-  --border: #0d290d;
-  --primary: #37b87b;
-  --primary-foreground: #04150b;
-  --destructive: #ff6b6b;
-
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   width: 100%;
   padding: 20px 0;
-  background: linear-gradient(rgba(10, 35, 15, 0.8), rgba(10, 35, 15, 0.8)), url('../../imports/jason-leem-50bzI1F6urA-unsplash.jpg');
+  background: var(--background);
   background-size: cover;
   background-attachment: fixed;
 }
 
 a {
-  color: #4bb986;
+  color: var(--primary);
 }

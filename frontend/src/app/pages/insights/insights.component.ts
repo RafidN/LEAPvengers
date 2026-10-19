@@ -12,7 +12,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ClientSegment, ClientSegmentResult, ClientSegmentService } from '../../services/client-segment.service';
 import { InstrumentInsightsResult, InstrumentInsightsService } from '../../services/instrument-insights.service';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../../components/chart-theme';
+import { chartPalette, CHART_PROVIDERS } from '../../components/chart-theme';
 
 interface SegmentSummary {
   segment: ClientSegment;
@@ -75,7 +75,7 @@ export class InsightsComponent {
       .slice(0, 5));
 
   protected readonly theme = inject(ThemeService).theme;
-  private readonly palette = computed(() => CHART_PALETTES[this.theme()]);
+  private readonly palette = computed(() => chartPalette(this.theme()));
 
   // One series, one hue: no legend needed, the card title names it; the table beside it is the table view
   protected readonly chartData = computed<ChartConfiguration<'bar'>['data']>(() => ({

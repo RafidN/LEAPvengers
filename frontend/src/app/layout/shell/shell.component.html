@@ -14,11 +14,13 @@
     }
 
     <div class="ml-auto flex items-center gap-3">
-      <button hlmBtn variant="ghost" size="icon" (click)="themeService.toggle()"
-        [attr.aria-label]="themeService.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-        [attr.title]="themeService.theme() === 'dark' ? 'Light mode' : 'Dark mode'">
-        <ng-icon [name]="themeService.theme() === 'dark' ? 'lucideSun' : 'lucideMoon'" />
-      </button>
+      <label class="text-muted-foreground hidden text-xs sm:inline" for="theme-picker">Color Theme</label>
+      <select id="theme-picker" class="bg-background text-foreground h-9 max-w-32 rounded-md border px-2 text-sm"
+        [value]="themeService.theme()" (change)="selectTheme($event)" aria-label="Color theme">
+        @for (theme of themeService.themes; track theme) {
+          <option [value]="theme">{{ themeService.themeLabel(theme) }}</option>
+        }
+      </select>
       @if (firstName) {
         <span class="hidden items-center gap-2 text-sm md:flex">
           <b>{{ firstName }}</b>
