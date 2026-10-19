@@ -97,7 +97,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
   private readonly player = {
     x: this.width / 2,
     y: this.height - 44,
-    radius: 9,
+    radius: 13,
     hitboxRadius: 3.2,
     speed: 340,
     active: true,
@@ -108,7 +108,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
   private readonly boss: BossState = {
     x: this.width / 2,
     y: 96,
-    radius: 34,
+    radius: 52,
     health: FreeMoneyComponent.BOSS_MAX_HEALTH,
     maxHealth: FreeMoneyComponent.BOSS_MAX_HEALTH,
     alive: true
@@ -233,6 +233,12 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
     this.selectedTicker.set(ticker);
   }
 
+  protected onCanvasClick(): void {
+    if (!this.running()) {
+      this.start();
+    }
+  }
+
   private tick(timestamp: number): void {
     if (!this.running()) {
       return;
@@ -338,7 +344,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
       x: this.player.x,
       y: this.player.y - this.player.radius - 2,
       vy: -570,
-      radius: 4
+      radius: 6
     });
   }
 
@@ -359,7 +365,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
           y: this.boss.y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          radius: 5
+          radius: 7
         });
       }
     }
@@ -381,7 +387,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
           y: this.boss.y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          radius: 5
+          radius: 7
         });
       }
     }
@@ -711,7 +717,7 @@ export class FreeMoneyComponent implements AfterViewInit, OnDestroy {
         );
       } else {
         context.font = 'bold 28px ui-sans-serif, system-ui';
-        context.fillText(this.bossDefeated() ? 'Boss Defeated' : 'Press Start to Begin', this.width / 2, this.height / 2);
+        context.fillText(this.bossDefeated() ? 'Boss Defeated' : 'Click Canvas to Begin', this.width / 2, this.height / 2);
       }
     }
   }
