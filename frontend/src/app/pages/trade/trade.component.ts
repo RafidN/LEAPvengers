@@ -132,6 +132,7 @@ export class TradeComponent {
   protected readonly side = signal<OrderSide>('BUY');
   protected readonly quantity = signal<number | null>(null);
   protected readonly simulationMode = signal(false);
+  protected readonly termsExpanded = signal(true);
   protected readonly simulationBalance = signal<number | null>(null);
   protected readonly simulationResult = signal<SimulationResult | null>(null);
   protected readonly loading = signal(true);

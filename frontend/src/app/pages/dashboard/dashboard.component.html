@@ -305,6 +305,7 @@
 </section>
 </ng-template>
 
+<ng-template #activitySection>
   <!-- Recent activity -->
   <div hlmCard>
     <div hlmCardHeader>
@@ -340,12 +341,7 @@
         @if (!loading()) {
           <li class="text-muted-foreground text-sm">No activity yet.</li>
         }
-      </li>
-    } @empty {
-      @if (!loading()) {
-        <li class="text-muted-foreground text-sm">No activity yet.</li>
       }
-    }
   </ul>
-</section>
+  </div>
 </ng-template>

@@ -18,6 +18,10 @@
       <h2 hlmCardTitle id="learn-title">Trading terms</h2>
       <p hlmCardDescription>Plain-language definitions for the terms used on this ticket.</p>
       <div hlmCardAction>
+        <button hlmBtn type="button" size="sm" variant="ghost"
+          [attr.aria-expanded]="termsExpanded()" (click)="termsExpanded.update(expanded => !expanded)">
+          {{ termsExpanded() ? 'Minimize' : 'Expand' }}
+        </button>
         <button hlmBtn type="button" size="sm" [variant]="simulationMode() ? 'secondary' : 'outline'"
           [attr.aria-pressed]="simulationMode()" (click)="simulationMode.update(value => !value); clearSimulation()">
           <ng-icon name="lucideFlaskConical" />
@@ -25,6 +29,7 @@
         </button>
       </div>
     </div>
+    @if (termsExpanded()) {
     <div hlmCardContent class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <div class="bg-muted/40 rounded-md border p-3 text-sm">
         <b>Instrument</b>
@@ -59,6 +64,7 @@
         <p class="text-muted-foreground mt-1">The times an exchange is open for normal trading. Crypto and some FX markets differ.</p>
       </div>
     </div>
+    }
   </section>
 }
 

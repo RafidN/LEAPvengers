@@ -6,13 +6,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timer } from 'rxjs';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideMoon, lucideSun, lucideUsers
+  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
 import { PreferencesService } from '../../services/preferences.service';
-import { ThemeService } from '../../services/theme.service';
 
 interface NavLink {
   path: string;
@@ -66,7 +65,7 @@ function marketIsOpen(now = new Date()): boolean {
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideMoon, lucideSun, lucideUsers
+    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
   })]
 })
 export class ShellComponent {
@@ -75,7 +74,6 @@ export class ShellComponent {
   protected readonly preferences = inject(PreferencesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  protected readonly themeService = inject(ThemeService);
   protected readonly marketOpen = signal(false);
 
   constructor() {
@@ -88,10 +86,6 @@ export class ShellComponent {
     timer(initialDelay, 60_000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.marketOpen.set(marketIsOpen());
     });
-  }
-
-  protected get isDarkMode(): boolean {
-    return this.themeService.theme() === 'dark';
   }
 
   protected get firstName(): string {
@@ -123,10 +117,6 @@ export class ShellComponent {
   protected get links() {
     const role = this.authService.getRole();
     return NAV_LINKS.filter(link => role && link.roles.includes(role));
-  }
-
-  protected toggleLightDark(): void {
-    this.themeService.setTheme(this.isDarkMode ? 'light' : 'dark');
   }
 
   protected signOut(): void {
