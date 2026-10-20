@@ -26,7 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class FreeMoneyService {
     private static final BigDecimal DEDUCTION_RATIO = new BigDecimal("0.10");
-    private static final BigDecimal BOSS_REWARD_MULTIPLIER = new BigDecimal("2.0");
+    private static final BigDecimal NORMAL_REWARD_MULTIPLIER = new BigDecimal("1.5");
+    private static final BigDecimal HARD_REWARD_MULTIPLIER = new BigDecimal("2.0");
+    private static final BigDecimal LUNATIC_REWARD_MULTIPLIER = new BigDecimal("3.0");
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
     private static final BigDecimal MIN_QUANTITY_STEP = new BigDecimal("0.0001");
 
@@ -70,12 +72,15 @@ public class FreeMoneyService {
         }
 
         String battleId = UUID.randomUUID().toString();
+        String difficulty = normalizeDifficulty(request.getDifficulty());
         BattleState battle = new BattleState();
         battle.battleId = battleId;
         battle.userId = userId;
         battle.accountId = accountId;
         battle.instrumentId = instrument.getInstrumentId();
         battle.ticker = ticker;
+        battle.difficulty = difficulty;
+        battle.rewardMultiplier = rewardMultiplierForDifficulty(difficulty);
         battle.startingQuantity = startingQuantity;
         battle.resolved = false;
         battle.startedAt = LocalDateTime.now();
@@ -146,21 +151,23 @@ public class FreeMoneyService {
             throw new InvalidInputException("No holding available for reward");
         }
 
-        BigDecimal after = before.multiply(BOSS_REWARD_MULTIPLIER).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal multiplier = battle.rewardMultiplier;
+        BigDecimal after = before.multiply(multiplier).setScale(4, RoundingMode.HALF_UP);
         holding.setQuantity(after);
         holding.setAsOfDate(LocalDate.now());
         holdingsRepository.save(holding);
 
         battle.resolved = true;
 
+        String multiplierLabel = multiplier.stripTrailingZeros().toPlainString();
         return new FreeMoneyWinResult(
                 battle.accountId,
                 battle.ticker,
                 before,
                 after,
-                BOSS_REWARD_MULTIPLIER,
+            multiplier,
                 LocalDateTime.now(),
-                "Boss defeated. Holding doubled."
+            "Boss defeated. Holding multiplied by " + multiplierLabel + "x."
         );
     }
 
@@ -268,12 +275,34 @@ public class FreeMoneyService {
         return battle;
     }
 
+    private String normalizeDifficulty(String rawDifficulty) throws InvalidInputException {
+        if (rawDifficulty == null || rawDifficulty.isBlank()) {
+            return "normal";
+        }
+
+        String normalized = rawDifficulty.trim().toLowerCase();
+        if (!normalized.equals("normal") && !normalized.equals("hard") && !normalized.equals("lunatic")) {
+            throw new InvalidInputException("Difficulty must be normal, hard, or lunatic");
+        }
+        return normalized;
+    }
+
+    private BigDecimal rewardMultiplierForDifficulty(String difficulty) {
+        return switch (difficulty) {
+            case "hard" -> HARD_REWARD_MULTIPLIER;
+            case "lunatic" -> LUNATIC_REWARD_MULTIPLIER;
+            default -> NORMAL_REWARD_MULTIPLIER;
+        };
+    }
+
     private static final class BattleState {
         private String battleId;
         private Integer userId;
         private Integer accountId;
         private Integer instrumentId;
         private String ticker;
+        private String difficulty;
+        private BigDecimal rewardMultiplier;
         private BigDecimal startingQuantity;
         private LocalDateTime startedAt;
         private boolean resolved;

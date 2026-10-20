@@ -8,6 +8,7 @@ export interface FreeMoneyHitRequest {
   battleId?: string;
   accountId: number;
   ticker: string;
+  difficulty?: 'normal' | 'hard' | 'lunatic';
 }
 
 export interface FreeMoneyBattleStartResult {

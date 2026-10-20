@@ -3,12 +3,12 @@
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Free Money</h1>
       <p class="text-muted-foreground mt-1 text-sm">Arrow keys to move, hold Z to shoot, press X to bomb-clear all bullets, hold Shift to focus (slower movement + true hitbox).</p>
-      <p class="text-muted-foreground text-xs">Defeat the boss in 100 shots to double your selected holding.</p>
+      <p class="text-muted-foreground text-xs">Difficulty sets payout and phases: Normal x1.5, Hard x2.0, Lunatic x3.0 (plus higher HP and extra spell cards).</p>
     </div>
     <ng-icon name="lucideShieldAlert" class="text-primary text-2xl" />
   </div>
 
-  <div class="grid gap-3 md:grid-cols-2">
+  <div class="grid gap-3 md:grid-cols-3">
     <label class="grid gap-1 text-sm">
       <span class="text-muted-foreground">Account</span>
       <select class="border-input bg-background rounded-md border px-3 py-2"
@@ -32,9 +32,20 @@
         }
       </select>
     </label>
+
+    <label class="grid gap-1 text-sm">
+      <span class="text-muted-foreground">Difficulty</span>
+      <select class="border-input bg-background rounded-md border px-3 py-2"
+        [ngModel]="selectedDifficulty()"
+        (ngModelChange)="onDifficultyChange($event)">
+        <option [ngValue]="'normal'">Normal</option>
+        <option [ngValue]="'hard'">Hard</option>
+        <option [ngValue]="'lunatic'">Lunatic</option>
+      </select>
+    </label>
   </div>
 
-  <div class="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)_200px] xl:items-start">
+  <div class="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)_180px] md:items-start">
     <div class="grid gap-3">
       <article hlmCard class="p-4">
         <p class="text-muted-foreground text-xs uppercase tracking-wide">Boss HP</p>

@@ -5,6 +5,7 @@ public class FreeMoneyHitRequest {
     private String battleId;
     private Integer accountId;
     private String ticker;
+    private String difficulty;
 
     public String getBattleId() {
         return battleId;
@@ -28,5 +29,13 @@ public class FreeMoneyHitRequest {
 
     public void setTicker(String ticker) {
         this.ticker = ticker;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
     }
 }

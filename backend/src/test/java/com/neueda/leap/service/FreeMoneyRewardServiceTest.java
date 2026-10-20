@@ -49,7 +49,7 @@ class FreeMoneyRewardServiceTest {
     }
 
     @Test
-    void applyBossDefeatDoublesHoldingQuantity() {
+    void applyBossDefeatUsesNormalDifficultyMultiplierByDefault() {
         FreeMoneyHitRequest request = new FreeMoneyHitRequest();
         request.setAccountId(4001);
         request.setTicker("NVDA");
@@ -77,11 +77,77 @@ class FreeMoneyRewardServiceTest {
 
         assertNotNull(result);
         assertEquals(0, new BigDecimal("12.3456").compareTo(result.getQuantityBefore()));
-        assertEquals(0, new BigDecimal("24.6912").compareTo(result.getQuantityAfter()));
-        assertEquals(0, new BigDecimal("2.0").compareTo(result.getMultiplier()));
+        assertEquals(0, new BigDecimal("18.5184").compareTo(result.getQuantityAfter()));
+        assertEquals(0, new BigDecimal("1.5").compareTo(result.getMultiplier()));
 
         verify(ownershipService, times(2)).requireAccount(4001);
         verify(holdingsRepository).save(any(Holdings.class));
         verify(holdingsRepository, never()).delete(any(Holdings.class));
+    }
+
+    @Test
+    void applyBossDefeatUsesHardMultiplier() {
+        FreeMoneyHitRequest request = new FreeMoneyHitRequest();
+        request.setAccountId(4002);
+        request.setTicker("AMD");
+        request.setDifficulty("hard");
+
+        Users user = new Users();
+        user.setUserId(89);
+
+        Instruments instrument = new Instruments();
+        instrument.setInstrumentId(5002);
+
+        Holdings holding = new Holdings();
+        holding.setAccountId(4002);
+        holding.setInstrumentId(5002);
+        holding.setQuantity(new BigDecimal("10.0000"));
+        holding.setAsOfDate(LocalDate.now().minusDays(1));
+
+        when(userRepository.findById(89)).thenReturn(Optional.of(user));
+        when(instrumentsRepository.findByTickerIgnoreCase("AMD")).thenReturn(Optional.of(instrument));
+        when(holdingsRepository.findByAccountIdAndInstrumentIdForUpdate(4002, 5002)).thenReturn(Optional.of(holding));
+
+        FreeMoneyBattleStartResult battle = freeMoneyService.startBattle(89, request);
+        request.setBattleId(battle.getBattleId());
+
+        FreeMoneyWinResult result = freeMoneyService.applyBossDefeat(89, request);
+
+        assertNotNull(result);
+        assertEquals(0, new BigDecimal("20.0000").compareTo(result.getQuantityAfter()));
+        assertEquals(0, new BigDecimal("2.0").compareTo(result.getMultiplier()));
+    }
+
+    @Test
+    void applyBossDefeatUsesLunaticMultiplier() {
+        FreeMoneyHitRequest request = new FreeMoneyHitRequest();
+        request.setAccountId(4003);
+        request.setTicker("TSLA");
+        request.setDifficulty("lunatic");
+
+        Users user = new Users();
+        user.setUserId(90);
+
+        Instruments instrument = new Instruments();
+        instrument.setInstrumentId(5003);
+
+        Holdings holding = new Holdings();
+        holding.setAccountId(4003);
+        holding.setInstrumentId(5003);
+        holding.setQuantity(new BigDecimal("7.5000"));
+        holding.setAsOfDate(LocalDate.now().minusDays(1));
+
+        when(userRepository.findById(90)).thenReturn(Optional.of(user));
+        when(instrumentsRepository.findByTickerIgnoreCase("TSLA")).thenReturn(Optional.of(instrument));
+        when(holdingsRepository.findByAccountIdAndInstrumentIdForUpdate(4003, 5003)).thenReturn(Optional.of(holding));
+
+        FreeMoneyBattleStartResult battle = freeMoneyService.startBattle(90, request);
+        request.setBattleId(battle.getBattleId());
+
+        FreeMoneyWinResult result = freeMoneyService.applyBossDefeat(90, request);
+
+        assertNotNull(result);
+        assertEquals(0, new BigDecimal("22.5000").compareTo(result.getQuantityAfter()));
+        assertEquals(0, new BigDecimal("3.0").compareTo(result.getMultiplier()));
     }
 }
