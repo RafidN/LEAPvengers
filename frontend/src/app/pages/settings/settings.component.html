@@ -1,0 +1,125 @@
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Preferences</p>
+    <h1 class="text-3xl font-medium tracking-tight">Settings</h1>
+    <p class="text-muted-foreground mt-1 text-sm">Shape your workspace, learning tools, and market updates.</p>
+  </div>
+  <a hlmBtn variant="outline" routerLink="/dashboard">
+    <ng-icon name="lucideArrowLeft" />
+    Back to dashboard
+  </a>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section hlmCard aria-labelledby="profile-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="profile-title">Profile</h2>
+      <p hlmCardDescription>Personalize the name and icon shown in the navigation bar.</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="settings-name">Display name</label>
+        <input hlmInput id="settings-name" class="h-10" type="text" maxlength="60"
+          [value]="preferences.displayName() || defaultName"
+          (change)="preferences.setDisplayName($any($event.target).value)" />
+        <p class="text-muted-foreground text-xs">This changes the name shown beside your profile icon.</p>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="settings-profile-icon">Profile photo icon</label>
+        <div class="relative">
+          <span class="text-foreground pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center px-3 text-sm">
+            <ng-icon [name]="selectedProfileIcon.name" class="text-primary mr-2" aria-hidden="true" />
+            {{ selectedProfileIcon.label }}
+          </span>
+          <select hlmInput id="settings-profile-icon" class="h-10 text-transparent" [value]="preferences.profileIcon()"
+            (change)="setProfileIcon($any($event.target).value)">
+            @for (icon of profileIcons; track icon.value) {
+              <option class="text-foreground" [value]="icon.value">{{ icon.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section hlmCard aria-labelledby="appearance-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="appearance-title"> User Preferences</h2>
+      <p hlmCardDescription>Choose the style and language used across the platform.</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="settings-theme">Color theme</label>
+        <div class="relative">
+          <span class="text-foreground pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center px-3 text-sm">
+            {{ themeService.themeLabel(themeService.theme()) }}
+          </span>
+          <select hlmInput id="settings-theme" class="h-10 text-transparent" [value]="themeService.theme()"
+            (change)="setTheme($any($event.target).value)">
+            @for (theme of themeService.themes; track theme) {
+              <option class="text-foreground" [value]="theme">{{ themeService.themeLabel(theme) }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="settings-language">Language</label>
+        <select hlmInput id="settings-language" class="h-10" [value]="preferences.language()" (change)="setLanguage($any($event.target).value)">
+          @for (language of languages; track language.value) {
+            <option [value]="language.value">{{ language.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="settings-currency">Display currency</label>
+        <select hlmInput id="settings-currency" class="h-10" [value]="preferences.currency()" (change)="setCurrency($any($event.target).value)">
+          @for (currency of currencies; track currency.value) {
+            <option [value]="currency.value">{{ currency.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section hlmCard aria-labelledby="experience-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="experience-title">Experience</h2>
+      <p hlmCardDescription>Choose which guidance and market updates appear in your workspace.</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <label class="flex cursor-pointer items-start justify-between gap-4 rounded-md border p-4" for="settings-news-alerts">
+        <span>
+          <span class="font-medium">News alerts</span>
+          <span class="text-muted-foreground mt-1 block text-sm">Show alerts when news mentions an instrument you hold.</span>
+        </span>
+        <input id="settings-news-alerts" class="mt-1 h-4 w-4 accent-[var(--primary)]" type="checkbox"
+          [checked]="preferences.newsAlerts()" (change)="preferences.setNewsAlerts($any($event.target).checked)" />
+      </label>
+      <div class="flex flex-col gap-3 rounded-md border p-4">
+        <span>
+          <span class="font-medium">Complexity</span>
+          <span class="text-muted-foreground mt-1 block text-sm">Choose between a focused trade ticket or full trading guidance.</span>
+        </span>
+        <div class="bg-muted grid grid-cols-2 gap-1 rounded-md p-1" role="group" aria-label="Complexity">
+          <button hlmBtn type="button" size="sm" variant="ghost"
+            [style.background-color]="preferences.mode() === 'easy' ? 'var(--primary)' : null"
+            [style.color]="preferences.mode() === 'easy' ? 'var(--primary-foreground)' : null"
+            [class.font-semibold]="preferences.mode() === 'easy'"
+            [class.ring-2]="preferences.mode() === 'easy'" [class.ring-ring]="preferences.mode() === 'easy'"
+            [attr.aria-pressed]="preferences.mode() === 'easy'" (click)="setMode('easy')">
+            Easy
+          </button>
+          <button hlmBtn type="button" size="sm" variant="ghost"
+            [style.background-color]="preferences.mode() === 'advanced' ? 'var(--primary)' : null"
+            [style.color]="preferences.mode() === 'advanced' ? 'var(--primary-foreground)' : null"
+            [class.font-semibold]="preferences.mode() === 'advanced'"
+            [class.ring-2]="preferences.mode() === 'advanced'" [class.ring-ring]="preferences.mode() === 'advanced'"
+            [attr.aria-pressed]="preferences.mode() === 'advanced'" (click)="setMode('advanced')">
+            Advanced
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+

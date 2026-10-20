@@ -157,28 +157,28 @@
 .earthy {
   color-scheme: light;
 
-  --background: #f2ead3;
-  --foreground: #2f2418;
-  --card: #ffffff;
+  --background: #dce8d4;
+  --foreground: #263528;
+  --card: #f7f3e8;
   --card-foreground: #2f2418;
-  --popover: #ffffff;
+  --popover: #f7f3e8;
   --popover-foreground: #2f2418;
-  --primary: #6b4f1d;
+  --primary: #356b43;
   --primary-foreground: #ffffff;
-  --secondary: #ddd0a8;
+  --secondary: #c9b18a;
   --secondary-foreground: #2f2418;
-  --muted: #ddd0a8;
-  --muted-foreground: #655538;
-  --accent: #d6e4c3;
+  --muted: #cbdcc3;
+  --muted-foreground: #5a503d;
+  --accent: #a9c7a2;
   --accent-foreground: #2f2418;
   --destructive: #9a3412;
-  --border: #cfc09a;
-  --input: #cfc09a;
-  --ring: #6b4f1d;
+  --border: #b89f78;
+  --input: #b89f78;
+  --ring: #356b43;
 
-  --profit: #166534;
+  --profit: #356b43;
   --loss: #9a3412;
-  --buy: #166534;
+  --buy: #356b43;
   --sell: #9a3412;
 }
 

@@ -26,6 +26,7 @@ import { MarketNewsComponent } from '../../components/market-news/market-news.co
 import { InstrumentSearchWidgetComponent } from '../../components/instrument-search-widget/instrument-search-widget.component';
 import { MarketMovers, MarketNewsArticle, MarketService } from '../../services/market.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { PreferencesService } from '../../services/preferences.service';
 
 /**
  * One row of Recent activity. A filled order or a cash movement shows its amount on the right;
@@ -121,6 +122,7 @@ export class DashboardComponent {
   private readonly accountService = inject(AccountService);
   private readonly marketService = inject(MarketService);
   private readonly visibility = inject(BalanceVisibilityService);
+  protected readonly preferences = inject(PreferencesService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -152,6 +154,9 @@ export class DashboardComponent {
     !this.sectionOrder().includes(section) || this.hiddenSections().includes(section)));
 
   protected readonly marketAlerts = computed<MarketAlert[]>(() => {
+    if (!this.preferences.newsAlerts()) {
+      return [];
+    }
     const holdings = this.holdings();
     const alerts: MarketAlert[] = [];
     const heldTickers = new Set(holdings.map(holding => holding.ticker.toUpperCase()));

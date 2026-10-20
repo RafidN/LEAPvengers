@@ -1,8 +1,29 @@
 /*
  * Shared by sign-in, register and forgot-password.
- * Layout stays local, while colors inherit the active global theme tokens.
+ * Authentication keeps its own visual identity regardless of the selected app theme.
  */
 :host {
+  color-scheme: dark;
+
+  --background: #0a230f;
+  --foreground: #ffffff;
+  --card: #0a230f;
+  --card-foreground: #ffffff;
+  --popover: #0a230f;
+  --popover-foreground: #ffffff;
+  --primary: #37b87b;
+  --primary-foreground: #04150b;
+  --secondary: #12391f;
+  --secondary-foreground: #ffffff;
+  --muted: #12391f;
+  --muted-foreground: #a6b3aa;
+  --accent: #164a29;
+  --accent-foreground: #ffffff;
+  --destructive: #ff6b6b;
+  --border: #245b35;
+  --input: #0d290d;
+  --ring: #37b87b;
+
   display: flex;
   justify-content: center;
   align-items: center;
@@ -15,5 +36,5 @@
 }
 
 a {
-  color: var(--primary);
+  color: #4bb986;
 }

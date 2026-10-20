@@ -3,12 +3,12 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideMoon, lucideShield, lucideSun, lucideUsers
+  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
-import { Theme, ThemeService } from '../../services/theme.service';
+import { PreferencesService } from '../../services/preferences.service';
 
 interface NavLink {
   path: string;
@@ -35,16 +35,25 @@ const NAV_LINKS: NavLink[] = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideMoon, lucideShield, lucideSun, lucideUsers
+    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
   })]
 })
 export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  protected readonly themeService = inject(ThemeService);
+  protected readonly preferences = inject(PreferencesService);
 
   protected get firstName(): string {
-    return this.authService.getFirstName() || this.authService.getUsername() || '';
+    return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';
+  }
+
+  protected get profileIconName(): string {
+    return {
+      user: 'lucideCircleUserRound',
+      shield: 'lucideShield',
+      star: 'lucideStar',
+      money: 'lucideCoins'
+    }[this.preferences.profileIcon()];
   }
 
   protected get role(): Role | null {
@@ -63,13 +72,6 @@ export class ShellComponent {
   protected get links() {
     const role = this.authService.getRole();
     return NAV_LINKS.filter(link => role && link.roles.includes(role));
-  }
-
-  protected selectTheme(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as Theme;
-    if (this.themeService.themes.includes(value)) {
-      this.themeService.setTheme(value);
-    }
   }
 
   protected signOut(): void {

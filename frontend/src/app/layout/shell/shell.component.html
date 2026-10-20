@@ -14,17 +14,12 @@
     }
 
     <div class="ml-auto flex items-center gap-3">
-      <label class="text-muted-foreground hidden text-xs sm:inline" for="theme-picker">Color Theme</label>
-      <select id="theme-picker" class="bg-background text-foreground h-9 max-w-32 rounded-md border px-2 text-sm"
-        [value]="themeService.theme()" (change)="selectTheme($event)" aria-label="Color theme">
-        @for (theme of themeService.themes; track theme) {
-          <option [value]="theme">{{ themeService.themeLabel(theme) }}</option>
-        }
-      </select>
       @if (firstName) {
-        <span class="hidden items-center gap-2 text-sm md:flex">
+        <a hlmBtn variant="ghost" class="text-foreground hidden items-center gap-2 text-sm md:inline-flex"
+          routerLink="/settings" aria-label="Open profile settings">
+          <ng-icon [name]="profileIconName" class="text-primary text-lg" aria-hidden="true" />
           <b>{{ firstName }}</b>
-        </span>
+        </a>
         @if (role === 'OPS' || role === 'ANALYST') {
           <span hlmBadge variant="secondary" class="hidden md:inline-flex">
             {{ roleLabel }}

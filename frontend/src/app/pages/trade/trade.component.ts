@@ -9,7 +9,7 @@ import {
 } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideArrowDown, lucideArrowUp, lucideBan, lucideBookOpen, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
+  lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
   lucideHistory, lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
@@ -23,6 +23,7 @@ import { AccountPortfolio, AccountResponse, AccountService } from '../../service
 import { OrderHistoryResult, OrderStatus } from '../../services/history.service';
 import { Instrument, InstrumentService, PRICE_REFRESH_MS, Quote } from '../../services/instrument.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { PreferencesService } from '../../services/preferences.service';
 import {
   FINAL_STATUSES, OrderEvent, OrderRejection, OrderRequest, OrderService, OrderSide
 } from '../../services/order.service';
@@ -68,40 +69,6 @@ interface SimulationResult {
   holdingsAfter: number;
 }
 
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  answer: number;
-  explanation: string;
-}
-
-const QUIZ_QUESTIONS: QuizQuestion[] = [
-  {
-    question: 'What is a quote?',
-    options: ['The latest available price', 'The amount of cash in an account', 'A completed order'],
-    answer: 0,
-    explanation: 'A quote is the latest available price for one unit of an instrument.'
-  },
-  {
-    question: 'What does quantity mean on an order ticket?',
-    options: ['The exchange opening time', 'How many units you want to trade', 'The account number'],
-    answer: 1,
-    explanation: 'Quantity is the number of units you want to buy or sell.'
-  },
-  {
-    question: 'What happens in simulation mode?',
-    options: ['A real order is sent', 'Your account balance changes', 'A hypothetical outcome is calculated'],
-    answer: 2,
-    explanation: 'Simulation mode calculates an outcome without sending an order or changing account data.'
-  },
-  {
-    question: 'What are holdings?',
-    options: ['Assets and quantities currently owned', 'Orders that were rejected', 'A market news feed'],
-    answer: 0,
-    explanation: 'Holdings are the assets and quantities currently owned in an account.'
-  }
-];
-
 /**
  * A quote younger than this (plus the market's data delay) counts as live; while a market is open the quote
  * generator writes its latest trade price every 3 seconds.
@@ -129,7 +96,7 @@ const roundDown = (value: number) => Math.floor(value * 10 ** QUANTITY_DECIMALS)
     HlmLabelImports
   ],
   providers: [provideIcons({
-    lucideArrowDown, lucideArrowUp, lucideBan, lucideBookOpen, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
+    lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
     lucideHistory, lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
   })]
 })
@@ -137,6 +104,7 @@ export class TradeComponent {
   private readonly accountService = inject(AccountService);
   private readonly instrumentService = inject(InstrumentService);
   private readonly orderService = inject(OrderService);
+  protected readonly preferences = inject(PreferencesService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ---- Order ticket ----
@@ -160,18 +128,9 @@ export class TradeComponent {
 
   protected readonly side = signal<OrderSide>('BUY');
   protected readonly quantity = signal<number | null>(null);
-  protected readonly learnMode = signal(false);
   protected readonly simulationMode = signal(false);
   protected readonly simulationBalance = signal<number | null>(null);
   protected readonly simulationResult = signal<SimulationResult | null>(null);
-  protected readonly quizQuestions = QUIZ_QUESTIONS;
-  protected readonly quizIndex = signal(0);
-  protected readonly quizAnswer = signal<number | null>(null);
-  protected readonly quizScore = signal(0);
-  protected readonly quizComplete = signal(false);
-
-  protected readonly quizQuestion = computed(() => this.quizQuestions[this.quizIndex()]);
-
   protected readonly loading = signal(true);
   protected readonly loadError = signal('');
   protected readonly submitting = signal(false);
@@ -458,7 +417,7 @@ export class TradeComponent {
     if (!this.canSubmit() || !instrument || accountId == null || quantity == null) {
       return;
     }
-    if (this.simulationMode()) {
+    if (this.preferences.mode() === 'easy' && this.simulationMode()) {
       this.simulate(instrument.ticker, quantity);
       return;
     }
@@ -492,32 +451,6 @@ export class TradeComponent {
 
   protected clearSimulation(): void {
     this.simulationResult.set(null);
-  }
-
-  protected answerQuiz(option: number): void {
-    if (this.quizAnswer() !== null || this.quizComplete()) {
-      return;
-    }
-    this.quizAnswer.set(option);
-    if (option === this.quizQuestion().answer) {
-      this.quizScore.update(score => score + 1);
-    }
-  }
-
-  protected nextQuizQuestion(): void {
-    if (this.quizIndex() >= this.quizQuestions.length - 1) {
-      this.quizComplete.set(true);
-      return;
-    }
-    this.quizIndex.update(index => index + 1);
-    this.quizAnswer.set(null);
-  }
-
-  protected resetQuiz(): void {
-    this.quizIndex.set(0);
-    this.quizAnswer.set(null);
-    this.quizScore.set(0);
-    this.quizComplete.set(false);
   }
 
   /** Sends the last order again, e.g. after it failed because the price moved. */
