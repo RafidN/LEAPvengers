@@ -43,6 +43,7 @@ interface ActivityItem {
   /** Money in (green, +) or out (red, −); undefined shows the amount without a sign. */
   direction?: 'in' | 'out';
   status?: { label: string; variant: 'secondary' | 'destructive' | 'outline' };
+  isSuccessfulBuy?: boolean;
 }
 
 type DashboardSection = 'total' | 'cash' | 'holdingsValue' | 'value' | 'holdings' | 'activity' | 'movers' | 'news' | 'search';
@@ -270,7 +271,8 @@ export class DashboardComponent {
         title: `${verb} ${formatQuantity(o.quantity)} ${o.ticker}`,
         detail: `at ${this.currency.format(price)}`,
         amount: filled ? o.quantity * price : undefined,
-        status: filled ? undefined : UNFILLED_STATUS[o.orderStatus]
+        status: filled ? undefined : UNFILLED_STATUS[o.orderStatus],
+        isSuccessfulBuy: filled && o.orderType === 'BUY'
       };
     })
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6));
