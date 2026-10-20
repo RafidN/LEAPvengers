@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,13 +10,14 @@ import {
 } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock,
-  lucideChevronDown, lucideChevronUp, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
+  lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideCircleCheck,
+  lucideCircleSlash, lucideCircleX, lucideClock, lucideChevronDown, lucideChevronUp, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
   lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmComboboxImports } from '@spartan-ng/helm/combobox';
 import { HlmLabelImports } from '@spartan-ng/helm/label';
@@ -98,7 +99,12 @@ type BottomTab = 'working' | 'status' | 'today';
 const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches;
 
 /**
- * A full-window trading screen: the chart fills the page, the order ticket is a panel on the right (over the chart
+ * The Trade page, in two views (data.view on the route):
+ *
+ * Simple (/trade, the default): a plain ticket for beginners to buy or sell at the live price, with the order
+ * tracker and today's orders beside it. Limit and stop orders placed elsewhere are listed but managed in advanced.
+ *
+ * Advanced (/trade/advanced): a full-window trading screen. The chart fills the page, the order ticket is a panel on the right (over the chart
  * on small screens) and working orders, the order tracker and today's orders are tabs in a drawer under the chart.
  * A market order fills at the live price; a limit or stop order waits as WORKING until the price reaches it. Limit
  * and stop orders can be set up in the ticket or on the chart, where working orders are lines that can be dragged to
@@ -109,13 +115,13 @@ const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-wi
   selector: 'app-trade',
   templateUrl: './trade.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon, TradingChartComponent,
-    HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmComboboxImports, HlmInputImports,
-    HlmLabelImports
+    CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe, FormsModule, RouterLink, NgIcon,
+    TradingChartComponent, HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmComboboxImports,
+    HlmInputImports, HlmLabelImports
   ],
   providers: [provideIcons({
-    lucideArrowDown, lucideArrowUp, lucideBan, lucideChevronDown, lucideChevronUp, lucideCircleCheck, lucideCircleSlash,
-    lucideCircleX, lucideClock, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
+    lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideChevronDown,
+    lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
     lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
   })]
 })
@@ -125,7 +131,11 @@ export class TradeComponent {
   private readonly orderService = inject(OrderService);
   private readonly historyService = inject(HistoryService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
   private readonly quantityInput = viewChild<ElementRef<HTMLInputElement>>('quantityInput');
+
+  /** The full-window chart with limit and stop orders, rather than the simple market-order ticket. */
+  protected readonly advanced = this.route.snapshot.data['view'] === 'advanced';
 
   // ---- Order ticket ----
   protected readonly accounts = signal<AccountResponse[]>([]);
@@ -215,6 +225,9 @@ export class TradeComponent {
 
   protected readonly instrument = computed(() =>
     this.instruments().find(i => i.instrumentId === this.instrumentId()) ?? null);
+
+  /** The instrument and side to keep when switching between the simple and advanced views. */
+  protected readonly viewParams = computed(() => ({ ticker: this.instrument()?.ticker ?? null, side: this.side() }));
 
   protected readonly cash = computed(() => this.portfolio()?.balance ?? 0);
   /** Cash the account's working buy orders could spend, so not free for another order. */
@@ -465,7 +478,7 @@ export class TradeComponent {
   });
 
   constructor() {
-    const params = inject(ActivatedRoute).snapshot.queryParamMap;
+    const params = this.route.snapshot.queryParamMap;
     const wantedTicker = params.get('ticker')?.toUpperCase();
     const wantedSide = params.get('side')?.toUpperCase();
     if (wantedSide === 'BUY' || wantedSide === 'SELL') {
@@ -532,7 +545,7 @@ export class TradeComponent {
     // Price history for the chart. An instrument with no trades today (a closed stock market) shows the week.
     let fellBackFor: string | null = null;
     combineLatest([toObservable(this.instrument), toObservable(this.chartPeriod)]).pipe(
-      filter(([instrument]) => instrument != null),
+      filter(([instrument]) => this.advanced && instrument != null),
       switchMap(([instrument, period]) => {
         this.chartLoading.set(true);
         return this.historyService.getPriceHistory(instrument!.ticker, period).pipe(

@@ -2,7 +2,8 @@ import { Component, ElementRef, computed, inject, input, output, signal, viewChi
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, Plugin } from 'chart.js';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus, lucideX } from '@ng-icons/lucide';
+import { lucideMoveVertical, lucidePlus, lucideX } from '@ng-icons/lucide';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { ThemeService } from '../../services/theme.service';
 import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
 import { PricePoint } from '../price-chart/price-chart.component';
@@ -51,17 +52,18 @@ interface Drag {
  * A price chart to trade from, like TradingView: working limit and stop orders are lines at their price, which can
  * be dragged to a new price or canceled with their ×. Hovering shows the price under the pointer and a + button
  * that starts a limit or stop order there; it appears as a dashed line, which can be dragged too, until it is
- * placed. The chart only draws and reports: the page owning it places, moves and cancels the orders.
+ * placed. Dropping a working order at a new price asks for confirmation first, so a slip of the mouse never moves
+ * one. The chart only draws and reports: the page owning it places, moves and cancels the orders.
  *
  * It fills the height of its container, so the page decides how big it is.
  *
- * Keyboard: each line's label is a button; the arrow keys move it (Shift for bigger steps), Enter places the move,
- * Escape undoes it and Delete cancels the order.
+ * Keyboard: each line's label is a button; the arrow keys move it (Shift for bigger steps), Enter asks to make the
+ * move, Escape undoes it and Delete cancels the order.
  */
 @Component({
   selector: 'app-trading-chart',
-  providers: [CHART_PROVIDERS, provideIcons({ lucidePlus, lucideX })],
-  imports: [BaseChartDirective, NgIcon],
+  providers: [CHART_PROVIDERS, provideIcons({ lucideMoveVertical, lucidePlus, lucideX })],
+  imports: [BaseChartDirective, NgIcon, HlmButtonImports],
   host: { class: 'block h-full', '(document:keydown.escape)': 'closeMenu()' },
   template: `
     <div #frame class="relative h-full min-h-48 w-full touch-pan-y select-none"
@@ -155,11 +157,40 @@ interface Drag {
         </div>
       }
     </div>
+
+    <!-- Confirms a dragged working order's new price before it is moved -->
+    <dialog #moveDialog aria-labelledby="confirm-move-title" aria-describedby="confirm-move-detail"
+      class="bg-card text-card-foreground m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border p-0 shadow-lg backdrop:bg-black/50"
+      (close)="moveDialogClosed()">
+      @if (pendingMove(); as m) {
+        <div class="flex flex-col gap-4 p-5">
+          <div class="flex items-start gap-3">
+            <span class="bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+              <ng-icon name="lucideMoveVertical" />
+            </span>
+            <div class="min-w-0">
+              <h2 id="confirm-move-title" class="text-base font-semibold">Move this order?</h2>
+              <p id="confirm-move-detail" class="text-muted-foreground mt-1 text-sm">
+                Your {{ orderName(m.order.side, m.order.kind).toLowerCase() }} for {{ quantity(m.order.quantity) }} {{ ticker() }}
+                will move from <b class="text-foreground tabular-nums">{{ format(m.order.price) }}</b>
+                to <b class="text-foreground tabular-nums">{{ format(m.price) }}</b>.
+                {{ moveEffect(m.order, m.price) }}
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-wrap justify-end gap-2">
+            <button hlmBtn variant="outline" type="button" (click)="keepOrder()">Keep at {{ format(m.order.price) }}</button>
+            <button hlmBtn type="button" autofocus (click)="confirmMove()">Move order</button>
+          </div>
+        </div>
+      }
+    </dialog>
   `
 })
 export class TradingChartComponent {
   protected readonly theme = inject(ThemeService).theme;
   private readonly frame = viewChild.required<ElementRef<HTMLElement>>('frame');
+  private readonly confirmDialog = viewChild.required<ElementRef<HTMLDialogElement>>('moveDialog');
 
   /** Price history, oldest first; the page appends the live price as it arrives. */
   readonly points = input.required<PricePoint[]>();
@@ -187,6 +218,8 @@ export class TradingChartComponent {
   protected readonly hoverY = signal<number | null>(null);
   protected readonly menu = signal<{ price: number; y: number } | null>(null);
   private readonly drag = signal<Drag | null>(null);
+  /** A working order dropped at a new price, waiting for the move to be confirmed; its line waits there meanwhile. */
+  protected readonly pendingMove = signal<{ order: ChartOrder; price: number } | null>(null);
   /** Where a working order was dropped, shown until the page has moved it (or put it back). */
   private readonly dropped = signal(new Map<number, number>());
   /** The prices the axis was stretched to fit when a drag began; kept while it lasts so the scale holds still. */
@@ -226,9 +259,12 @@ export class TradingChartComponent {
     const drag = this.drag();
     const busy = new Set(this.busyOrderIds());
     const dropped = this.dropped();
+    const pending = this.pendingMove();
     const lines: Line[] = this.orders().map(order => {
       const key = 'order-' + order.orderId;
-      const price = drag?.key === key ? drag.price : busy.has(order.orderId) ? dropped.get(order.orderId) ?? order.price : order.price;
+      const price = drag?.key === key ? drag.price
+        : pending?.order.orderId === order.orderId ? pending.price
+        : busy.has(order.orderId) ? dropped.get(order.orderId) ?? order.price : order.price;
       return { key, order, side: order.side, kind: order.kind, quantity: order.quantity, price, busy: busy.has(order.orderId) };
     });
     const draft = this.draft();
@@ -365,7 +401,7 @@ export class TradingChartComponent {
   protected describe(line: Line): string {
     const what = `${this.name(line)}${line.quantity != null ? ' ' + this.quantity(line.quantity) : ''} ${this.ticker()} at ${this.format(line.price)}`;
     return line.order
-      ? `${what}. Drag or use the arrow keys to move it, Delete to cancel it.`
+      ? `${what}. Drag or use the arrow keys and Enter to move it (you'll be asked to confirm), Delete to cancel it.`
       : `${what}, not placed yet. Drag or use the arrow keys to set the price.`;
   }
 
@@ -507,14 +543,48 @@ export class TradingChartComponent {
     }
   }
 
+  /** A working order dropped at a new price: asks before moving it. */
   private finishDrag(drag: Drag): void {
-    this.drag.set(null);
     const line = this.lines().find(l => l.key === drag.key);
+    this.drag.set(null);
     if (!line?.order || !drag.moved || drag.price === line.order.price) {
       return;
     }
-    this.dropped.update(map => new Map(map).set(line.order!.orderId, drag.price));
-    this.moveOrder.emit({ order: line.order, price: drag.price });
+    this.pendingMove.set({ order: line.order, price: drag.price });
+    this.confirmDialog().nativeElement.showModal();
+  }
+
+  protected confirmMove(): void {
+    const move = this.pendingMove();
+    this.pendingMove.set(null);
+    this.confirmDialog().nativeElement.close();
+    if (move) {
+      this.dropped.update(map => new Map(map).set(move.order.orderId, move.price));
+      this.moveOrder.emit(move);
+    }
+  }
+
+  /** Puts the line back where it was. */
+  protected keepOrder(): void {
+    this.pendingMove.set(null);
+    this.confirmDialog().nativeElement.close();
+  }
+
+  /** Closed with Escape: the same as keeping the order where it was. */
+  protected moveDialogClosed(): void {
+    this.pendingMove.set(null);
+  }
+
+  /** What the moved order will then do, and how far that is from the market, in plain words. */
+  protected moveEffect(order: ChartOrder, price: number): string {
+    const waitsForFall = (order.kind === 'LIMIT') === (order.side === 'BUY');
+    const effect = `It will ${order.side === 'BUY' ? 'buy' : 'sell'} once the price ${waitsForFall ? 'falls' : 'rises'} to it`;
+    const market = this.livePrice();
+    if (market == null) {
+      return effect + '.';
+    }
+    const percent = (Math.abs(price - market) / market * 100).toFixed(1);
+    return `${effect}, ${percent}% ${price < market ? 'below' : 'above'} the current price of ${this.format(market)}.`;
   }
 
   /**
