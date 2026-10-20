@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +14,7 @@ import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../serv
 
 @Component({
   selector: 'app-instrument-search-widget',
-  imports: [CurrencyPipe, FormsModule, RouterLink, NgIcon, HlmBadgeImports, HlmCardImports, HlmInputImports, HlmTableImports],
+  imports: [DisplayCurrencyPipe, FormsModule, RouterLink, NgIcon, HlmBadgeImports, HlmCardImports, HlmInputImports, HlmTableImports],
   providers: [provideIcons({ lucideSearch })],
   template: `
     <section hlmCard class="h-full" aria-labelledby="instrument-search-title">

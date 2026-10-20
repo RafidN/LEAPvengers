@@ -59,6 +59,10 @@ export class SettingsComponent {
     };
   }
 
+  protected get selectedCurrencyLabel(): string {
+    return this.currencies.find(currency => currency.value === this.preferences.currency())?.label ?? 'US Dollar ($)';
+  }
+
   protected setTheme(value: string): void {
     if (this.themeService.themes.includes(value as Theme)) {
       this.themeService.setTheme(value as Theme);

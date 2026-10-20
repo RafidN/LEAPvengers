@@ -92,6 +92,7 @@
   </div>
 </section>
 
+@if (preferences.mode() === 'easy') {
 @if (riskAssessment(); as assessment) {
   <section hlmCard class="mt-4" aria-labelledby="risk-title">
     <div hlmCardHeader>
@@ -145,6 +146,7 @@
     </div>
     }
   </section>
+}
 }
 
 <!-- What's moving the market today, from public sources -->

@@ -284,7 +284,8 @@
                     {{ isHidden('holdings') ? '••••' : (h.value | currency) }}
                   </td>
                   <td hlmTableCell class="text-right">
-                    <a hlmBtn variant="ghost" size="xs" routerLink="/trade" [queryParams]="{ ticker: h.ticker, side: 'SELL' }"
+                    <a hlmBtn variant="outline" size="xs" class="border-primary/50 text-primary hover:bg-primary/10"
+                      routerLink="/trade" [queryParams]="{ ticker: h.ticker, side: 'SELL' }"
                       [attr.aria-label]="'Trade ' + h.ticker">Trade</a>
                   </td>
                 </tr>

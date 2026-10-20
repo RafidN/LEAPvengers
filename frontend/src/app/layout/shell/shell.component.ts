@@ -3,12 +3,13 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
+  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideMoon, lucideSun, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
 import { PreferencesService } from '../../services/preferences.service';
+import { ThemeService } from '../../services/theme.service';
 
 interface NavLink {
   path: string;
@@ -35,13 +36,18 @@ const NAV_LINKS: NavLink[] = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
+    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideMoon, lucideSun, lucideUsers
   })]
 })
 export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   protected readonly preferences = inject(PreferencesService);
+  protected readonly themeService = inject(ThemeService);
+
+  protected get isDarkMode(): boolean {
+    return this.themeService.theme() === 'dark';
+  }
 
   protected get firstName(): string {
     return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';
@@ -72,6 +78,10 @@ export class ShellComponent {
   protected get links() {
     const role = this.authService.getRole();
     return NAV_LINKS.filter(link => role && link.roles.includes(role));
+  }
+
+  protected toggleLightDark(): void {
+    this.themeService.setTheme(this.isDarkMode ? 'light' : 'dark');
   }
 
   protected signOut(): void {

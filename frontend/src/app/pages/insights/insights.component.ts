@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { DecimalPipe, PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
@@ -30,7 +31,7 @@ interface SegmentSummary {
   providers: [CHART_PROVIDERS],
   templateUrl: './insights.component.html',
   imports: [
-    CurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,
+    DisplayCurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports
   ]
 })

@@ -8,6 +8,7 @@ import com.neueda.leap.exception.TradingRuleException;
 import com.neueda.leap.model.dto.*;
 import com.neueda.leap.security.JwtUtil;
 import com.neueda.leap.service.OrderService;
+import com.neueda.leap.service.ExchangeRateService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,13 +22,29 @@ import java.util.Map;
 @RequestMapping("/orders")
 public class OrderController {
         private final OrderService orderService;
+        private final ExchangeRateService exchangeRateService;
         private final JwtUtil jwtUtil;
         private static final String BEARER_PREFIX = "Bearer ";
 
-        public OrderController(OrderService orderService, JwtUtil jwtUtil) {
+        public OrderController(OrderService orderService, ExchangeRateService exchangeRateService, JwtUtil jwtUtil) {
             this.orderService = orderService;
+            this.exchangeRateService = exchangeRateService;
             this.jwtUtil = jwtUtil;
         }
+
+        @GetMapping("/exchange-rate")
+        public ResponseEntity<ExchangeRateService.ExchangeRate> getExchangeRate(
+                @RequestParam String source,
+                @RequestParam String target) {
+            return ResponseEntity.ok(exchangeRateService.getRate(source, target));
+        }
+
+        @GetMapping("/exchange-rates")
+        public ResponseEntity<Map<String, ExchangeRateService.ExchangeRate>> getExchangeRates(
+                @RequestParam(defaultValue = "USD") String source) {
+            return ResponseEntity.ok(exchangeRateService.getRates(source));
+        }
+
         @PostMapping
         public ResponseEntity<?> makeOrder(
             @RequestHeader("Authorization") String authHeader,

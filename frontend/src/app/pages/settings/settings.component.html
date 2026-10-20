@@ -62,21 +62,19 @@
           </select>
         </div>
       </div>
-      <div class="flex flex-col gap-1.5">
-        <label hlmLabel for="settings-language">Language</label>
-        <select hlmInput id="settings-language" class="h-10" [value]="preferences.language()" (change)="setLanguage($any($event.target).value)">
-          @for (language of languages; track language.value) {
-            <option [value]="language.value">{{ language.label }}</option>
-          }
-        </select>
-      </div>
-      <div class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5 pt-4">
         <label hlmLabel for="settings-currency">Display currency</label>
-        <select hlmInput id="settings-currency" class="h-10" [value]="preferences.currency()" (change)="setCurrency($any($event.target).value)">
-          @for (currency of currencies; track currency.value) {
-            <option [value]="currency.value">{{ currency.label }}</option>
-          }
-        </select>
+        <div class="relative">
+          <span class="text-foreground pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center px-3 text-sm">
+            {{ selectedCurrencyLabel }}
+          </span>
+          <select hlmInput id="settings-currency" class="h-10 text-transparent" [value]="preferences.currency()"
+            (change)="setCurrency($any($event.target).value)">
+            @for (currency of currencies; track currency.value) {
+              <option class="text-foreground" [value]="currency.value">{{ currency.label }}</option>
+            }
+          </select>
+        </div>
       </div>
     </div>
   </section>

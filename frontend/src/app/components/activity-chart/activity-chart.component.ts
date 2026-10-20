@@ -3,7 +3,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ThemeService } from '../../services/theme.service';
 import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
-import { formatMoney } from '../../services/format';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 
 export interface ActivityBar {
   label: string;
@@ -34,6 +34,7 @@ const axisMoney = (value: number) => '$' + value.toLocaleString('en-US', { notat
 })
 export class ActivityChartComponent {
   private readonly theme = inject(ThemeService).theme;
+  private readonly currency = inject(DisplayCurrencyService);
 
   readonly bars = input.required<ActivityBar[]>();
   /** true for time periods (vertical bars), false for ranked categories (horizontal bars). */
@@ -46,7 +47,7 @@ export class ActivityChartComponent {
 
   protected readonly summary = computed(() => {
     const top = [...this.bars()].sort((a, b) => b.value - a.value)[0];
-    return top ? `Traded value chart; highest is ${top.label} at ${formatMoney(top.value)}` : 'Traded value chart, no trading';
+    return top ? `Traded value chart; highest is ${top.label} at ${this.currency.format(top.value)}` : 'Traded value chart, no trading';
   });
 
   protected readonly data = computed<ChartConfiguration<'bar'>['data']>(() => {
@@ -94,7 +95,7 @@ export class ActivityChartComponent {
           callbacks: {
             label: item => {
               const bar = this.bars()[item.dataIndex];
-              return [`Traded value  ${formatMoney(bar.value)}`, `Trades  ${bar.trades}`];
+              return [`Traded value  ${this.currency.format(bar.value)}`, `Trades  ${bar.trades}`];
             }
           }
         }

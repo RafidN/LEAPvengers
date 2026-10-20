@@ -1,7 +1,8 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe, NgClass, NgTemplateOutlet, PercentPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, NgClass, NgTemplateOutlet, PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { RouterLink } from '@angular/router';
 import { catchError, combineLatest, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -26,6 +27,7 @@ import { MarketNewsComponent } from '../../components/market-news/market-news.co
 import { InstrumentSearchWidgetComponent } from '../../components/instrument-search-widget/instrument-search-widget.component';
 import { MarketMovers, MarketNewsArticle, MarketService } from '../../services/market.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 import { PreferencesService } from '../../services/preferences.service';
 
 /**
@@ -108,7 +110,7 @@ function newsMentionsHolding(text: string, holding: HoldingRow): boolean {
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, NgClass, NgTemplateOutlet, PercentPipe, RouterLink, NgIcon, ValueChartComponent,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, NgClass, NgTemplateOutlet, PercentPipe, RouterLink, NgIcon, ValueChartComponent,
     MarketMoversComponent, MarketNewsComponent, InstrumentSearchWidgetComponent,
     CdkDrag, CdkDragHandle, CdkDropList, HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports
   ],
@@ -123,6 +125,7 @@ export class DashboardComponent {
   private readonly marketService = inject(MarketService);
   private readonly visibility = inject(BalanceVisibilityService);
   protected readonly preferences = inject(PreferencesService);
+  private readonly currency = inject(DisplayCurrencyService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -265,7 +268,7 @@ export class DashboardComponent {
         key: `order-${o.orderId}`,
         date: o.submittedAt ?? o.orderDate,
         title: `${verb} ${formatQuantity(o.quantity)} ${o.ticker}`,
-        detail: `at ${formatMoney(price)}`,
+        detail: `at ${this.currency.format(price)}`,
         amount: filled ? o.quantity * price : undefined,
         status: filled ? undefined : UNFILLED_STATUS[o.orderStatus]
       };

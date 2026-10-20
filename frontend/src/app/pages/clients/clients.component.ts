@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, interval, of, startWith, switchMap } from 'rxjs';
 import { FormsModule } from '@angular/forms';
@@ -32,7 +33,7 @@ type StatusMeta = {
   selector: 'app-clients',
   templateUrl: './clients.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
   ],
   providers: [provideIcons({

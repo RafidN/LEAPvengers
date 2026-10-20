@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, combineLatest, debounceTime, distinctUntilChanged, interval, of, startWith, switchMap } from 'rxjs';
@@ -18,6 +19,7 @@ import { HistoryPeriod, HistoryService } from '../../services/history.service';
 import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../services/instrument-search.service';
 import { PRICE_REFRESH_MS } from '../../services/instrument.service';
 import { AuthService } from '../../services/auth.service';
+import { PreferencesService } from '../../services/preferences.service';
 import { DecimalPipe } from '@angular/common';
 
 /** Search instruments and chart their price history; below, today's top movers and market news. */
@@ -25,7 +27,7 @@ import { DecimalPipe } from '@angular/common';
   selector: 'app-markets',
   templateUrl: './markets.component.html',
   imports: [
-    CurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent, RouterLink, MarketMoversComponent, MarketNewsComponent,
+    DisplayCurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent, RouterLink, MarketMoversComponent, MarketNewsComponent,
     HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports, DecimalPipe
   ],
   providers: [provideIcons({ lucideArrowLeftRight, lucideSearch, lucideShieldAlert })]
@@ -43,6 +45,7 @@ export class MarketsComponent {
 
   /** Markets is open to every role, but only Traders can place orders. */
   protected readonly canTrade = inject(AuthService).getRole() === 'TRADER';
+  protected readonly preferences = inject(PreferencesService);
 
   protected readonly query = signal('');
   protected readonly results = signal<PriceQuoteResult[]>([]);

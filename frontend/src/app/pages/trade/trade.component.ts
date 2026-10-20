@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -23,6 +24,7 @@ import { AccountPortfolio, AccountResponse, AccountService } from '../../service
 import { OrderHistoryResult, OrderStatus } from '../../services/history.service';
 import { Instrument, InstrumentService, PRICE_REFRESH_MS, Quote } from '../../services/instrument.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 import { PreferencesService } from '../../services/preferences.service';
 import {
   FINAL_STATUSES, OrderEvent, OrderRejection, OrderRequest, OrderService, OrderSide
@@ -91,7 +93,7 @@ const roundDown = (value: number) => Math.floor(value * 10 ** QUANTITY_DECIMALS)
   selector: 'app-trade',
   templateUrl: './trade.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmComboboxImports, HlmInputImports,
     HlmLabelImports
   ],
@@ -105,6 +107,7 @@ export class TradeComponent {
   private readonly instrumentService = inject(InstrumentService);
   private readonly orderService = inject(OrderService);
   protected readonly preferences = inject(PreferencesService);
+  private readonly currency = inject(DisplayCurrencyService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ---- Order ticket ----
@@ -535,6 +538,6 @@ export class TradeComponent {
   }
 
   private money(value: number): string {
-    return formatMoney(value);
+    return this.currency.format(value);
   }
 }

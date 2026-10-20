@@ -4,9 +4,7 @@ import { ChartConfiguration, Plugin } from 'chart.js';
 import { AccountValuePoint } from '../../services/account.service';
 import { ThemeService } from '../../services/theme.service';
 import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
-import { formatMoney } from '../../services/format';
-
-const money = formatMoney;
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 
 /** A compact axis label: $98.5k, $1.2M. */
 const axisMoney = (value: number) =>
@@ -59,6 +57,7 @@ const crosshair: Plugin<'line'> = {
 })
 export class ValueChartComponent {
   private readonly theme = inject(ThemeService).theme;
+  private readonly currency = inject(DisplayCurrencyService);
 
   readonly points = input.required<AccountValuePoint[]>();
   readonly masked = input(false);
@@ -83,7 +82,7 @@ export class ValueChartComponent {
     const last = points[points.length - 1].totalValue;
     return this.masked() || !first
       ? `Account value changed ${first ? percent((last - first) / first) : ''} over this period`
-      : `Account value went from ${money(first)} to ${money(last)}`;
+      : `Account value went from ${this.currency.format(first)} to ${this.currency.format(last)}`;
   });
 
   protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
@@ -142,7 +141,7 @@ export class ValueChartComponent {
                 const first = this.points()[0].totalValue;
                 return first ? `${percent((p.totalValue - first) / first)} since the start` : '';
               }
-              return [`Total  ${money(p.totalValue)}`, `Cash  ${money(p.cash)}`, `Holdings  ${money(p.holdingsValue)}`];
+                  return [`Total  ${this.currency.format(p.totalValue)}`, `Cash  ${this.currency.format(p.cash)}`, `Holdings  ${this.currency.format(p.holdingsValue)}`];
             }
           }
         }

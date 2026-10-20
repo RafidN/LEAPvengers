@@ -26,6 +26,11 @@
           </span>
         }
       }
+      <button hlmBtn variant="ghost" size="icon" type="button" (click)="toggleLightDark()"
+        [attr.aria-label]="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+        [attr.title]="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+        <ng-icon [name]="isDarkMode ? 'lucideSun' : 'lucideMoon'" />
+      </button>
       <button hlmBtn variant="outline" (click)="signOut()">
         <ng-icon name="lucideLogOut" />
         <span class="hidden sm:inline">Sign out</span>
