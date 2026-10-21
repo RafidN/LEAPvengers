@@ -115,15 +115,15 @@ class ReportingServiceTest {
     }
 
     @Test
-    void orderHealthDefaultsToLast90DaysAndComputesRates() {
-        when(orderRepository.countByStatusBetween(TODAY.minusDays(89), TODAY)).thenReturn(List.of(
+    void orderHealthDefaultsToLast30DaysAndComputesRates() {
+        when(orderRepository.countByStatusBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of(
                 row("SUBMITTED", 2),
                 row("ACCEPTED", 3),
                 row("FILLED", 10),
                 row("REJECTED", 4),
                 row("FAILED", 1)
         ));
-        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(89), TODAY)).thenReturn(List.of(
+        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of(
             rowByDate(TODAY.minusDays(1), "FILLED", 2),
             rowByDate(TODAY.minusDays(1), "REJECTED", 1),
             rowByDate(TODAY, "FAILED", 1)
@@ -131,29 +131,29 @@ class ReportingServiceTest {
 
         OrderHealthReportResponse report = service.getOrderHealth(null, null);
 
-        assertEquals(TODAY.minusDays(89), report.getFrom());
+        assertEquals(TODAY.minusDays(29), report.getFrom());
         assertEquals(TODAY, report.getTo());
         assertEquals(20, report.getTotalOrders());
         assertEquals(10, report.getFilledOrders());
         assertEquals(5, report.getRejectedOrders() + report.getFailedOrders());
         assertEquals(new BigDecimal("0.5000"), report.getSuccessRate());
         assertEquals(new BigDecimal("0.2500"), report.getFailureRate());
-        assertEquals(90, report.getDailyRates().size());
-        assertEquals(new BigDecimal("0.6667"), report.getDailyRates().get(88).getSuccessRate());
-        assertEquals(new BigDecimal("1.0000"), report.getDailyRates().get(89).getFailureRate());
+        assertEquals(30, report.getDailyRates().size());
+        assertEquals(new BigDecimal("0.6667"), report.getDailyRates().get(28).getSuccessRate());
+        assertEquals(new BigDecimal("1.0000"), report.getDailyRates().get(29).getFailureRate());
     }
 
     @Test
     void orderHealthReturnsZeroRatesWhenNoOrders() {
-        when(orderRepository.countByStatusBetween(TODAY.minusDays(89), TODAY)).thenReturn(List.of());
-        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(89), TODAY)).thenReturn(List.of());
+        when(orderRepository.countByStatusBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of());
+        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of());
 
         OrderHealthReportResponse report = service.getOrderHealth(null, null);
 
         assertEquals(0, report.getTotalOrders());
         assertEquals(BigDecimal.ZERO, report.getSuccessRate());
         assertEquals(BigDecimal.ZERO, report.getFailureRate());
-        assertEquals(90, report.getDailyRates().size());
+        assertEquals(30, report.getDailyRates().size());
         assertEquals(BigDecimal.ZERO, report.getDailyRates().get(0).getSuccessRate());
     }
 
