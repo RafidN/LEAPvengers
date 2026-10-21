@@ -6,12 +6,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timer } from 'rxjs';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideMoon, lucideShield, lucideSun, lucideUsers
+  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
-import { ThemeService } from '../../services/theme.service';
+import { PreferencesService } from '../../services/preferences.service';
 
 interface NavLink {
   path: string;
@@ -65,15 +65,15 @@ function marketIsOpen(now = new Date()): boolean {
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideMoon, lucideShield, lucideSun, lucideUsers
+    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
   })]
 })
 export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly preferences = inject(PreferencesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  protected readonly themeService = inject(ThemeService);
   protected readonly marketOpen = signal(false);
 
   constructor() {
@@ -89,7 +89,16 @@ export class ShellComponent {
   }
 
   protected get firstName(): string {
-    return this.authService.getFirstName() || this.authService.getUsername() || '';
+    return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';
+  }
+
+  protected get profileIconName(): string {
+    return {
+      user: 'lucideCircleUserRound',
+      shield: 'lucideShield',
+      star: 'lucideStar',
+      money: 'lucideCoins'
+    }[this.preferences.profileIcon()];
   }
 
   protected get role(): Role | null {

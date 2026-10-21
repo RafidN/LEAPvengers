@@ -97,3 +97,144 @@
     color: var(--popover-foreground);
   }
 }
+
+.pastel {
+  color-scheme: light;
+
+  --background: #fff1f7;
+  --foreground: #33243b;
+  --card: #ffffff;
+  --card-foreground: #33243b;
+  --popover: #ffffff;
+  --popover-foreground: #33243b;
+  --primary: #9d174d;
+  --primary-foreground: #ffffff;
+  --secondary: #f3d7e6;
+  --secondary-foreground: #33243b;
+  --muted: #f3d7e6;
+  --muted-foreground: #684b66;
+  --accent: #e9d5ff;
+  --accent-foreground: #33243b;
+  --destructive: #b45309;
+  --border: #e5bfd4;
+  --input: #e5bfd4;
+  --ring: #9d174d;
+
+  --profit: #c44ee7;
+  --loss: #b45309;
+  --buy: #c44ee7;
+  --sell: #b45309;
+}
+
+.solarized {
+  color-scheme: dark;
+
+  --background: #001b24;
+  --foreground: #d7e3e8;
+  --card: #052733;
+  --card-foreground: #d7e3e8;
+  --popover: #052733;
+  --popover-foreground: #d7e3e8;
+  --primary: #4aa8ff;
+  --primary-foreground: #001b24;
+  --secondary: #123848;
+  --secondary-foreground: #d7e3e8;
+  --muted: #123848;
+  --muted-foreground: #9fb8c2;
+  --accent: #194557;
+  --accent-foreground: #d7e3e8;
+  --destructive: #ffb347;
+  --border: #245064;
+  --input: #245064;
+  --ring: #4aa8ff;
+
+  --profit: #58a6ff;
+  --loss: #ffb347;
+  --buy: #58a6ff;
+  --sell: #ffb347;
+}
+
+.earthy {
+  color-scheme: light;
+
+  --background: #dce8d4;
+  --foreground: #263528;
+  --card: #f7f3e8;
+  --card-foreground: #2f2418;
+  --popover: #f7f3e8;
+  --popover-foreground: #2f2418;
+  --primary: #356b43;
+  --primary-foreground: #ffffff;
+  --secondary: #c9b18a;
+  --secondary-foreground: #2f2418;
+  --muted: #cbdcc3;
+  --muted-foreground: #5a503d;
+  --accent: #a9c7a2;
+  --accent-foreground: #2f2418;
+  --destructive: #9a3412;
+  --border: #b89f78;
+  --input: #b89f78;
+  --ring: #356b43;
+
+  --profit: #356b43;
+  --loss: #9a3412;
+  --buy: #356b43;
+  --sell: #9a3412;
+}
+
+.bold {
+  color-scheme: dark;
+
+  --background: #050505;
+  --foreground: #ffffff;
+  --card: #171717;
+  --card-foreground: #ffffff;
+  --popover: #171717;
+  --popover-foreground: #ffffff;
+  --primary: #facc15;
+  --primary-foreground: #111111;
+  --secondary: #27272a;
+  --secondary-foreground: #ffffff;
+  --muted: #27272a;
+  --muted-foreground: #d4d4d8;
+  --accent: #3f3f46;
+  --accent-foreground: #ffffff;
+  --destructive: #fb7185;
+  --border: #52525b;
+  --input: #52525b;
+  --ring: #facc15;
+
+  --profit: #22d3ee;
+  --loss: #fb7185;
+  --buy: #22d3ee;
+  --sell: #fb7185;
+}
+
+.vintage {
+  color-scheme: light;
+
+  --background: #eee2c6;
+  --foreground: #372c24;
+  --card: #ffffff;
+  --card-foreground: #372c24;
+  --popover: #ffffff;
+  --popover-foreground: #372c24;
+  --primary: #1e3a5f;
+  --primary-foreground: #ffffff;
+  --secondary: #d7c4a3;
+  --secondary-foreground: #372c24;
+  --muted: #d7c4a3;
+  --muted-foreground: #625044;
+  --accent: #e9d8b4;
+  --accent-foreground: #372c24;
+  --destructive: #9f1239;
+  --border: #c8b38f;
+  --input: #c8b38f;
+  --ring: #1e3a5f;
+
+  --profit: #1e3a5f;
+  --loss: #9f1239;
+  --buy: #1e3a5f;
+  --sell: #9f1239;
+}
+

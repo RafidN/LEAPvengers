@@ -5,6 +5,7 @@ import { ShellComponent } from './layout/shell/shell.component';
 import { SignInComponent } from './pages/authentication/sign-in/sign-in.component';
 import { RegisterComponent } from './pages/authentication/register/register.component';
 import { ForgotPasswordComponent } from './pages/authentication/forgot-password/forgot-password.component';
+import { SettingsComponent } from './pages/settings/settings.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'sign-in', pathMatch: 'full' },
@@ -26,7 +27,8 @@ export const routes: Routes = [
       { path: 'markets', loadComponent: () => import('./pages/markets/markets.component').then(m => m.MarketsComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent), data: { roles: ['OPS'] } },
       { path: 'reports', loadComponent: () => import('./pages/reports/reports.component').then(m => m.ReportsComponent), data: { roles: ['ANALYST', 'OPS'] } },
-      { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent), data: { roles: ['ANALYST'] } }
+      { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent), data: { roles: ['ANALYST'] } },
+      { path: 'settings', component: SettingsComponent }
     ]
   },
 

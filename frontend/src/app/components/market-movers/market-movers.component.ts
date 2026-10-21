@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { catchError, interval, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideExternalLink, lucideTrendingDown, lucideTrendingUp } from '@ng-icons/lucide';
@@ -14,7 +15,7 @@ type Side = 'gainers' | 'losers';
 /** Today's top US gainers and losers from Yahoo Finance, refreshed every minute. */
 @Component({
   selector: 'app-market-movers',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgIcon, HlmButtonImports, HlmCardImports, HlmTableImports],
+  imports: [DisplayCurrencyPipe, DatePipe, DecimalPipe, NgIcon, HlmButtonImports, HlmCardImports, HlmTableImports],
   providers: [provideIcons({ lucideExternalLink, lucideTrendingDown, lucideTrendingUp })],
   template: `
     <section hlmCard class="h-full" aria-labelledby="movers-title">

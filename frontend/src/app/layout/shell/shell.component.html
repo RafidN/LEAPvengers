@@ -20,23 +20,18 @@
         </div>
       }
 
-      <button hlmBtn variant="ghost" size="icon" (click)="themeService.toggle()"
-        [attr.aria-label]="themeService.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-        [attr.title]="themeService.theme() === 'dark' ? 'Light mode' : 'Dark mode'">
-        <ng-icon [name]="themeService.theme() === 'dark' ? 'lucideSun' : 'lucideMoon'" />
-      </button>
-
       @if (firstName) {
-        <span class="hidden items-center gap-2 text-sm md:flex">
+        <a hlmBtn variant="ghost" class="text-foreground hidden items-center gap-2 text-sm md:inline-flex"
+          routerLink="/settings" aria-label="Open profile settings">
+          <ng-icon [name]="profileIconName" class="text-primary text-lg" aria-hidden="true" />
           <b>{{ firstName }}</b>
-        </span>
+        </a>
         @if (role === 'OPS' || role === 'ANALYST') {
           <span hlmBadge variant="secondary" class="hidden md:inline-flex">
             {{ roleLabel }}
           </span>
         }
       }
-
       <button hlmBtn variant="outline" (click)="signOut()">
         <ng-icon name="lucideLogOut" />
         <span class="hidden sm:inline">Sign out</span>

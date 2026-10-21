@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -9,8 +10,8 @@ import {
 } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideHistory,
-  lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
+  lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
+  lucideHistory, lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
@@ -23,6 +24,8 @@ import { AccountPortfolio, AccountResponse, AccountService } from '../../service
 import { OrderHistoryResult, OrderStatus } from '../../services/history.service';
 import { Instrument, InstrumentService, PRICE_REFRESH_MS, Quote } from '../../services/instrument.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
+import { PreferencesService } from '../../services/preferences.service';
 import {
   FINAL_STATUSES, OrderEvent, OrderRejection, OrderRequest, OrderService, OrderSide
 } from '../../services/order.service';
@@ -58,6 +61,16 @@ interface TrackerStep {
   time?: string;
 }
 
+interface SimulationResult {
+  side: OrderSide;
+  ticker: string;
+  quantity: number;
+  price: number;
+  total: number;
+  cashAfter: number;
+  holdingsAfter: number;
+}
+
 /**
  * A quote younger than this (plus the market's data delay) counts as live; while a market is open the quote
  * generator writes its latest trade price every 3 seconds.
@@ -80,19 +93,21 @@ const roundDown = (value: number) => Math.floor(value * 10 ** QUANTITY_DECIMALS)
   selector: 'app-trade',
   templateUrl: './trade.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, FormsModule, RouterLink, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmComboboxImports, HlmInputImports,
     HlmLabelImports
   ],
   providers: [provideIcons({
-    lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideHistory,
-    lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
+    lucideArrowDown, lucideArrowUp, lucideBan, lucideCircleCheck, lucideCircleX, lucideClock, lucideFlaskConical,
+    lucideHistory, lucideLoaderCircle, lucideRotateCcw, lucideTriangleAlert
   })]
 })
 export class TradeComponent {
   private readonly accountService = inject(AccountService);
   private readonly instrumentService = inject(InstrumentService);
   private readonly orderService = inject(OrderService);
+  protected readonly preferences = inject(PreferencesService);
+  private readonly currency = inject(DisplayCurrencyService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ---- Order ticket ----
@@ -116,7 +131,10 @@ export class TradeComponent {
 
   protected readonly side = signal<OrderSide>('BUY');
   protected readonly quantity = signal<number | null>(null);
-
+  protected readonly simulationMode = signal(false);
+  protected readonly termsExpanded = signal(true);
+  protected readonly simulationBalance = signal<number | null>(null);
+  protected readonly simulationResult = signal<SimulationResult | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadError = signal('');
   protected readonly submitting = signal(false);
@@ -403,7 +421,40 @@ export class TradeComponent {
     if (!this.canSubmit() || !instrument || accountId == null || quantity == null) {
       return;
     }
+    if (this.preferences.mode() === 'easy' && this.simulationMode()) {
+      this.simulate(instrument.ticker, quantity);
+      return;
+    }
     this.send({ accountId, ticker: instrument.ticker, orderType: this.side(), quantity });
+  }
+
+  protected simulate(ticker: string, quantity: number): void {
+    const price = this.quote()?.price;
+    if (price == null) {
+      return;
+    }
+    const startingCash = this.simulationBalance() ?? this.cash();
+    const simulatedCashAfter = this.side() === 'BUY'
+      ? startingCash - quantity * price
+      : startingCash + quantity * price;
+    this.simulationResult.set({
+      side: this.side(),
+      ticker,
+      quantity,
+      price,
+      total: quantity * price,
+      cashAfter: simulatedCashAfter,
+      holdingsAfter: this.ownedAfter()
+    });
+  }
+
+  protected setSimulationBalance(value: number | null): void {
+    this.simulationBalance.set(value);
+    this.clearSimulation();
+  }
+
+  protected clearSimulation(): void {
+    this.simulationResult.set(null);
   }
 
   /** Sends the last order again, e.g. after it failed because the price moved. */
@@ -488,6 +539,6 @@ export class TradeComponent {
   }
 
   private money(value: number): string {
-    return formatMoney(value);
+    return this.currency.format(value);
   }
 }
