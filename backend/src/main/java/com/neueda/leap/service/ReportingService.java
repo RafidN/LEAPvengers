@@ -44,7 +44,7 @@ import java.util.Set;
 @Service
 public class ReportingService {
     static final int DEFAULT_DAYS = 30;
-    static final int DEFAULT_ORDER_HEALTH_DAYS = 90;
+    static final int DEFAULT_ORDER_HEALTH_DAYS = 30;
     static final int MAX_DAYS = 3 * 366;
     static final List<String> GROUPINGS = List.of("day", "week", "month", "instrument", "assetClass", "segment");
 
