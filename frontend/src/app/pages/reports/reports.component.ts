@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, combineLatest, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
@@ -86,6 +87,7 @@ type TrendPoint = {
   templateUrl: './reports.component.html',
   imports: [
     CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, NgIcon, BaseChartDirective, ActivityChartComponent,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon, ActivityChartComponent,
     HlmAlertImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports, HlmTableImports
   ],
   providers: [provideIcons({ lucideDatabase, lucideDownload })]

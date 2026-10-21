@@ -92,6 +92,63 @@
   </div>
 </section>
 
+@if (preferences.mode() === 'easy') {
+@if (riskAssessment(); as assessment) {
+  <section hlmCard class="mt-4" aria-labelledby="risk-title">
+    <div hlmCardHeader>
+      <div class="flex items-start gap-3">
+        <ng-icon name="lucideShieldAlert" class="text-primary mt-1 text-xl" aria-hidden="true" />
+        <div>
+          <h2 hlmCardTitle id="risk-title">Risk and success snapshot</h2>
+          <p hlmCardDescription>
+            Explainable estimate for {{ selected() }} using the selected price history. Not investment advice or a calibrated forecast.
+          </p>
+        </div>
+        <button type="button" class="text-muted-foreground hover:text-foreground ml-auto rounded p-1 text-xs"
+          [attr.aria-expanded]="riskSnapshotExpanded()"
+          aria-controls="risk-snapshot-details"
+          (click)="riskSnapshotExpanded.update(expanded => !expanded)">
+          {{ riskSnapshotExpanded() ? 'Minimize' : 'Expand' }}
+        </button>
+      </div>
+    </div>
+    @if (riskSnapshotExpanded()) {
+    <div id="risk-snapshot-details" hlmCardContent class="grid gap-4 lg:grid-cols-4">
+      <div class="rounded-md border p-3">
+        <p class="text-muted-foreground text-xs">Risk score</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ assessment.riskScore }} / 100</p>
+        <p class="text-muted-foreground text-xs">{{ assessment.riskLabel }} historical price risk</p>
+      </div>
+      <div class="rounded-md border p-3">
+        <p class="text-muted-foreground text-xs">Historical success estimate</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ assessment.successEstimate }}%</p>
+        <p class="text-muted-foreground text-xs">Heuristic: positive momentum adjusted for risk</p>
+      </div>
+      <div class="rounded-md border p-3">
+        <p class="text-muted-foreground text-xs">Quantitative inputs</p>
+        <dl class="mt-2 space-y-1 text-sm">
+          <div class="flex justify-between gap-2"><dt class="text-muted-foreground">Volatility</dt><dd class="tabular-nums">{{ assessment.volatility | number: '1.1-1' }}%</dd></div>
+          <div class="flex justify-between gap-2"><dt class="text-muted-foreground">Max drawdown</dt><dd class="tabular-nums">{{ assessment.maxDrawdown | number: '1.1-1' }}%</dd></div>
+          <div class="flex justify-between gap-2"><dt class="text-muted-foreground">Momentum</dt><dd class="tabular-nums">{{ assessment.momentum >= 0 ? '+' : '−' }}{{ (assessment.momentum < 0 ? -assessment.momentum : assessment.momentum) | number: '1.1-1' }}%</dd></div>
+        </dl>
+      </div>
+      <div class="rounded-md border p-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-muted-foreground text-xs">Data confidence</p>
+            <p class="mt-1 font-medium">{{ assessment.dataConfidence }}</p>
+          </div>
+        </div>
+        <ul class="mt-2 space-y-1 text-sm">
+          <li>Observations: {{ assessment.observations }}</li>
+        </ul>
+      </div>
+    </div>
+    }
+  </section>
+}
+}
+
 <!-- What's moving the market today, from public sources -->
 <section class="mt-4 grid items-start gap-4 lg:grid-cols-5">
   <app-market-movers class="lg:col-span-2" />

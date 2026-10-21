@@ -1,14 +1,17 @@
-import { Component, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timer } from 'rxjs';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-  lucideMoon, lucideShield, lucideSun, lucideUsers
+  lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
 } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AuthService, ROLE_LABEL, Role } from '../../services/auth.service';
-import { ThemeService } from '../../services/theme.service';
+import { PreferencesService } from '../../services/preferences.service';
 
 interface NavLink {
   path: string;
@@ -28,6 +31,33 @@ const NAV_LINKS: NavLink[] = [
   { path: '/markets', label: 'Markets', icon: 'lucideChartLine', roles: ['TRADER', 'OPS', 'ANALYST'] }
 ];
 
+const MARKET_TIME_ZONE = 'America/New_York';
+
+function marketIsOpen(now = new Date()): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: MARKET_TIME_ZONE,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+
+  const weekday = parts.find(part => part.type === 'weekday')?.value;
+  const hour = Number(parts.find(part => part.type === 'hour')?.value);
+  const minute = Number(parts.find(part => part.type === 'minute')?.value);
+
+  if (!weekday || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return false;
+  }
+
+  if (weekday === 'Sat' || weekday === 'Sun') {
+    return false;
+  }
+
+  const minutesSinceMidnight = hour * 60 + minute;
+  return minutesSinceMidnight >= 9 * 60 + 30 && minutesSinceMidnight < 16 * 60;
+}
+
 /** Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself. */
 @Component({
   selector: 'app-shell',
@@ -35,16 +65,40 @@ const NAV_LINKS: NavLink[] = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({
     lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
-    lucideMoon, lucideShield, lucideSun, lucideUsers
+    lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
   })]
 })
 export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  protected readonly themeService = inject(ThemeService);
+  protected readonly preferences = inject(PreferencesService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  protected readonly marketOpen = signal(false);
+
+  constructor() {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    this.marketOpen.set(marketIsOpen());
+    const initialDelay = 60_000 - (Date.now() % 60_000);
+    timer(initialDelay, 60_000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.marketOpen.set(marketIsOpen());
+    });
+  }
 
   protected get firstName(): string {
-    return this.authService.getFirstName() || this.authService.getUsername() || '';
+    return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';
+  }
+
+  protected get profileIconName(): string {
+    return {
+      user: 'lucideCircleUserRound',
+      shield: 'lucideShield',
+      star: 'lucideStar',
+      money: 'lucideCoins'
+    }[this.preferences.profileIcon()];
   }
 
   protected get role(): Role | null {

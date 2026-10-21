@@ -3,11 +3,67 @@
     <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Overview</p>
     <h1 class="text-3xl font-medium tracking-tight">Dashboard</h1>
   </div>
-  <a hlmBtn size="lg" routerLink="/trade">
-    <ng-icon name="lucideArrowLeftRight" />
-    Place an order
-  </a>
+  <div class="flex flex-wrap items-center gap-2">
+    @if (editLayout()) {
+      <button hlmBtn size="sm" variant="ghost" (click)="resetLayout()">
+        <ng-icon name="lucideRotateCcw" />
+        Reset layout
+      </button>
+      @if (availableWidgets().length) {
+        <div class="relative">
+          <button hlmBtn size="sm" variant="outline" (click)="widgetMenuOpen.update(value => !value)"
+            [attr.aria-expanded]="widgetMenuOpen()" aria-haspopup="menu">
+            <ng-icon name="lucidePlus" />
+            Add widget
+          </button>
+          @if (widgetMenuOpen()) {
+            <div class="bg-popover text-popover-foreground absolute top-full right-0 z-20 mt-2 w-52 overflow-hidden rounded-md border shadow-lg"
+              role="menu">
+              @for (widget of availableWidgets(); track widget) {
+                <button type="button" role="menuitem" class="hover:bg-muted flex w-full items-center px-3 py-2 text-left text-sm"
+                  (click)="addWidget(widget)">
+                  {{ hiddenSections().includes(widget) ? 'Restore ' : 'Add ' }}{{ sectionLabel(widget) }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+    <button hlmBtn size="sm" [variant]="editLayout() ? 'secondary' : 'outline'" (click)="editLayout.update(value => !value)"
+      [attr.aria-pressed]="editLayout()">
+      <ng-icon name="lucideSettings2" />
+      {{ editLayout() ? 'Done' : 'Customize' }}
+    </button>
+    <a hlmBtn size="lg" routerLink="/trade">
+      <ng-icon name="lucideArrowLeftRight" />
+      Place an order
+    </a>
+  </div>
 </div>
+
+@if (marketAlerts().length) {
+  <div hlmAlert class="mb-6 border-primary/30 bg-primary/5">
+    <ng-icon hlmAlertIcon name="lucideBell" />
+    <div>
+      <p hlmAlertTitle>News Alert</p>
+      <p hlmAlertDescription>
+        Market activity highlighting instruments you hold today.
+      </p>
+      <ul class="mt-2 flex flex-col gap-1.5 text-sm">
+        @for (alert of marketAlerts(); track alert.ticker + alert.type + alert.title) {
+          <li>
+            <a class="text-primary font-medium hover:underline" [href]="alert.link" [target]="alert.type === 'news' ? '_blank' : null"
+              [rel]="alert.type === 'news' ? 'noopener noreferrer' : null">
+              {{ alert.title }}
+            </a>
+            <span class="text-muted-foreground"> · {{ alert.detail }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  </div>
+}
 
 @if (error()) {
   <div hlmAlert variant="destructive" class="mb-6">
@@ -15,29 +71,97 @@
   </div>
 }
 
-<!-- Account totals: each one hidden until its eye is clicked -->
-<section class="mb-6 grid gap-4 md:grid-cols-3">
-  @for (card of totals(); track card.key) {
-    <div hlmCard>
-      <div hlmCardHeader>
-        <p hlmCardDescription>{{ card.label }}</p>
-        <div hlmCardAction>
-          <button hlmBtn variant="ghost" size="icon-sm" (click)="toggle(card.key)"
-            [attr.aria-pressed]="!isHidden(card.key)"
-            [attr.aria-label]="(isHidden(card.key) ? 'Show ' : 'Hide ') + card.label.toLowerCase()">
-            <ng-icon [name]="isHidden(card.key) ? 'lucideEye' : 'lucideEyeOff'" />
-          </button>
-        </div>
+<div cdkDropList class="grid gap-6 md:grid-cols-3" [cdkDropListDisabled]="!editLayout()"
+  (cdkDropListDropped)="dropSection($event)">
+  @for (section of sectionOrder(); track section) {
+    @if (isSectionVisible(section)) {
+      <div cdkDrag [ngClass]="'relative ' + widgetClass(section)" [cdkDragDisabled]="!editLayout()"
+        [attr.aria-label]="sectionLabel(section)">
+        @if (editLayout()) {
+          <div class="bg-muted/80 text-muted-foreground mb-2 flex items-center justify-between rounded-md border px-2 py-1 text-xs">
+            <span class="flex items-center gap-1.5">
+              <button type="button" cdkDragHandle class="hover:text-foreground cursor-grab rounded p-1 active:cursor-grabbing"
+                [attr.aria-label]="'Drag ' + sectionLabel(section) + ' section'">
+                <ng-icon name="lucideGripVertical" />
+              </button>
+              <span>{{ sectionLabel(section) }}</span>
+            </span>
+            <button type="button" class="hover:text-foreground rounded p-1" (click)="removeSection(section)"
+              [attr.aria-label]="'Remove ' + sectionLabel(section) + ' section'">
+              <ng-icon name="lucideX" />
+            </button>
+          </div>
+        }
+        @switch (section) {
+          @case ('total') { <ng-container *ngTemplateOutlet="totalSection" /> }
+          @case ('cash') { <ng-container *ngTemplateOutlet="cashSection" /> }
+          @case ('holdingsValue') { <ng-container *ngTemplateOutlet="holdingsValueSection" /> }
+          @case ('value') { <ng-container *ngTemplateOutlet="valueSection" /> }
+          @case ('holdings') { <ng-container *ngTemplateOutlet="holdingsSection" /> }
+          @case ('activity') { <ng-container *ngTemplateOutlet="activitySection" /> }
+          @case ('movers') { <app-market-movers /> }
+          @case ('news') { <app-market-news /> }
+          @case ('search') { <app-instrument-search-widget /> }
+        }
       </div>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">
-        {{ loading() ? '…' : isHidden(card.key) ? '••••••' : (card.value | currency) }}
-      </p>
-    </div>
+    }
   }
-</section>
+</div>
 
+<ng-template #totalSection>
+<div hlmCard>
+  <div hlmCardHeader>
+    <p hlmCardDescription>Total value</p>
+    <div hlmCardAction>
+      <button hlmBtn variant="ghost" size="icon-sm" (click)="toggle('total')"
+        [attr.aria-pressed]="!isHidden('total')" [attr.aria-label]="(isHidden('total') ? 'Show' : 'Hide') + ' total value'">
+        <ng-icon [name]="isHidden('total') ? 'lucideEye' : 'lucideEyeOff'" />
+      </button>
+    </div>
+  </div>
+  <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+    {{ loading() ? '…' : isHidden('total') ? '••••••' : (totalValue() | currency) }}
+  </p>
+</div>
+</ng-template>
+
+<ng-template #cashSection>
+<div hlmCard>
+  <div hlmCardHeader>
+    <p hlmCardDescription>Cash balance</p>
+    <div hlmCardAction>
+      <button hlmBtn variant="ghost" size="icon-sm" (click)="toggle('cash')"
+        [attr.aria-pressed]="!isHidden('cash')" [attr.aria-label]="(isHidden('cash') ? 'Show' : 'Hide') + ' cash balance'">
+        <ng-icon [name]="isHidden('cash') ? 'lucideEye' : 'lucideEyeOff'" />
+      </button>
+    </div>
+  </div>
+  <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+    {{ loading() ? '…' : isHidden('cash') ? '••••••' : (cash() | currency) }}
+  </p>
+</div>
+</ng-template>
+
+<ng-template #holdingsValueSection>
+<div hlmCard>
+  <div hlmCardHeader>
+    <p hlmCardDescription>Holdings value</p>
+    <div hlmCardAction>
+      <button hlmBtn variant="ghost" size="icon-sm" (click)="toggle('holdings')"
+        [attr.aria-pressed]="!isHidden('holdings')" [attr.aria-label]="(isHidden('holdings') ? 'Show' : 'Hide') + ' holdings value'">
+        <ng-icon [name]="isHidden('holdings') ? 'lucideEye' : 'lucideEyeOff'" />
+      </button>
+    </div>
+  </div>
+  <p hlmCardContent class="text-3xl font-semibold tracking-tight">
+    {{ loading() ? '…' : isHidden('holdings') ? '••••••' : (holdingsValue() | currency) }}
+  </p>
+</div>
+</ng-template>
+
+<ng-template #valueSection>
 <!-- Account value over time -->
-<section hlmCard class="mb-6" aria-labelledby="value-title">
+<section hlmCard aria-labelledby="value-title">
   <div hlmCardHeader>
     <h2 hlmCardTitle id="value-title">Account value</h2>
     <p hlmCardDescription>Cash plus holdings, valued at the prices of the time</p>
@@ -105,18 +229,19 @@
     }
   </div>
 </section>
+</ng-template>
 
-<section class="grid gap-4 lg:grid-cols-3">
+<ng-template #holdingsSection>
+<section hlmCard>
   <!-- Holdings -->
-  <div hlmCard class="lg:col-span-2">
-    <div hlmCardHeader>
-      <h2 hlmCardTitle>Holdings</h2>
-      <p hlmCardDescription>
-        Valued at the latest prices
-        @if (lastUpdated(); as t) { · checked {{ t | date: 'HH:mm:ss' }} }
-      </p>
-    </div>
-    <div hlmCardContent>
+  <div hlmCardHeader>
+    <h2 hlmCardTitle>Holdings</h2>
+    <p hlmCardDescription>
+      Valued at the latest prices
+      @if (lastUpdated(); as t) { · checked {{ t | date: 'HH:mm:ss' }} }
+    </p>
+  </div>
+  <div hlmCardContent>
       @if (holdings().length) {
         <div hlmTableContainer>
           <table hlmTable>
@@ -159,7 +284,8 @@
                     {{ isHidden('holdings') ? '••••' : (h.value | currency) }}
                   </td>
                   <td hlmTableCell class="text-right">
-                    <a hlmBtn variant="ghost" size="xs" routerLink="/trade" [queryParams]="{ ticker: h.ticker, side: 'SELL' }"
+                    <a hlmBtn variant="outline" size="xs" class="border-primary/50 text-primary hover:bg-primary/10"
+                      routerLink="/trade" [queryParams]="{ ticker: h.ticker, side: 'SELL' }"
                       [attr.aria-label]="'Trade ' + h.ticker">Trade</a>
                   </td>
                 </tr>
@@ -175,13 +301,15 @@
           <a routerLink="/markets" class="text-primary underline-offset-4 hover:underline">Markets</a>.
         </div>
       }
-    </div>
   </div>
+</section>
+</ng-template>
 
+<ng-template #activitySection>
   <!-- Recent activity -->
   <div hlmCard>
     <div hlmCardHeader>
-      <h2 hlmCardTitle>Recent activity</h2>
+      <h2 hlmCardTitle>Recent Activity</h2>
       <div hlmCardAction>
         <a hlmBtn variant="ghost" size="sm" routerLink="/history">See all</a>
       </div>
@@ -190,7 +318,12 @@
       @for (item of activity(); track item.key) {
         <li class="flex items-center justify-between gap-3 text-sm">
           <div class="min-w-0">
-            <p class="truncate font-medium">{{ item.title }}</p>
+            <p class="flex items-center gap-2 truncate font-medium">
+              @if (item.isSuccessfulBuy) {
+                <span class="size-2 shrink-0 rounded-full bg-[color:var(--profit)]" aria-hidden="true"></span>
+              }
+              <span>{{ item.title }}</span>
+            </p>
             <p class="text-muted-foreground text-xs">
               @if (item.detail) { {{ item.detail }} · }{{ item.date | date: 'MMM d' }}
             </p>
@@ -209,6 +342,6 @@
           <li class="text-muted-foreground text-sm">No activity yet.</li>
         }
       }
-    </ul>
+  </ul>
   </div>
-</section>
+</ng-template>

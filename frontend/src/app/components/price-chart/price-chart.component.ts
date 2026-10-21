@@ -2,16 +2,13 @@ import { Component, computed, inject, input } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
-import { formatMoney } from '../../services/format';
+import { chartPalette, CHART_PROVIDERS } from '../chart-theme';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 
 export interface PricePoint {
   time: string;   // ISO timestamp
   value: number;
 }
-
-/** $1,234.50 style. */
-const formatPrice = (value: number | null) => value === null ? '' : formatMoney(value);
 
 /**
  * Line chart of prices over time. Green when the period ended up, red when it ended down. Points are evenly
@@ -33,6 +30,7 @@ const formatPrice = (value: number | null) => value === null ? '' : formatMoney(
 })
 export class PriceChartComponent {
   protected readonly theme = inject(ThemeService).theme;
+  private readonly currency = inject(DisplayCurrencyService);
 
   readonly points = input.required<PricePoint[]>();
   readonly label = input('Price');
@@ -51,7 +49,7 @@ export class PriceChartComponent {
   private readonly fewLabels = computed(() => new Set(this.labels()).size <= 8);
 
   protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const points = this.points();
     const up = points.length < 2 || points[points.length - 1].value >= points[0].value;
 
@@ -71,7 +69,7 @@ export class PriceChartComponent {
   });
 
   protected readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const labels = this.labels();
     return {
       responsive: true,
@@ -88,7 +86,7 @@ export class PriceChartComponent {
           borderWidth: 1,
           callbacks: {
             title: items => new Date(this.points()[items[0].dataIndex].time).toLocaleString(),
-            label: item => `${item.dataset.label}: ${formatPrice(item.parsed.y)}`
+            label: item => `${item.dataset.label}: ${item.parsed.y == null ? '' : this.currency.format(item.parsed.y)}`
           }
         }
       },
@@ -103,7 +101,7 @@ export class PriceChartComponent {
             : { color: palette.inkMuted, maxTicksLimit: 6, maxRotation: 0 }
         },
         // Steps of at least a cent: prices show 2 decimals, so finer steps would repeat labels (e.g. FX at $1.12)
-        y: { grid: { color: palette.grid }, ticks: { color: palette.inkMuted, maxTicksLimit: 6, precision: 2, callback: value => formatPrice(Number(value)) } }
+            y: { grid: { color: palette.grid }, ticks: { color: palette.inkMuted, maxTicksLimit: 6, precision: 2, callback: value => this.currency.format(Number(value)) } }
       }
     };
   });
