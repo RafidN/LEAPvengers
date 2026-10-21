@@ -30,7 +30,9 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
             o.orderDate,
             o.submittedAt,
             o.executedAt,
-            o.executionPrice
+            o.executionPrice,
+            o.orderKind,
+            o.triggerPrice
         )
         FROM Orders o
         JOIN o.account a
@@ -59,7 +61,7 @@ public interface AuditRepository extends JpaRepository<Orders, Integer> {
             o.orderId, c.clientId, CONCAT(c.firstName, ' ', c.lastName),
             i.ticker, i.instrumentName, o.orderType, o.quantity, o.price,
             o.orderStatus, o.rejectionReason, o.orderDate, o.submittedAt,
-            o.executedAt, o.executionPrice)
+            o.executedAt, o.executionPrice, o.orderKind, o.triggerPrice)
         FROM Orders o
         JOIN o.account a
         JOIN a.client c

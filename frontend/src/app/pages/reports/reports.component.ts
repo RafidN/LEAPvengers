@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { DOCUMENT, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -16,6 +16,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmLabelImports } from '@spartan-ng/helm/label';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ActivityBar, ActivityChartComponent } from '../../components/activity-chart/activity-chart.component';
+import { CHART_PROVIDERS } from '../../components/chart-theme';
 import { ActivityReport, OrderHealthReport, ReportGrouping, ReportingService } from '../../services/reporting.service';
 
 /** The reporting store is brought up to date every minute, so re-asking more often gains nothing. */
@@ -86,11 +87,12 @@ type TrendPoint = {
   selector: 'app-reports',
   templateUrl: './reports.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, NgIcon, BaseChartDirective, ActivityChartComponent,
-    DisplayCurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon, ActivityChartComponent,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, NgIcon, BaseChartDirective, ActivityChartComponent,
     HlmAlertImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports, HlmTableImports
   ],
-  providers: [provideIcons({ lucideDatabase, lucideDownload })]
+  // The order health trend is drawn here with Chart.js directly, so the page registers it like the chart components
+  // do; without this the trend only appears if another chart happened to register Chart.js first
+  providers: [CHART_PROVIDERS, provideIcons({ lucideDatabase, lucideDownload })]
 })
 export class ReportsComponent {
   private readonly reporting = inject(ReportingService);
@@ -100,7 +102,8 @@ export class ReportsComponent {
   protected readonly ranges = RANGES;
   protected readonly segments = SEGMENTS;
 
-  protected readonly from = signal(daysAgo(89));
+  /** The last 30 days by default, the same as the backend's default for both reports. */
+  protected readonly from = signal(daysAgo(29));
   protected readonly to = signal(isoDate(new Date()));
   protected readonly groupBy = signal<ReportGrouping>('day');
   protected readonly segment = signal('');

@@ -32,16 +32,6 @@
   </div>
 
   <div class="flex flex-col gap-1.5">
-    <span hlmLabel id="group-label">Group by</span>
-    <div class="flex flex-wrap gap-1" role="group" aria-labelledby="group-label">
-      @for (g of groupings; track g.value) {
-        <button hlmBtn size="sm" [variant]="groupBy() === g.value ? 'default' : 'outline'"
-          [attr.aria-pressed]="groupBy() === g.value" (click)="groupBy.set(g.value)">{{ g.label }}</button>
-      }
-    </div>
-  </div>
-
-  <div class="flex flex-col gap-1.5">
     <label hlmLabel for="segment-filter">Client segment</label>
     <select hlmInput id="segment-filter" class="h-7 w-36" [ngModel]="segment()" (ngModelChange)="segment.set($event)">
       <option value="">All segments</option>
@@ -56,59 +46,6 @@
   <div hlmAlert variant="destructive" class="mb-6" role="alert">
     <p hlmAlertDescription>{{ error() }}</p>
   </div>
-}
-
-@if (orderHealthError()) {
-  <div hlmAlert variant="destructive" class="mb-6" role="alert">
-    <p hlmAlertDescription>{{ orderHealthError() }}</p>
-  </div>
-}
-
-@if (orderHealth(); as health) {
-  <section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6" aria-label="Order health">
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Total orders</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.totalOrders | number }}</p>
-    </div>
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Filled</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.filledOrders | number }}</p>
-    </div>
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Rejected</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.rejectedOrders | number }}</p>
-    </div>
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Failed</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failedOrders | number }}</p>
-    </div>
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Success rate</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.successRate | percent: '1.0-2' }}</p>
-    </div>
-    <div hlmCard>
-      <p hlmCardHeader class="text-muted-foreground text-sm">Failure rate</p>
-      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failureRate | percent: '1.0-2' }}</p>
-    </div>
-  </section>
-
-  <section hlmCard class="mb-6" aria-label="Order health trend">
-    <div hlmCardHeader>
-      <h2 hlmCardTitle>Order health trend</h2>
-      <p hlmCardDescription>{{ orderHealthTrendLabel() }}</p>
-    </div>
-    <div hlmCardContent>
-      @if ((orderHealthTrendData().labels?.length ?? 0) > 1) {
-        <div class="relative h-56 w-full">
-          <canvas baseChart type="line" [data]="orderHealthTrendData()" [options]="orderHealthTrendOptions()"></canvas>
-        </div>
-      } @else {
-        <div class="text-muted-foreground flex h-48 items-center justify-center rounded-lg border border-dashed text-sm">
-          Not enough daily points to show a trend.
-        </div>
-      }
-    </div>
-  </section>
 }
 
 @if (report(); as r) {
@@ -141,6 +78,14 @@
           {{ r.from | date: 'MMM d, y' }} to {{ r.to | date: 'MMM d, y' }}
           @if (r.segment) { · {{ r.segment }} clients only }
         </p>
+        <!-- Groups this chart and the Figures table beside it -->
+        <div class="flex flex-wrap items-center gap-1 pt-2" role="group" aria-labelledby="group-label">
+          <span id="group-label" class="text-muted-foreground mr-1 text-xs">Group by</span>
+          @for (g of groupings; track g.value) {
+            <button hlmBtn size="sm" [variant]="groupBy() === g.value ? 'default' : 'outline'"
+              [attr.aria-pressed]="groupBy() === g.value" (click)="groupBy.set(g.value)">{{ g.label }}</button>
+          }
+        </div>
       </div>
       <div hlmCardContent>
         @if (r.totals.trades > 0) {
@@ -202,4 +147,65 @@
   </section>
 } @else if (loading()) {
   <div class="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">Loading report…</div>
+}
+
+<!-- Order health: how orders ended over the range (all clients) -->
+@if (orderHealthError()) {
+  <div hlmAlert variant="destructive" class="mb-6" role="alert">
+    <p hlmAlertDescription>{{ orderHealthError() }}</p>
+  </div>
+}
+
+@if (orderHealth(); as health) {
+  <div class="mt-10 mb-4">
+    <h2 class="text-xl font-medium tracking-tight" id="order-health-title">Order health</h2>
+    <p class="text-muted-foreground mt-1 text-sm">
+      How orders placed in the range ended: filled, rejected or failed.
+      @if (segment()) { Covers all clients; it isn't split by client segment. }
+    </p>
+  </div>
+  <section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6" aria-labelledby="order-health-title">
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Total orders</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.totalOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Filled</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.filledOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Rejected</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.rejectedOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Failed</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failedOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Success rate</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.successRate | percent: '1.0-2' }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Failure rate</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failureRate | percent: '1.0-2' }}</p>
+    </div>
+  </section>
+
+  <section hlmCard class="mb-6" aria-label="Order health trend">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Order health trend</h2>
+      <p hlmCardDescription>{{ orderHealthTrendLabel() }}</p>
+    </div>
+    <div hlmCardContent>
+      @if ((orderHealthTrendData().labels?.length ?? 0) > 1) {
+        <div class="relative h-56 w-full">
+          <canvas baseChart type="line" [data]="orderHealthTrendData()" [options]="orderHealthTrendOptions()"></canvas>
+        </div>
+      } @else {
+        <div class="text-muted-foreground flex h-48 items-center justify-center rounded-lg border border-dashed text-sm">
+          Not enough daily points to show a trend.
+        </div>
+      }
+    </div>
+  </section>
 }

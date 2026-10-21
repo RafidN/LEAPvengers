@@ -58,6 +58,9 @@ public class DisputeService {
         if ("SUBMITTED".equals(order.getOrderStatus()) || "ACCEPTED".equals(order.getOrderStatus())) {
             throw new InvalidInputException("This order is still going through; you can dispute it once it has finished");
         }
+        if ("WORKING".equals(order.getOrderStatus())) {
+            throw new InvalidInputException("This order is still waiting for its price; you can cancel it or move it instead");
+        }
         if (disputesRepository.existsByOrderIdAndStatus(orderId, "OPEN")) {
             throw new InvalidInputException("You already have an open dispute on this order");
         }

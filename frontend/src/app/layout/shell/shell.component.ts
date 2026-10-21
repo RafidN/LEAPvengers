@@ -1,9 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { timer } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { filter, map, startWith, timer } from 'rxjs';
 import {
   lucideArrowLeftRight, lucideChartColumn, lucideChartLine, lucideChartPie, lucideHistory, lucideLayoutDashboard, lucideLogOut,
   lucideSettings2, lucideShield, lucideStar, lucideCoins, lucideCircleUserRound, lucideUsers
@@ -58,7 +58,11 @@ function marketIsOpen(now = new Date()): boolean {
   return minutesSinceMidnight >= 9 * 60 + 30 && minutesSinceMidnight < 16 * 60;
 }
 
-/** Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself. */
+/**
+ * Layout for every signed-in page: top navigation (only the current role's pages) plus the page itself, in a centred
+ * column. A route whose data.fullBleed is true gets the whole window under the navigation instead; 'advanced' gets it
+ * only in the advanced mode (Settings, or the Trade page's view toggle), where the Trade page is a full-window chart.
+ */
 @Component({
   selector: 'app-shell',
   templateUrl: './shell.component.html',
@@ -87,6 +91,24 @@ export class ShellComponent {
       this.marketOpen.set(marketIsOpen());
     });
   }
+
+  /** The current route's data.fullBleed: true, 'advanced' or absent. */
+  private readonly routeFullBleed = toSignal(this.router.events.pipe(
+    filter(event => event instanceof NavigationEnd),
+    startWith(null),
+    map(() => {
+      let route = this.router.routerState.snapshot.root;
+      while (route.firstChild) {
+        route = route.firstChild;
+      }
+      return route.data['fullBleed'] as boolean | 'advanced' | undefined;
+    })
+  ), { initialValue: undefined });
+
+  protected readonly fullBleed = computed(() => {
+    const fullBleed = this.routeFullBleed();
+    return fullBleed === true || (fullBleed === 'advanced' && this.preferences.mode() === 'advanced');
+  });
 
   protected get firstName(): string {
     return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';

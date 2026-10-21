@@ -33,6 +33,8 @@ export interface AuditOrder {
   orderDate: string;
   submittedAt: string;
   executedAt?: string | null;
+  orderKind?: 'MARKET' | 'LIMIT' | 'STOP';
+  triggerPrice?: number | null;   // the limit or stop price
 }
 
 export interface AuditOrderEvent {

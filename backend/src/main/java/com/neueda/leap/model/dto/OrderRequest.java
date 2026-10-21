@@ -7,6 +7,9 @@ public class OrderRequest {
     private BigDecimal quantity;
     private String orderType;
     private Integer accountId;
+    // MARKET (the default), LIMIT or STOP; LIMIT and STOP need a triggerPrice
+    private String orderKind;
+    private BigDecimal triggerPrice;
     public OrderRequest(){
     }
 
@@ -47,5 +50,21 @@ public class OrderRequest {
 
     public void setAccountId(Integer accountId){
         this.accountId = accountId;
+    }
+
+    public String getOrderKind(){
+        return orderKind;
+    }
+
+    public void setOrderKind(String orderKind){
+        this.orderKind = orderKind;
+    }
+
+    public BigDecimal getTriggerPrice(){
+        return triggerPrice;
+    }
+
+    public void setTriggerPrice(BigDecimal triggerPrice){
+        this.triggerPrice = triggerPrice;
     }
 }

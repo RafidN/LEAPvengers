@@ -1,5 +1,5 @@
 <header class="bg-card/80 sticky top-0 z-10 border-b backdrop-blur">
-  <nav class="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4">
+  <nav class="mx-auto flex h-14 items-center gap-1 px-4" [class.max-w-6xl]="!fullBleed()">
     <a [routerLink]="homePage" class="mr-4 flex items-center gap-2 font-semibold">
       <ng-icon name="lucideShield" class="text-success text-xl" />
       <span class="hidden font-[family-name:var(--font-heading)] tracking-tight text-success lg:inline">S.H.I.E.L.D.</span>
@@ -40,6 +40,6 @@
   </nav>
 </header>
 
-<main class="mx-auto max-w-6xl px-4 py-8">
+<main [class]="fullBleed() ? '' : 'mx-auto max-w-6xl px-4 py-8'">
   <router-outlet />
 </main>

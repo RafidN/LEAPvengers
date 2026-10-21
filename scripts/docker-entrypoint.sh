@@ -2,8 +2,9 @@
 # Market data and database jobs for the platform (scripts/Dockerfile).
 #
 #   init-db   Create the schema, demo data and a year of prices, but only on an empty database. On a
-#             database that already has the platform's tables it does nothing, so it is safe to run on
-#             every deployment. RESET_DATABASE=true wipes and rebuilds instead (all data is lost).
+#             database that already has the platform's tables it only applies database/migrations (each
+#             one is safe to run again), so it is safe to run on every deployment. RESET_DATABASE=true
+#             wipes and rebuilds instead (all data is lost).
 #   feed      Write live prices every few seconds (QUOTE_SOURCE=live, the default, or simulated).
 #   backfill  Load Yahoo Finance price history: daily for the year, 30-minute for two months, 1-minute
 #             for the last week.
@@ -57,7 +58,11 @@ case "$command" in
         wait_for_db
         initialised=$(psql -tAc "SELECT to_regclass('public.instruments') IS NOT NULL")
         if [ "$initialised" = "t" ] && [ "${RESET_DATABASE:-false}" != "true" ]; then
-            log "Database already initialised; leaving it as it is (RESET_DATABASE=true rebuilds it, losing all data)"
+            log "Database already initialised; applying migrations (RESET_DATABASE=true rebuilds it, losing all data)"
+            for migration in database/migrations/*.sql; do
+                log "Applying $migration"
+                psql -q -v ON_ERROR_STOP=1 -f "$migration"
+            done
             exit 0
         fi
         if [ "$initialised" = "t" ]; then

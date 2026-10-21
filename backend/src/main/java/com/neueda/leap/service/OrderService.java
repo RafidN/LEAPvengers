@@ -41,6 +41,8 @@ import java.util.logging.Logger;
  * ACCEPTED or REJECTED, with an order_events row for each step. After a short delay, OrderDelay has
  * OrderExecutionService fill the order if its price has not moved, or mark it FAILED. The delay is an
  * in-memory timer, so if the platform stops during it OrderRecoveryService finishes the order instead.
+ * Limit and stop orders go to WORKING instead, until WorkingOrderService sees their price reached; until then
+ * the trader can cancel them or move them to another price (a cancel and a new order).
  */
 @Service
 public class OrderService {
@@ -102,8 +104,9 @@ public class OrderService {
     }
 
     /**
-     * Returns the saved ACCEPTED order. A rule failure is rethrown after the REJECTED order is saved;
-     * noRollbackFor keeps that record when the exception leaves this transaction.
+     * Returns the saved order: ACCEPTED for a market order, which fills after the delay, or WORKING for a limit or
+     * stop order, which WorkingOrderService fills once its price is reached. A rule failure is rethrown after the
+     * REJECTED order is saved; noRollbackFor keeps that record when the exception leaves this transaction.
      */
     @Transactional(noRollbackFor = TradingRuleException.class)
     public OrderHistoryResult placeOrder(Integer userId, OrderRequest request) {
@@ -121,6 +124,9 @@ public class OrderService {
         if (!orderType.equals("BUY") && !orderType.equals("SELL")) {
             throw new InvalidInputException("Order type must be BUY or SELL");
         }
+        String kind = request.getOrderKind() == null || request.getOrderKind().isBlank()
+                ? TradingRules.MARKET : request.getOrderKind().trim().toUpperCase();
+        checkKindAndTriggerPrice(kind, request.getTriggerPrice());
         String ticker = request.getTicker().trim();
         BigDecimal quantity = request.getQuantity();
         Integer accountId = request.getAccountId();
@@ -136,17 +142,91 @@ public class OrderService {
         LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
         tradingRules.checkPriceExists(quote);
 
-        Orders order = orderRepository.save(
-                new Orders(accountId, instrument.getInstrumentId(), orderType, quantity, quote.getPrice(), LocalDate.now()));
-        // Each step records the quote it was priced against (BR-15)
-        recordEvent(order, user, null, "Order submitted at " + TradingRules.money(quote.getPrice()) + ", "
-                + TradingRules.describeQuote(quote, instrument.getQuoteDelayMinutes()), quote);
+        Orders order = submit(user, accountId, instrument, quote, orderType, quantity, kind, request.getTriggerPrice(), null);
+        return OrderHistoryResult.of(order, instrument.getTicker());
+    }
+
+    /**
+     * Moves a WORKING order to a new limit or stop price (and quantity, if given): the order is canceled and a new
+     * one placed in its stead, so the price the client first set stays on record (BR-14). If the new order breaks a
+     * rule, nothing changes and the old one keeps working. Returns the new order.
+     */
+    @Transactional
+    public OrderHistoryResult replaceOrder(Integer userId, Integer orderId, BigDecimal triggerPrice, BigDecimal quantity) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        ownershipService.requireOrder(orderId);
+        Orders old = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new UserNotFoundException("Order not found"));
+        requireWorking(old, "moved");
+        checkKindAndTriggerPrice(old.getOrderKind(), triggerPrice);
+        BigDecimal newQuantity = quantity == null ? old.getQuantity() : quantity;
+        tradingRules.checkQuantity(newQuantity);
+        Instruments instrument = instrumentsRepository.findById(old.getInstrumentId()).orElseThrow();
+        LatestPriceQuotes quote = latestPriceQuotesRepository.findByInstrumentId(instrument.getInstrumentId()).orElse(null);
+        tradingRules.checkPriceExists(quote);
+
+        Orders replacement;
         try {
-            tradingRules.checkTradable(instrument, marketHours.statusOf(instrument));
-            tradingRules.checkPriceIsRecent(quote, instrument.getQuoteDelayMinutes());
+            replacement = submit(user, old.getAccountId(), instrument, quote, old.getOrderType(), newQuantity,
+                    old.getOrderKind(), triggerPrice, old);
+        } catch (TradingRuleException e) {
+            // Rolled back with the rest of the change, so there is no REJECTED order to point to
+            throw new TradingRuleException(e.getCode(), e.getMessage());
+        }
+        endWorking(old, user, "Replaced by order #" + replacement.getOrderId() + ", which "
+                + TradingRules.describeTrigger(old.getOrderType(), old.getOrderKind(), triggerPrice), quote);
+        return OrderHistoryResult.of(replacement, instrument.getTicker());
+    }
+
+    /** Cancels one of the trader's WORKING orders. One that has already been triggered can't be called back. */
+    @Transactional
+    public OrderHistoryResult cancelOrder(Integer userId, Integer orderId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        ownershipService.requireOrder(orderId);
+        Orders order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new UserNotFoundException("Order not found"));
+        requireWorking(order, "canceled");
+        endWorking(order, user, "Canceled by you", null);
+        Instruments instrument = instrumentsRepository.findById(order.getInstrumentId()).orElseThrow();
+        return OrderHistoryResult.of(order, instrument.getTicker());
+    }
+
+    /**
+     * Records the order as SUBMITTED, checks it, and moves it to ACCEPTED (a market order, filled after the delay),
+     * WORKING (a limit or stop order) or REJECTED, which is saved and thrown. replacing is the working order this one
+     * takes the place of, if any: its cash is not counted as held, since it is about to be canceled.
+     */
+    private Orders submit(Users user, Integer accountId, Instruments instrument, LatestPriceQuotes quote,
+                          String orderType, BigDecimal quantity, String kind, BigDecimal triggerPrice, Orders replacing) {
+        boolean market = kind.equals(TradingRules.MARKET);
+        Orders order = new Orders(accountId, instrument.getInstrumentId(), orderType, quantity, quote.getPrice(), LocalDate.now());
+        if (!market) {
+            order.waitingFor(kind, triggerPrice);
+        }
+        order = orderRepository.save(order);
+        // Each step records the quote it was priced against (BR-15)
+        String submitted = "Order submitted at " + TradingRules.money(quote.getPrice()) + ", "
+                + TradingRules.describeQuote(quote, instrument.getQuoteDelayMinutes());
+        if (replacing != null) {
+            submitted += ", replacing order #" + replacing.getOrderId();
+        }
+        recordEvent(order, user, null, submitted, quote);
+        try {
+            if (market) {
+                tradingRules.checkTradable(instrument, marketHours.statusOf(instrument));
+                tradingRules.checkPriceIsRecent(quote, instrument.getQuoteDelayMinutes());
+            } else {
+                // A limit or stop order may wait for a closed market to open; it is checked again when triggered
+                tradingRules.checkNotSuspended(instrument);
+                tradingRules.checkPriceNotReached(orderType, kind, triggerPrice, quote);
+            }
             if (orderType.equals("BUY")) {
                 Accounts account = accountRepository.findById(accountId).orElseThrow();
-                tradingRules.checkSufficientCash(account.getBalance(), quantity, quote.getPrice());
+                BigDecimal heldForOrders = orderRepository.cashHeldForWorkingBuys(accountId,
+                        replacing == null ? null : replacing.getOrderId());
+                // A limit buy costs at most its limit; a stop buy is checked at its stop and again when it fills
+                tradingRules.checkSufficientCash(account.getBalance(), heldForOrders, quantity,
+                        market ? quote.getPrice() : triggerPrice);
             } else {
                 Holdings holding = holdingsRepository.findByAccountIdAndInstrumentId(accountId, instrument.getInstrumentId())
                         .orElse(null);
@@ -160,15 +240,54 @@ public class OrderService {
             throw e.forOrder(rejected.getOrderId());
         }
 
+        if (!market) {
+            order.setOrderStatus("WORKING");
+            Orders working = orderRepository.save(order);
+            recordEvent(working, user, "SUBMITTED", "Passed trading checks; working: "
+                    + TradingRules.describeTrigger(orderType, kind, triggerPrice), quote);
+            return working;
+        }
         order.setOrderStatus("ACCEPTED");
         Orders accepted = orderRepository.save(order);
         recordEvent(accepted, user, "SUBMITTED", "Passed trading checks", quote);
         scheduleAfterCommit(new OrderDelay(accepted.getOrderId()));
+        return accepted;
+    }
 
-        return new OrderHistoryResult(accepted.getOrderId(), instrument.getTicker(), accepted.getOrderType(),
-                accepted.getQuantity(), accepted.getPrice(), accepted.getOrderStatus(), accepted.getOrderDate(),
-                accepted.getSubmittedAt(), accepted.getAccountId(), accepted.getRejectionReason(),
-                accepted.getExecutionPrice(), accepted.getExecutedAt());
+    private static void checkKindAndTriggerPrice(String kind, BigDecimal triggerPrice) {
+        if (!kind.equals(TradingRules.MARKET) && !kind.equals(TradingRules.LIMIT) && !kind.equals(TradingRules.STOP)) {
+            throw new InvalidInputException("Order kind must be MARKET, LIMIT or STOP");
+        }
+        if (kind.equals(TradingRules.MARKET)) {
+            if (triggerPrice != null) {
+                throw new InvalidInputException("A market order fills at the live price, so it takes no trigger price");
+            }
+            return;
+        }
+        String name = kind.toLowerCase();
+        if (triggerPrice == null || triggerPrice.signum() <= 0) {
+            throw new InvalidInputException("A " + name + " order needs a " + name + " price above 0");
+        }
+        // Prices are stored to 4 decimal places
+        if (triggerPrice.stripTrailingZeros().scale() > 4) {
+            throw new InvalidInputException("Use at most 4 decimal places for the " + name + " price");
+        }
+    }
+
+    private static void requireWorking(Orders order, String action) {
+        if (!"WORKING".equals(order.getOrderStatus())) {
+            throw new TradingRuleException(TradingRules.NOT_WORKING, "Order #" + order.getOrderId() + " is "
+                    + order.getOrderStatus().toLowerCase() + ", so it can't be " + action
+                    + "; only limit and stop orders still waiting for their price can be");
+        }
+    }
+
+    /** Ends a WORKING order as CANCELED, at the trader's request. */
+    private void endWorking(Orders order, Users user, String why, LatestPriceQuotes quote) {
+        order.setOrderStatus("CANCELED");
+        order.setRejectionReason(why);
+        orderRepository.save(order);
+        recordEvent(order, user, "WORKING", why, quote);
     }
 
     /** Starts the delay only once the ACCEPTED order is committed, so OrderDelay can always find it. */

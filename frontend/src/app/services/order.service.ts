@@ -1,14 +1,16 @@
 /**
  * The signed-in trader's orders: placing one (POST /api/orders), listing them
  * (GET /api/orders?period=1d|7d|1m|1y&order=desc|asc), each order's timeline (GET /api/orders/{id}/events)
- * and disputing one (POST /api/orders/{id}/disputes, GET /api/orders/disputes).
+ * and disputing one (POST /api/orders/{id}/disputes, GET /api/orders/disputes). Limit and stop orders still
+ * waiting for their price (GET /api/orders/working) can be moved (PUT /api/orders/{id}) or canceled
+ * (POST /api/orders/{id}/cancel).
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
-import { HistoryPeriod, OrderHistoryResult, OrderStatus } from './history.service';
+import { HistoryPeriod, OrderHistoryResult, OrderKind, OrderStatus } from './history.service';
 
 export type OrderSide = 'BUY' | 'SELL';
 
@@ -17,6 +19,8 @@ export interface OrderRequest {
   ticker: string;
   orderType: OrderSide;
   quantity: number;
+  orderKind?: OrderKind;     // MARKET when absent
+  triggerPrice?: number;     // the limit or stop price, for LIMIT and STOP
 }
 
 /**
@@ -30,7 +34,7 @@ export interface OrderRejection {
 }
 
 /** Statuses an order never leaves. */
-export const FINAL_STATUSES: OrderStatus[] = ['FILLED', 'REJECTED', 'FAILED'];
+export const FINAL_STATUSES: OrderStatus[] = ['FILLED', 'REJECTED', 'FAILED', 'CANCELED'];
 
 /** One step in an order's life, e.g. ACCEPTED -> FILLED. */
 export interface OrderEvent {
@@ -93,6 +97,24 @@ export class OrderService {
     return this.handleErrors(this.http.post<OrderHistoryResult[]>('/api/orders', request)).pipe(
       map(orders => orders[0])
     );
+  }
+
+  /** Limit and stop orders still waiting for their price, across the trader's accounts, oldest first. */
+  getWorkingOrders(): Observable<OrderHistoryResult[]> {
+    return this.handleErrors(this.http.get<OrderHistoryResult[]>('/api/orders/working'));
+  }
+
+  /**
+   * Moves a working order to a new limit or stop price. The backend cancels it and returns the new order in its
+   * place; a price that breaks a rule errors with an OrderRejection and leaves the order as it was.
+   */
+  moveOrder(orderId: number, triggerPrice: number): Observable<OrderHistoryResult> {
+    return this.handleErrors(this.http.put<OrderHistoryResult>(`/api/orders/${orderId}`, { triggerPrice }));
+  }
+
+  /** Cancels a working order; errors with an OrderRejection (code NOT_WORKING) once it has been triggered. */
+  cancelOrder(orderId: number): Observable<OrderHistoryResult> {
+    return this.handleErrors(this.http.post<OrderHistoryResult>(`/api/orders/${orderId}/cancel`, {}));
   }
 
   /** Newest first unless order is 'asc'. Omitting period returns every order. */

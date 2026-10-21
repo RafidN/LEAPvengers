@@ -15,6 +15,7 @@ WORKDIR /app
 COPY scripts/requirements.txt scripts/requirements.txt
 RUN pip install -r scripts/requirements.txt
 COPY database/enterprise-schema.sql database/seed.sql database/
+COPY database/migrations database/migrations/
 COPY scripts/live_quote_generator.py scripts/yahoo_backfill.py scripts/
 COPY --chmod=755 scripts/docker-entrypoint.sh scripts/docker-entrypoint.sh
 # yfinance keeps a small cache in the home directory

@@ -88,7 +88,7 @@ class AccountsControllerTest {
         private final AccountPortfolioResponse portfolioResponse;
 
         StubAccountService(List<AccountResponse> responses, AccountPortfolioResponse portfolioResponse) {
-            super(null, null, null, null);
+            super(null, null, null, null, null);
             this.responses = responses;
             this.portfolioResponse = portfolioResponse;
         }

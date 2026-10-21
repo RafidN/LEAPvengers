@@ -7,6 +7,7 @@ import com.neueda.leap.model.dto.AccountHoldingResponse;
 import com.neueda.leap.model.dto.AccountPortfolioResponse;
 import com.neueda.leap.model.dto.AccountResponse;
 import com.neueda.leap.repository.AccountRepository;
+import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.PortfolioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,16 +24,19 @@ public class AccountService {
     private final CurrentUserService currentUserService;
     private final PortfolioRepository portfolioRepository;
     private final OwnershipService ownershipService;
+    private final OrderRepository orderRepository;
 
 
     public AccountService(AccountRepository accountRepository,
                           CurrentUserService currentUserService,
                           PortfolioRepository portfolioRepository,
-                          OwnershipService ownershipService) {
+                          OwnershipService ownershipService,
+                          OrderRepository orderRepository) {
         this.accountRepository = accountRepository;
         this.currentUserService = currentUserService;
         this.portfolioRepository = portfolioRepository;
         this.ownershipService = ownershipService;
+        this.orderRepository = orderRepository;
     }
 
     @Transactional(readOnly = true)
@@ -51,12 +55,14 @@ public class AccountService {
 
         BigDecimal totalBalance = account.getBalance().add(holdingsValue);
 
-        return new AccountPortfolioResponse(
+        AccountPortfolioResponse portfolio = new AccountPortfolioResponse(
             account.getAccountId(),
             account.getBalance(),
             holdings,
             totalBalance
         );
+        portfolio.setCashHeldForOrders(orderRepository.cashHeldForWorkingBuys(accountId, null));
+        return portfolio;
     }
 
     @Transactional(readOnly = true)

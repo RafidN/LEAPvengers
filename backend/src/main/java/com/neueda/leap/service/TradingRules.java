@@ -34,6 +34,16 @@ public class TradingRules {
     public static final String PRICE_CHANGED = "PRICE_CHANGED";
     public static final String NOT_TRADABLE = "NOT_TRADABLE";
     public static final String MARKET_CLOSED = "MARKET_CLOSED";
+    public static final String PRICE_ALREADY_REACHED = "PRICE_ALREADY_REACHED";
+    public static final String LIMIT_NOT_MET = "LIMIT_NOT_MET";
+    public static final String NOT_WORKING = "NOT_WORKING";
+
+    /** Fills now at the live price. */
+    public static final String MARKET = "MARKET";
+    /** Waits for a better price: a buy at or below the limit, a sell at or above it. */
+    public static final String LIMIT = "LIMIT";
+    /** Waits for the price to move against you: a sell (stop-loss) at or below the stop, a buy at or above it. */
+    public static final String STOP = "STOP";
 
     private final Clock clock;
     private final Duration maxPriceAge;
@@ -76,6 +86,17 @@ public class TradingRules {
         }
     }
 
+    /**
+     * A limit or stop order can be placed while its market is closed, to wait for the price once it opens, but not
+     * on an instrument the trading desk has suspended.
+     */
+    public void checkNotSuspended(Instruments instrument) {
+        if (!instrument.isTradable()) {
+            throw new TradingRuleException(NOT_TRADABLE,
+                    "Trading in " + instrument.getTicker() + " is suspended by the trading desk, so it can't be bought or sold right now");
+        }
+    }
+
     public void checkPriceExists(LatestPriceQuotes quote) {
         if (quote == null || quote.getPrice() == null || quote.getQuoteTimestamp() == null) {
             throw new TradingRuleException(NO_PRICE, "No price is available for this instrument");
@@ -112,6 +133,76 @@ public class TradingRules {
             String move = from.equals(to) ? "moved by less than a cent from " + from : "moved from " + from + " to " + to;
             throw new TradingRuleException(PRICE_CHANGED,
                     "The price " + move + " while the order was waiting to be filled, so the order price is out of date");
+        }
+    }
+
+    /**
+     * A limit or stop order waits for a price it hasn't reached yet. One whose price the market is already at would
+     * fill straight away, which is what a market order is for, so it is turned down with which side to put it on.
+     */
+    public void checkPriceNotReached(String side, String kind, BigDecimal triggerPrice, LatestPriceQuotes quote) {
+        checkPriceExists(quote);
+        if (!isReached(side, kind, triggerPrice, quote.getPrice())) {
+            return;
+        }
+        boolean buy = side.equals("BUY");
+        String what = kind.equals(LIMIT)
+                ? (buy ? "A limit buy waits for the price to fall to your limit" : "A limit sell waits for the price to rise to your limit")
+                : (buy ? "A stop buy waits for the price to rise to your stop" : "A stop-loss waits for the price to fall to your stop");
+        boolean below = kind.equals(LIMIT) == buy;
+        throw new TradingRuleException(PRICE_ALREADY_REACHED,
+                what + ", so set it " + (below ? "below" : "above") + " the current price of " + money(quote.getPrice())
+                        + ". To " + (buy ? "buy" : "sell") + " at the current price, place a market order");
+    }
+
+    /** A limit order is only filled at its limit or better; the price can move back between trigger and fill. */
+    public void checkLimitStillMet(String side, BigDecimal limit, LatestPriceQuotes quote) {
+        checkPriceExists(quote);
+        if (!isReached(side, LIMIT, limit, quote.getPrice())) {
+            throw new TradingRuleException(LIMIT_NOT_MET,
+                    "The price moved to " + money(quote.getPrice()) + ", past your limit of " + money(limit)
+                            + ", before the order could fill");
+        }
+    }
+
+    /**
+     * Whether a limit or stop order's price has been reached: a limit buy or stop sell when the price is at or below
+     * triggerPrice, a limit sell or stop buy when it is at or above it. OrderRepository.findWorkingOrderIdsAtTriggerPrice
+     * finds the same orders in the database.
+     */
+    public static boolean isReached(String side, String kind, BigDecimal triggerPrice, BigDecimal price) {
+        boolean waitsForFall = kind.equals(LIMIT) == side.equals("BUY");
+        int comparison = price.compareTo(triggerPrice);
+        return waitsForFall ? comparison <= 0 : comparison >= 0;
+    }
+
+    /**
+     * What a limit or stop order is waiting for, e.g. "sells if the price falls to $140.00 or lower (stop-loss)".
+     */
+    public static String describeTrigger(String side, String kind, BigDecimal triggerPrice) {
+        boolean buy = side.equals("BUY");
+        boolean waitsForFall = kind.equals(LIMIT) == buy;
+        String described = (buy ? "buys" : "sells") + " if the price " + (waitsForFall ? "falls" : "rises") + " to "
+                + money(triggerPrice) + " or " + (waitsForFall ? "lower" : "higher");
+        return kind.equals(STOP) && !buy ? described + " (stop-loss)" : described;
+    }
+
+    /**
+     * Cash for a buy is what the account holds less what its working buy orders could spend, so two orders can't
+     * both count on the same cash.
+     */
+    public void checkSufficientCash(BigDecimal balance, BigDecimal heldForOrders, BigDecimal quantity, BigDecimal price) {
+        if (heldForOrders == null || heldForOrders.signum() == 0) {
+            checkSufficientCash(balance, quantity, price);
+            return;
+        }
+        BigDecimal available = balance.subtract(heldForOrders);
+        BigDecimal cost = quantity.multiply(price);
+        if (available.compareTo(cost) < 0) {
+            throw new TradingRuleException(INSUFFICIENT_CASH,
+                    "This order costs " + money(cost) + " but the account only has " + money(available.max(BigDecimal.ZERO))
+                            + " available, as " + money(heldForOrders) + " of its " + money(balance)
+                            + " is held for working buy orders");
         }
     }
 

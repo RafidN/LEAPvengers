@@ -97,10 +97,10 @@ describe('ReportsComponent', () => {
     reporting = TestBed.inject(ReportingService) as unknown as MockReportingService;
   });
 
-  it('uses a 90-day default range and loads activity plus order health', async () => {
+  it('uses a 30-day default range and loads activity plus order health', async () => {
     await flush();
 
-    const expectedFrom = daysAgo(89);
+    const expectedFrom = daysAgo(29);
     const expectedTo = isoDate(new Date());
 
     expect(reporting.activityCalls[0]).toEqual({ from: expectedFrom, to: expectedTo, groupBy: 'day', segment: '' });

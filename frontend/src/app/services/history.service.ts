@@ -10,7 +10,10 @@ import { AuthService } from './auth.service';
 
 export type HistoryPeriod = '1d' | '7d' | '1m' | '1y';
 
-export type OrderStatus = 'SUBMITTED' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED';
+export type OrderStatus = 'SUBMITTED' | 'WORKING' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED' | 'CANCELED';
+
+/** MARKET fills now; LIMIT and STOP wait as WORKING until the price reaches triggerPrice. */
+export type OrderKind = 'MARKET' | 'LIMIT' | 'STOP';
 
 export interface OrderHistoryResult {
   orderId: number;
@@ -22,9 +25,12 @@ export interface OrderHistoryResult {
   orderStatus: OrderStatus;
   orderDate: string;
   submittedAt: string;
-  rejectionReason?: string; // REJECTED and FAILED orders only
+  rejectionReason?: string; // REJECTED, FAILED and CANCELED orders only
   executionPrice?: number;  // FILLED orders only
   executedAt?: string;
+  orderKind?: OrderKind;    // MARKET when absent
+  triggerPrice?: number;    // the limit or stop price
+  triggeredAt?: string;     // when a limit or stop order's price was reached
 }
 
 export interface CashTransactionResult {

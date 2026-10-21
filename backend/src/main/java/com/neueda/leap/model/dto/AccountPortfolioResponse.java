@@ -11,6 +11,8 @@ public class AccountPortfolioResponse {
     private BigDecimal balance;
     private List<AccountHoldingResponse> holdings;
     private BigDecimal totalBalance;
+    // Cash the account's working limit and stop buy orders could spend; balance less this is free to trade
+    private BigDecimal cashHeldForOrders = BigDecimal.ZERO;
 
 
 
@@ -44,6 +46,14 @@ public class AccountPortfolioResponse {
 
     public void setHoldings(List<AccountHoldingResponse> holdings) {
         this.holdings = holdings;
+    }
+
+    public BigDecimal getCashHeldForOrders() {
+        return cashHeldForOrders;
+    }
+
+    public void setCashHeldForOrders(BigDecimal cashHeldForOrders) {
+        this.cashHeldForOrders = cashHeldForOrders;
     }
 
     public BigDecimal getTotalBalance() {

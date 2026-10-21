@@ -54,6 +54,17 @@ public class Orders {
     @Column(name = "executed_at")
     private LocalDateTime executedAt;
 
+    // MARKET, LIMIT or STOP. A limit or stop order waits as WORKING until the price reaches triggerPrice.
+    @Column(name = "order_kind", nullable = false)
+    private String orderKind = "MARKET";
+
+    @Column(name = "trigger_price", precision = 14, scale = 4)
+    private BigDecimal triggerPrice;
+
+    // When a WORKING order's price was reached
+    @Column(name = "triggered_at")
+    private LocalDateTime triggeredAt;
+
     // Constructors
     public Orders() {
     }
@@ -199,5 +210,36 @@ public class Orders {
 
     public void setExecutedAt(LocalDateTime executedAt) {
         this.executedAt = executedAt;
+    }
+
+    public String getOrderKind() {
+        return orderKind;
+    }
+
+    public void setOrderKind(String orderKind) {
+        this.orderKind = orderKind;
+    }
+
+    public BigDecimal getTriggerPrice() {
+        return triggerPrice;
+    }
+
+    public void setTriggerPrice(BigDecimal triggerPrice) {
+        this.triggerPrice = triggerPrice;
+    }
+
+    public LocalDateTime getTriggeredAt() {
+        return triggeredAt;
+    }
+
+    public void setTriggeredAt(LocalDateTime triggeredAt) {
+        this.triggeredAt = triggeredAt;
+    }
+
+    /** Makes this a LIMIT or STOP order that waits until the price reaches triggerPrice. */
+    public Orders waitingFor(String kind, BigDecimal triggerPrice) {
+        this.orderKind = kind;
+        this.triggerPrice = triggerPrice;
+        return this;
     }
 }
