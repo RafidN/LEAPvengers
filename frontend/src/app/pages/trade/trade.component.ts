@@ -12,7 +12,7 @@ import {
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideChevronDown,
-  lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideFlaskConical, lucideHistory,
+  lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideHistory,
   lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucidePanelRightClose, lucidePanelRightOpen,
   lucideRotateCcw, lucideTriangleAlert, lucideX
 } from '@ng-icons/lucide';
@@ -77,17 +77,6 @@ interface WorkingNotice {
   text: string;
 }
 
-/** What a simulated order would have done, in the simple view's simulation mode; nothing is sent. */
-interface SimulationResult {
-  side: OrderSide;
-  ticker: string;
-  quantity: number;
-  price: number;
-  total: number;
-  cashAfter: number;
-  holdingsAfter: number;
-}
-
 /**
  * A quote younger than this (plus the market's data delay) counts as live; while a market is open the quote
  * generator writes its latest trade price every 3 seconds.
@@ -117,9 +106,8 @@ const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-wi
  * The Trade page, in two views that follow the Easy / Advanced mode (PreferencesService, set in Settings or with the
  * page's view toggle):
  *
- * Simple (Easy, the default): a plain ticket for beginners to buy or sell at the live price, with trading terms
- * explained, a simulator that shows an order's outcome without sending it, and the order tracker and today's orders
- * beside it. Limit and stop orders placed in the advanced view are listed but managed there.
+ * Simple (Easy, the default): a plain ticket for beginners to buy or sell at the live price, with the order tracker
+ * and today's orders beside it and the trading terms explained underneath. Limit and stop orders placed in the advanced view are listed but managed there.
  *
  * Advanced: a full-window trading screen (the route's data.fullBleed). The chart fills the page, the order ticket is a
  * panel on the right (over the chart on small screens) and working orders, the order tracker and today's orders are
@@ -139,7 +127,7 @@ const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-wi
   ],
   providers: [provideIcons({
     lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideChevronDown,
-    lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideFlaskConical, lucideHistory,
+    lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideHistory,
     lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucidePanelRightClose, lucidePanelRightOpen,
     lucideRotateCcw, lucideTriangleAlert, lucideX
   })]
@@ -185,12 +173,9 @@ export class TradeComponent {
   /** The limit or stop price, for LIMIT and STOP orders. */
   protected readonly triggerPrice = signal<number | null>(null);
 
-  // ---- Simple view: trading terms and the simulator ----
-  /** In simulation mode the order button shows what the order would do, and sends nothing. */
-  protected readonly simulationMode = signal(false);
+  // ---- Simple view ----
+  /** The trading terms card under the ticket, open until minimized. */
   protected readonly termsExpanded = signal(true);
-  protected readonly simulationBalance = signal<number | null>(null);
-  protected readonly simulationResult = signal<SimulationResult | null>(null);
 
   protected readonly loading = signal(true);
   protected readonly loadError = signal('');
@@ -709,45 +694,12 @@ export class TradeComponent {
     if (!this.canSubmit() || !instrument || accountId == null || quantity == null) {
       return;
     }
-    if (!this.advanced() && this.simulationMode()) {
-      this.simulate(instrument.ticker, quantity);
-      return;
-    }
     const request: OrderRequest = { accountId, ticker: instrument.ticker, orderType: this.side(), quantity };
     if (!this.isMarket()) {
       request.orderKind = this.kind();
       request.triggerPrice = this.validTrigger()!;
     }
     this.send(request);
-  }
-
-  protected simulate(ticker: string, quantity: number): void {
-    const price = this.quote()?.price;
-    if (price == null) {
-      return;
-    }
-    const startingCash = this.simulationBalance() ?? this.cash();
-    const simulatedCashAfter = this.side() === 'BUY'
-      ? startingCash - quantity * price
-      : startingCash + quantity * price;
-    this.simulationResult.set({
-      side: this.side(),
-      ticker,
-      quantity,
-      price,
-      total: quantity * price,
-      cashAfter: simulatedCashAfter,
-      holdingsAfter: this.ownedAfter()
-    });
-  }
-
-  protected setSimulationBalance(value: number | null): void {
-    this.simulationBalance.set(value);
-    this.clearSimulation();
-  }
-
-  protected clearSimulation(): void {
-    this.simulationResult.set(null);
   }
 
   /** Sends the last order again, e.g. after it failed because the price moved. */
@@ -778,14 +730,12 @@ export class TradeComponent {
   /**
    * Switches between the simple and advanced views by setting the Easy / Advanced mode, so Settings and the next
    * visit agree. The instrument, side and quantity carry over. The simple view only places market orders, so a limit
-   * or stop order being set up is dropped; the advanced view has no simulator.
+   * or stop order being set up is dropped.
    */
   protected setView(mode: 'easy' | 'advanced'): void {
     if (mode === 'easy') {
       this.discardDraft();
     } else {
-      this.simulationMode.set(false);
-      this.clearSimulation();
       this.panelOpen.set(isWide());
     }
     this.preferences.setMode(mode);

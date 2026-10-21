@@ -215,61 +215,6 @@
     </div>
   </div>
 
-  <!-- Plain-language definitions, and the simulator for trying an order without sending it -->
-  <section hlmCard class="mb-6" aria-labelledby="learn-title">
-    <div hlmCardHeader>
-      <h2 hlmCardTitle id="learn-title">Trading terms</h2>
-      <p hlmCardDescription>Plain-language definitions for the terms used on this ticket.</p>
-      <div hlmCardAction>
-        <button hlmBtn type="button" size="sm" variant="ghost"
-          [attr.aria-expanded]="termsExpanded()" (click)="termsExpanded.update(expanded => !expanded)">
-          {{ termsExpanded() ? 'Minimize' : 'Expand' }}
-        </button>
-        <button hlmBtn type="button" size="sm" [variant]="simulationMode() ? 'secondary' : 'outline'"
-          [attr.aria-pressed]="simulationMode()" (click)="simulationMode.update(value => !value); clearSimulation()">
-          <ng-icon name="lucideFlaskConical" />
-          {{ simulationMode() ? 'Simulation on' : 'Simulate' }}
-        </button>
-      </div>
-    </div>
-    @if (termsExpanded()) {
-    <div hlmCardContent class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Instrument</b>
-        <p class="text-muted-foreground mt-1">The asset you are trading, such as a stock, currency pair, or cryptocurrency.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Quote</b>
-        <p class="text-muted-foreground mt-1">The latest available price for one unit of an instrument.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Quantity</b>
-        <p class="text-muted-foreground mt-1">How many units you want to buy or sell.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Estimated cost</b>
-        <p class="text-muted-foreground mt-1">Quantity multiplied by the current quote. The final price can change.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Holdings</b>
-        <p class="text-muted-foreground mt-1">The assets and quantities currently owned in your account.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Execution</b>
-        <p class="text-muted-foreground mt-1">When the platform completes the order at an available price.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Proceeds</b>
-        <p class="text-muted-foreground mt-1">The estimated money received from selling an asset.</p>
-      </div>
-      <div class="bg-muted/40 rounded-md border p-3 text-sm">
-        <b>Market hours</b>
-        <p class="text-muted-foreground mt-1">The times an exchange is open for normal trading. Crypto and some FX markets differ.</p>
-      </div>
-    </div>
-    }
-  </section>
-
   @if (loadError()) {
     <div hlmAlert variant="destructive" class="mb-6">
       <p hlmAlertDescription>{{ loadError() }}</p>
@@ -375,6 +320,56 @@
         </div>
       </section>
     </div>
+  </section>
+
+  <!-- Plain-language definitions of the words on the ticket, under it -->
+  <section hlmCard class="mt-6" aria-labelledby="learn-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="learn-title">Trading terms</h2>
+      <p hlmCardDescription>Plain-language definitions for the terms used on this ticket.</p>
+      <div hlmCardAction>
+        <button hlmBtn type="button" size="sm" variant="ghost"
+          [attr.aria-expanded]="termsExpanded()" (click)="termsExpanded.update(expanded => !expanded)">
+          {{ termsExpanded() ? 'Minimize' : 'Expand' }}
+        </button>
+      </div>
+    </div>
+    @if (termsExpanded()) {
+    <div hlmCardContent class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Instrument</b>
+        <p class="text-muted-foreground mt-1">The asset you are trading, such as a stock, currency pair, or cryptocurrency.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Quote</b>
+        <p class="text-muted-foreground mt-1">The latest available price for one unit of an instrument.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Quantity</b>
+        <p class="text-muted-foreground mt-1">How many units you want to buy or sell.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Estimated cost</b>
+        <p class="text-muted-foreground mt-1">Quantity multiplied by the current quote. The final price can change.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Holdings</b>
+        <p class="text-muted-foreground mt-1">The assets and quantities currently owned in your account.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Execution</b>
+        <p class="text-muted-foreground mt-1">When the platform completes the order at an available price.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Proceeds</b>
+        <p class="text-muted-foreground mt-1">The estimated money received from selling an asset.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Market hours</b>
+        <p class="text-muted-foreground mt-1">The times an exchange is open for normal trading. Crypto and some FX markets differ.</p>
+      </div>
+    </div>
+    }
   </section>
 }
 
@@ -574,20 +569,6 @@
     </div>
   </dl>
 
-  @if (!advanced() && simulationMode()) {
-    <div class="border-primary/30 bg-primary/5 rounded-lg border p-3 text-sm" role="status">
-      <p class="font-medium">Simulation mode</p>
-      <p class="text-muted-foreground mt-1">This will calculate a hypothetical result only. No order will be sent and no account data will change.</p>
-      <div class="mt-3 flex flex-col gap-1.5">
-        <label hlmLabel for="simulation-balance">Starting simulated cash</label>
-        <input hlmInput id="simulation-balance" name="simulationBalance" type="number" min="0" step="0.01"
-          class="h-9 max-w-xs tabular-nums" placeholder="Uses account cash"
-          [ngModel]="simulationBalance()" (ngModelChange)="setSimulationBalance($event)" />
-        <p class="text-muted-foreground text-xs">Defaults to this account's current cash. This value is only used for the preview.</p>
-      </div>
-    </div>
-  }
-
   @if (warning()) {
     <div hlmAlert class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
       <ng-icon name="lucideTriangleAlert" />
@@ -611,9 +592,6 @@
     @if (submitting()) {
       <ng-icon name="lucideLoaderCircle" class="animate-spin" />
       Sending order…
-    } @else if (!advanced() && simulationMode()) {
-      <ng-icon name="lucideFlaskConical" />
-      Simulate {{ side() === 'BUY' ? 'buy' : 'sell' }}
     } @else if (isMarket()) {
       {{ side() === 'BUY' ? 'Buy' : 'Sell' }}
       {{ validQuantity() != null ? (validQuantity() | number: '1.0-2') : '' }}
@@ -625,23 +603,6 @@
       @if (validTrigger() != null) { at {{ validTrigger() | currency }} }
     }
   </button>
-
-  @if (!advanced() && simulationResult(); as result) {
-    <div class="border-primary/30 bg-primary/5 rounded-lg border p-4 text-sm" role="status" aria-live="polite">
-      <div class="flex items-center justify-between gap-2">
-        <h3 class="font-medium">Hypothetical outcome</h3>
-        <button hlmBtn type="button" size="sm" variant="ghost" (click)="clearSimulation()">Clear</button>
-      </div>
-      <p class="text-muted-foreground mt-1">
-        {{ result.side === 'BUY' ? 'Buying' : 'Selling' }} {{ result.quantity | number: '1.0-2' }} {{ result.ticker }}
-        at {{ result.price | currency }} would move {{ result.total | currency }}.
-      </p>
-      <dl class="mt-3 grid gap-2 sm:grid-cols-2">
-        <div class="flex justify-between gap-3"><dt class="text-muted-foreground">Cash after</dt><dd class="font-medium tabular-nums">{{ result.cashAfter | currency }}</dd></div>
-        <div class="flex justify-between gap-3"><dt class="text-muted-foreground">{{ result.ticker }} after</dt><dd class="font-medium tabular-nums">{{ result.holdingsAfter | number: '1.0-2' }}</dd></div>
-      </dl>
-    </div>
-  }
 </ng-template>
 
 <!-- A working order filled, moved or canceled -->
