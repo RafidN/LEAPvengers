@@ -149,6 +149,8 @@ export class TradeComponent {
   protected readonly todaysOrders = signal<OrderHistoryResult[]>([]);
   /** The last order sent, so a rejected or failed one can be tried again. */
   private lastRequest: OrderRequest | null = null;
+  private shouldPlayOrderSuccess = false;
+  private shouldPlayOrderFailure = false;
 
   protected readonly instrumentGroups = computed(() =>
     INSTRUMENT_GROUPS
@@ -361,7 +363,6 @@ export class TradeComponent {
       switchMap(() => this.orderService.getOrders('1d').pipe(catchError(() => of(null)))),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(orders => orders && this.todaysOrders.set(orders));
-
     // Follow the tracked order until it is FILLED, REJECTED or FAILED (giving up after a minute).
     // Orders fill about half a second after they are accepted, so check often enough to show each step.
     toObservable(this.trackedOrderId).pipe(
@@ -379,6 +380,16 @@ export class TradeComponent {
     ).subscribe(({ orders, events, order }) => {
       this.todaysOrders.set(orders);
       this.trackedEvents.set(events);
+      if (this.shouldPlayOrderSuccess
+        && events.some(event => event.fromStatus === 'ACCEPTED' && event.toStatus === 'FILLED')) {
+        this.shouldPlayOrderSuccess = false;
+        this.playOrderSuccess();
+      }
+      if (this.shouldPlayOrderFailure
+        && events.some(event => event.fromStatus === 'ACCEPTED' && event.toStatus === 'FAILED')) {
+        this.shouldPlayOrderFailure = false;
+        this.playOrderFailure();
+      }
       if (order && FINAL_STATUSES.includes(order.orderStatus)) {
         this.refreshBalances();
       }
@@ -466,6 +477,8 @@ export class TradeComponent {
 
   /** Opens an earlier order of today's in the tracker. */
   protected track(order: OrderHistoryResult): void {
+    this.shouldPlayOrderSuccess = false;
+    this.shouldPlayOrderFailure = false;
     this.trackedEvents.set([]);
     this.trackedSnapshot.set(order);
     this.trackedOrderId.set(order.orderId);
@@ -494,6 +507,10 @@ export class TradeComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.submitting.set(false);
+        let audio = new Audio();
+        audio.src = "orderfailure.mp3";
+        audio.load();
+        audio.play();
         const rejection = error.status === 422 ? error.error as OrderRejection : null;
         if (rejection?.orderId != null) {
           // Recorded as REJECTED: show it in the tracker straight away, like any other order
@@ -510,6 +527,10 @@ export class TradeComponent {
             rejectionReason: rejection.message
           });
         } else if (rejection) {
+        let audio = new Audio();
+        audio.src = "orderfailure.mp3";
+        audio.load();
+        audio.play();
           this.submitError.set({ headline: this.headline(rejection.message), detail: rejection.message });
         } else {
           this.submitError.set({
@@ -523,11 +544,23 @@ export class TradeComponent {
   }
 
   private startTracking(order: OrderHistoryResult): void {
+    this.shouldPlayOrderSuccess = order.orderStatus === 'ACCEPTED';
+    this.shouldPlayOrderFailure = order.orderStatus === 'ACCEPTED';
     this.trackedEvents.set([]);
     this.trackedSnapshot.set(order);
     // Put it at the top of today's list now rather than at the next poll
     this.todaysOrders.update(orders => [order, ...orders.filter(o => o.orderId !== order.orderId)]);
     this.trackedOrderId.set(order.orderId);
+  }
+
+  private playOrderSuccess(): void {
+    const audio = new Audio('ordersuccess.mp3');
+    audio.play().catch(() => {});
+  }
+
+  private playOrderFailure(): void {
+    const audio = new Audio('orderfailure.mp3');
+    audio.play().catch(() => {});
   }
 
   private refreshBalances(): void {
