@@ -42,6 +42,7 @@ pipeline {
         // Build tools, pinned so every build uses the same versions
         MAVEN_IMAGE = 'maven:3.9-eclipse-temurin-21'
         NODE_IMAGE = 'node:22-alpine'
+        PLAYWRIGHT_IMAGE = 'mcr.microsoft.com/playwright:v1.64.1-jammy'
         PYTHON_IMAGE = 'python:3.12-slim'
         SHELLCHECK_IMAGE = 'koalaman/shellcheck:stable'
         // Run build containers as the Jenkins user, so files they write in the workspace can be cleaned up
@@ -105,6 +106,12 @@ pipeline {
                                     npm ci --no-audit --no-fund &&
                                     npx ng test --watch=false &&
                                     npx ng build --configuration production'
+                        '''
+                        sh '''
+                            docker run --rm -u "$DOCKER_USER" -e HOME=/tmp -e CI=true -e NG_CLI_ANALYTICS=false \
+                                -e npm_config_cache=/ws/.cache/npm -v "$WORKSPACE":/ws -w /ws/frontend "$PLAYWRIGHT_IMAGE" sh -c '
+                                    npm ci --no-audit --no-fund &&
+                                    npx playwright test'
                         '''
                     }
                 }
