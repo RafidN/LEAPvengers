@@ -1,6 +1,8 @@
 package com.neueda.leap.repository;
 
 import com.neueda.leap.model.Orders;
+import com.neueda.leap.model.dto.OrderStatusCountByDateProjection;
+import com.neueda.leap.model.dto.OrderStatusCountProjection;
 import com.neueda.leap.model.dto.OrderHistoryResult;
 import java.util.Collection;
 import java.util.Optional;
@@ -23,6 +25,27 @@ import java.time.LocalDate;
  * Custom @Query methods return DTOs instead of managed entities
  */
 public interface OrderRepository extends JpaRepository<Orders, Integer> {
+
+    @Query("""
+        SELECT o.orderStatus AS orderStatus, COUNT(o) AS count
+        FROM Orders o
+        WHERE o.orderDate BETWEEN :startDate AND :endDate
+        GROUP BY o.orderStatus
+    """)
+    List<OrderStatusCountProjection> countByStatusBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("""
+        SELECT o.orderDate AS orderDate, o.orderStatus AS orderStatus, COUNT(o) AS count
+        FROM Orders o
+        WHERE o.orderDate BETWEEN :startDate AND :endDate
+        GROUP BY o.orderDate, o.orderStatus
+        ORDER BY o.orderDate
+    """)
+    List<OrderStatusCountByDateProjection> countByStatusByDateBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     @Query("""
         SELECT new com.neueda.leap.model.dto.OrderHistoryResult(

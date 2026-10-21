@@ -280,11 +280,19 @@ export class HistoryComponent {
     this.disputeError.set('');
     this.orderService.raiseDispute(orderId, reason, message).subscribe({
       next: dispute => {
+        let audio = new Audio();
+        audio.src = "ordersuccess.mp3";
+        audio.load();
+        audio.play();
         this.disputeSending.set(false);
         this.disputes.update(list => [dispute, ...list]);
         this.disputeFormFor.set(null);
       },
       error: (error: HttpErrorResponse) => {
+        let audio = new Audio();
+        audio.src = "orderfailure.mp3";
+        audio.load();
+        audio.play();
         this.disputeSending.set(false);
         this.disputeError.set(error.status === 400 && error.error?.message
           ? error.error.message

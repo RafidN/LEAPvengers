@@ -138,13 +138,30 @@ class ReportingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rows.length()").value(2))
                 .andExpect(jsonPath("$.segment").value("Premier"));
+
+            mockMvc.perform(get("/internal/reports/order-health?" + range).header("Authorization", analystBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalOrders").value(3))
+                .andExpect(jsonPath("$.filledOrders").value(2))
+                .andExpect(jsonPath("$.rejectedOrders").value(1))
+                .andExpect(jsonPath("$.failedOrders").value(0))
+                .andExpect(jsonPath("$.successRate").value(0.6667))
+                .andExpect(jsonPath("$.failureRate").value(0.3333))
+                .andExpect(jsonPath("$.dailyRates.length()").value(2))
+                .andExpect(jsonPath("$.dailyRates[0].totalOrders").value(3))
+                .andExpect(jsonPath("$.dailyRates[0].successRate").value(0.6667))
+                .andExpect(jsonPath("$.dailyRates[1].totalOrders").value(0));
     }
 
     @Test
     void onlyAnalystsAndOpsCanReadReports() throws Exception {
         mockMvc.perform(get("/internal/reports/activity").header("Authorization", traderBearer))
                 .andExpect(status().isForbidden());
+            mockMvc.perform(get("/internal/reports/order-health").header("Authorization", traderBearer))
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/internal/reports/activity"))
+                .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/internal/reports/order-health"))
                 .andExpect(status().isUnauthorized());
     }
 
