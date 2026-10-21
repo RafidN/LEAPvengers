@@ -45,6 +45,8 @@ class RoleAccessTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/internal/reports/activity").header("Authorization", trader))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/internal/reports/order-health").header("Authorization", trader))
+            .andExpect(status().isForbidden());
     }
 
     @Test
@@ -72,6 +74,8 @@ class RoleAccessTest {
         // Only the role check is tested here: whatever the endpoint answers, it is not a 403
         mockMvc.perform(get("/internal/reports/activity").header("Authorization", bearer("OPS", null)))
                 .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+        mockMvc.perform(get("/internal/reports/order-health").header("Authorization", bearer("OPS", null)))
+            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
     @Test

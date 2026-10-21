@@ -4,6 +4,12 @@ import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.model.ReportingLoadRun;
 import com.neueda.leap.model.dto.ActivityReportResponse;
 import com.neueda.leap.model.dto.ActivityReportRow;
+import com.neueda.leap.model.dto.OrderHealthDailyRate;
+import com.neueda.leap.model.dto.OrderHealthReportResponse;
+import com.neueda.leap.model.dto.OrderHealthStatusCount;
+import com.neueda.leap.model.dto.OrderStatusCountByDateProjection;
+import com.neueda.leap.model.dto.OrderStatusCountProjection;
+import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.ReportingLoadRunRepository;
 import com.neueda.leap.repository.TradeActivityRepository;
 import com.neueda.leap.repository.TradeActivityRepository.DailyClientActivity;
@@ -27,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 /**
@@ -37,6 +44,7 @@ import java.util.Set;
 @Service
 public class ReportingService {
     static final int DEFAULT_DAYS = 30;
+    static final int DEFAULT_ORDER_HEALTH_DAYS = 90;
     static final int MAX_DAYS = 3 * 366;
     static final List<String> GROUPINGS = List.of("day", "week", "month", "instrument", "assetClass", "segment");
 
@@ -44,17 +52,21 @@ public class ReportingService {
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US);
 
     private final TradeActivityRepository tradeActivityRepository;
+    private final OrderRepository orderRepository;
     private final ReportingLoadRunRepository loadRunRepository;
     private final Clock clock;
 
     @Autowired
-    public ReportingService(TradeActivityRepository tradeActivityRepository, ReportingLoadRunRepository loadRunRepository) {
-        this(tradeActivityRepository, loadRunRepository, Clock.systemDefaultZone());
+    public ReportingService(TradeActivityRepository tradeActivityRepository, OrderRepository orderRepository,
+                            ReportingLoadRunRepository loadRunRepository) {
+        this(tradeActivityRepository, orderRepository, loadRunRepository, Clock.systemDefaultZone());
     }
 
-    ReportingService(TradeActivityRepository tradeActivityRepository, ReportingLoadRunRepository loadRunRepository,
+    ReportingService(TradeActivityRepository tradeActivityRepository, OrderRepository orderRepository,
+                     ReportingLoadRunRepository loadRunRepository,
                      Clock clock) {
         this.tradeActivityRepository = tradeActivityRepository;
+        this.orderRepository = orderRepository;
         this.loadRunRepository = loadRunRepository;
         this.clock = clock;
     }
@@ -65,14 +77,9 @@ public class ReportingService {
      */
     @Transactional(readOnly = true)
     public ActivityReportResponse getActivity(LocalDate from, LocalDate to, String groupBy, String segment) {
-        LocalDate end = to != null ? to : LocalDate.now(clock);
-        LocalDate start = from != null ? from : end.minusDays(DEFAULT_DAYS - 1);
-        if (start.isAfter(end)) {
-            throw new InvalidInputException("The start date must be on or before the end date");
-        }
-        if (ChronoUnit.DAYS.between(start, end) >= MAX_DAYS) {
-            throw new InvalidInputException("Reports can cover at most " + MAX_DAYS + " days");
-        }
+        DateRange range = resolveDateRange(from, to, DEFAULT_DAYS);
+        LocalDate start = range.start();
+        LocalDate end = range.end();
         String grouping = resolveGrouping(groupBy);
         String segmentFilter = segment == null || segment.isBlank() ? null : segment.trim();
 
@@ -88,6 +95,103 @@ public class ReportingService {
         return new ActivityReportResponse(start, end, grouping, segmentFilter,
                 loadRunRepository.findTopByOrderByFinishedAtDesc().map(ReportingLoadRun::getFinishedAt).orElse(null),
                 rows, totals(daily));
+    }
+
+    /**
+     * Order-health analytics by status over a date range.
+     * Success is FILLED / total orders; failure is (REJECTED + FAILED) / total orders.
+     */
+    @Transactional(readOnly = true)
+    public OrderHealthReportResponse getOrderHealth(LocalDate from, LocalDate to) {
+        DateRange range = resolveDateRange(from, to, DEFAULT_ORDER_HEALTH_DAYS);
+        List<OrderStatusCountProjection> counts = orderRepository.countByStatusBetween(range.start(), range.end());
+        List<OrderStatusCountByDateProjection> countsByDate = orderRepository.countByStatusByDateBetween(range.start(), range.end());
+
+        long submitted = countFor(counts, "SUBMITTED");
+        long accepted = countFor(counts, "ACCEPTED");
+        long filled = countFor(counts, "FILLED");
+        long rejected = countFor(counts, "REJECTED");
+        long failed = countFor(counts, "FAILED");
+        long total = submitted + accepted + filled + rejected + failed;
+
+        return new OrderHealthReportResponse(
+                range.start(),
+                range.end(),
+                total,
+                submitted,
+                accepted,
+                filled,
+                rejected,
+                failed,
+                ratio(filled, total),
+                ratio(rejected + failed, total),
+                List.of(
+                        new OrderHealthStatusCount("SUBMITTED", submitted),
+                        new OrderHealthStatusCount("ACCEPTED", accepted),
+                        new OrderHealthStatusCount("FILLED", filled),
+                        new OrderHealthStatusCount("REJECTED", rejected),
+                        new OrderHealthStatusCount("FAILED", failed)
+                ),
+                dailyRates(range.start(), range.end(), countsByDate)
+        );
+    }
+
+            private List<OrderHealthDailyRate> dailyRates(LocalDate start, LocalDate end,
+                                  List<OrderStatusCountByDateProjection> countsByDate) {
+            Map<LocalDate, Map<String, Long>> byDay = new HashMap<>();
+            for (OrderStatusCountByDateProjection row : countsByDate) {
+                byDay.computeIfAbsent(row.getOrderDate(), ignored -> new HashMap<>())
+                    .put(row.getOrderStatus(), row.getCount() == null ? 0L : row.getCount());
+            }
+
+            List<OrderHealthDailyRate> daily = new ArrayList<>();
+            for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+                Map<String, Long> statuses = byDay.getOrDefault(day, Map.of());
+                long submitted = statuses.getOrDefault("SUBMITTED", 0L);
+                long accepted = statuses.getOrDefault("ACCEPTED", 0L);
+                long filled = statuses.getOrDefault("FILLED", 0L);
+                long rejected = statuses.getOrDefault("REJECTED", 0L);
+                long failed = statuses.getOrDefault("FAILED", 0L);
+                long total = submitted + accepted + filled + rejected + failed;
+                daily.add(new OrderHealthDailyRate(
+                    day,
+                    total,
+                    filled,
+                    rejected,
+                    failed,
+                    ratio(filled, total),
+                    ratio(rejected + failed, total)
+                ));
+            }
+            return daily;
+            }
+
+    private DateRange resolveDateRange(LocalDate from, LocalDate to, int defaultDays) {
+        LocalDate end = to != null ? to : LocalDate.now(clock);
+        LocalDate start = from != null ? from : end.minusDays(defaultDays - 1L);
+        if (start.isAfter(end)) {
+            throw new InvalidInputException("The start date must be on or before the end date");
+        }
+        if (ChronoUnit.DAYS.between(start, end) >= MAX_DAYS) {
+            throw new InvalidInputException("Reports can cover at most " + MAX_DAYS + " days");
+        }
+        return new DateRange(start, end);
+    }
+
+    private long countFor(List<OrderStatusCountProjection> counts, String status) {
+        return counts.stream()
+                .filter(c -> status.equals(c.getOrderStatus()))
+                .findFirst()
+                .map(c -> c.getCount() == null ? 0L : c.getCount())
+                .orElse(0L);
+    }
+
+    private BigDecimal ratio(long numerator, long denominator) {
+        if (denominator <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(numerator)
+                .divide(BigDecimal.valueOf(denominator), 4, RoundingMode.HALF_UP);
     }
 
     private static String resolveGrouping(String groupBy) {
@@ -154,6 +258,9 @@ public class ReportingService {
 
     private static BigDecimal money(BigDecimal value) {
         return (value == null ? BigDecimal.ZERO : value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private record DateRange(LocalDate start, LocalDate end) {
     }
 
     /** Running totals for one period, counting each client once however many days they traded. */
