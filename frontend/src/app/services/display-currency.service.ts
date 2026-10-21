@@ -5,6 +5,10 @@ import { PreferencesService } from './preferences.service';
 
 const DISPLAY_RATES: Record<string, number> = { USD: 1, EUR: 0.92, GBP: 0.79, CAD: 1.36, AUD: 1.52 };
 const LOCALES: Record<string, string> = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE' };
+const CURRENCY_LOCALE_OVERRIDES: Partial<Record<string, string>> = {
+  // Keep USD formatting with dot decimals (e.g. $1,234.56), regardless of UI language.
+  USD: 'en-US'
+};
 
 @Injectable({ providedIn: 'root' })
 export class DisplayCurrencyService {
@@ -26,7 +30,7 @@ export class DisplayCurrencyService {
 
   format(value: number, digitsInfo = '1.2-2'): string {
     const currency = this.preferences.currency();
-    const locale = LOCALES[this.preferences.language()] ?? 'en-US';
+    const locale = CURRENCY_LOCALE_OVERRIDES[currency] ?? (LOCALES[this.preferences.language()] ?? 'en-US');
     return new Intl.NumberFormat(locale, {
       style: 'currency', currency, minimumFractionDigits: Number(digitsInfo.slice(2, 3)) || 2,
       maximumFractionDigits: Number(digitsInfo.slice(4)) || 2

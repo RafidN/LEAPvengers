@@ -22,6 +22,14 @@ interface SegmentSummary {
   filledOrders: number;
 }
 
+function asInstrumentInsights(value: unknown): InstrumentInsightsResult[] {
+  if (Array.isArray(value)) {
+    return value as InstrumentInsightsResult[];
+  }
+  const wrapped = (value as { instruments?: unknown } | null)?.instruments;
+  return Array.isArray(wrapped) ? (wrapped as InstrumentInsightsResult[]) : [];
+}
+
 /**
  * Analyst insights: trading activity and portfolio value by client segment.
  * Clients are shown by id only; analysts don't need names or emails (BRS 9.3).
@@ -164,7 +172,7 @@ export class InsightsComponent {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(({ clients, instruments }) => {
       this.clients.set(clients);
-      this.instruments.set(instruments);
+      this.instruments.set(asInstrumentInsights(instruments));
       this.loading.set(false);
     });
   }

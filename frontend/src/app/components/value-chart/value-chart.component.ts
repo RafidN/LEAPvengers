@@ -47,11 +47,8 @@ const crosshair: Plugin<'line'> = {
   imports: [BaseChartDirective],
   template: `
     <div class="relative h-64 w-full">
-      <!-- Rebuilt when the theme or masking changes: Chart.js only reads its options when created -->
-      @for (key of [renderKey()]; track key) {
-        <canvas baseChart type="line" role="img" [attr.aria-label]="summary()"
-          [data]="data()" [options]="options()" [plugins]="plugins"></canvas>
-      }
+      <canvas baseChart type="line" role="img" [attr.aria-label]="summary()"
+        [data]="data()" [options]="options()" [plugins]="plugins"></canvas>
     </div>
   `
 })
@@ -64,7 +61,6 @@ export class ValueChartComponent {
 
   protected readonly plugins = [crosshair];
   private readonly palette = computed(() => chartPalette(this.theme()));
-  protected readonly renderKey = computed(() => `${this.theme()}:${this.masked()}`);
 
   /** Times for a single day, dates for anything longer. */
   private readonly labelFormat = computed<Intl.DateTimeFormatOptions>(() => {
