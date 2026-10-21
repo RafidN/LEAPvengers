@@ -72,4 +72,31 @@ test.describe('trader :: dashboard page', () => {
     await expect(page.getByRole('heading', { name: 'Trade' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Advanced view' })).toBeVisible();
   });
+
+  test('theme change in settings updates app theme class', async ({ page }) => {
+    await page.goto('/settings');
+
+    const themeSelect = page.locator('#settings-theme');
+    await expect(themeSelect).toBeVisible();
+
+    await themeSelect.selectOption('dark');
+    const darkApplied = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(darkApplied).toBe(true);
+
+    await themeSelect.selectOption('pastel');
+    const pastelApplied = await page.evaluate(() => document.documentElement.classList.contains('pastel'));
+    expect(pastelApplied).toBe(true);
+
+    await themeSelect.selectOption('light');
+    const lightClearedThemeClasses = await page.evaluate(() => {
+      const classes = document.documentElement.classList;
+      return !classes.contains('dark')
+        && !classes.contains('pastel')
+        && !classes.contains('solarized')
+        && !classes.contains('earthy')
+        && !classes.contains('bold')
+        && !classes.contains('vintage');
+    });
+    expect(lightClearedThemeClasses).toBe(true);
+  });
 });
