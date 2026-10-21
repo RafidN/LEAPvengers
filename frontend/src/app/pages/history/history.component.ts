@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { DOCUMENT, DatePipe, DecimalPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -73,7 +74,7 @@ const IN_PROGRESS_REFRESH_MS = 1_000;
   selector: 'app-history',
   templateUrl: './history.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon, RouterLink,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon, RouterLink,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports,
     HlmTableImports, HlmTabsImports
   ],

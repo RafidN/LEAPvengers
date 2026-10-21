@@ -1,4 +1,4 @@
-@if (advanced) {
+@if (advanced()) {
   <!-- Advanced view: the whole window under the navigation (57px: its 56px bar and border) -->
   <div class="flex h-[calc(100dvh-57px)] flex-col overflow-hidden">
     <h1 class="sr-only">Trade, advanced view</h1>
@@ -55,11 +55,11 @@
         <a hlmBtn variant="ghost" size="icon" routerLink="/history" aria-label="Order history" title="Order history">
           <ng-icon name="lucideHistory" />
         </a>
-        <a hlmBtn variant="ghost" size="sm" routerLink="/trade" [queryParams]="viewParams()"
-          title="Back to the simple buy and sell screen">
+        <button hlmBtn variant="ghost" size="sm" type="button" (click)="setView('easy')"
+          title="Back to the simple buy and sell screen (Easy mode in Settings)">
           <ng-icon name="lucideArrowLeftRight" />
           <span class="max-sm:sr-only">Simple view</span>
-        </a>
+        </button>
         <button hlmBtn size="sm" type="button" [variant]="panelOpen() ? 'secondary' : 'default'"
           [attr.aria-expanded]="panelOpen()" aria-controls="order-panel" (click)="togglePanel()">
           <ng-icon [name]="panelOpen() ? 'lucidePanelRightClose' : 'lucidePanelRightOpen'" />
@@ -207,13 +207,68 @@
         <ng-icon name="lucideHistory" />
         Order history
       </a>
-      <a hlmBtn variant="outline" routerLink="/trade/advanced" [queryParams]="viewParams()"
-        title="A full-screen live chart, with limit orders and stop-losses">
+      <button hlmBtn variant="outline" type="button" (click)="setView('advanced')"
+        title="A full-screen live chart, with limit orders and stop-losses (Advanced mode in Settings)">
         <ng-icon name="lucideChartCandlestick" />
         Advanced view
-      </a>
+      </button>
     </div>
   </div>
+
+  <!-- Plain-language definitions, and the simulator for trying an order without sending it -->
+  <section hlmCard class="mb-6" aria-labelledby="learn-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="learn-title">Trading terms</h2>
+      <p hlmCardDescription>Plain-language definitions for the terms used on this ticket.</p>
+      <div hlmCardAction>
+        <button hlmBtn type="button" size="sm" variant="ghost"
+          [attr.aria-expanded]="termsExpanded()" (click)="termsExpanded.update(expanded => !expanded)">
+          {{ termsExpanded() ? 'Minimize' : 'Expand' }}
+        </button>
+        <button hlmBtn type="button" size="sm" [variant]="simulationMode() ? 'secondary' : 'outline'"
+          [attr.aria-pressed]="simulationMode()" (click)="simulationMode.update(value => !value); clearSimulation()">
+          <ng-icon name="lucideFlaskConical" />
+          {{ simulationMode() ? 'Simulation on' : 'Simulate' }}
+        </button>
+      </div>
+    </div>
+    @if (termsExpanded()) {
+    <div hlmCardContent class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Instrument</b>
+        <p class="text-muted-foreground mt-1">The asset you are trading, such as a stock, currency pair, or cryptocurrency.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Quote</b>
+        <p class="text-muted-foreground mt-1">The latest available price for one unit of an instrument.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Quantity</b>
+        <p class="text-muted-foreground mt-1">How many units you want to buy or sell.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Estimated cost</b>
+        <p class="text-muted-foreground mt-1">Quantity multiplied by the current quote. The final price can change.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Holdings</b>
+        <p class="text-muted-foreground mt-1">The assets and quantities currently owned in your account.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Execution</b>
+        <p class="text-muted-foreground mt-1">When the platform completes the order at an available price.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Proceeds</b>
+        <p class="text-muted-foreground mt-1">The estimated money received from selling an asset.</p>
+      </div>
+      <div class="bg-muted/40 rounded-md border p-3 text-sm">
+        <b>Market hours</b>
+        <p class="text-muted-foreground mt-1">The times an exchange is open for normal trading. Crypto and some FX markets differ.</p>
+      </div>
+    </div>
+    }
+  </section>
 
   @if (loadError()) {
     <div hlmAlert variant="destructive" class="mb-6">
@@ -286,10 +341,10 @@
                 </li>
               }
             </ul>
-            <a hlmBtn variant="outline" size="sm" class="self-start" routerLink="/trade/advanced" [queryParams]="viewParams()">
+            <button hlmBtn variant="outline" size="sm" type="button" class="self-start" (click)="setView('advanced')">
               <ng-icon name="lucideChartCandlestick" />
               Manage in advanced view
-            </a>
+            </button>
           </div>
         </section>
       }
@@ -395,14 +450,17 @@
       <p hlmAlertDescription class="text-amber-900 dark:text-amber-200">
         {{ reason }}
         @if (quote()?.opensAt; as opens) { That's {{ opens | date: 'EEE d MMM, HH:mm' }} your time. }
-        @if (advanced && !suspended()) { A limit or stop order can still be placed now; it waits until the market opens. }
+        @if (advanced() && !suspended()) { A limit or stop order can still be placed now; it waits until the market opens. }
       </p>
     </div>
   }
 
   <!-- Buy or sell -->
   <div class="flex flex-col gap-1.5">
-    <span hlmLabel id="trade-side-label" [class.sr-only]="advanced">Side</span>
+    <span hlmLabel id="trade-side-label" [class.sr-only]="advanced()">Side</span>
+    @if (!advanced()) {
+      <p class="text-muted-foreground text-xs">Side means whether you are buying an asset or selling units you already hold.</p>
+    }
     <div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="trade-side-label">
       <button type="button" class="h-10 rounded-lg border text-sm font-semibold transition-colors"
         [attr.aria-pressed]="side() === 'BUY'"
@@ -421,7 +479,7 @@
     </div>
   </div>
 
-  @if (advanced) {
+  @if (advanced()) {
     <!-- Market, limit or stop -->
     <div class="flex flex-col gap-1.5">
       <span hlmLabel id="trade-kind-label">Order type</span>
@@ -439,7 +497,12 @@
     <!-- Limit or stop price -->
     @if (!isMarket()) {
       <div class="flex flex-col gap-1.5">
-        <label hlmLabel for="trade-trigger">{{ kind() === 'LIMIT' ? 'Limit price' : 'Stop price' }} (USD)</label>
+        <label hlmLabel for="trade-trigger">
+          {{ kind() === 'LIMIT' ? 'Limit price' : 'Stop price' }} (USD)
+          @if (validTrigger() != null && preferences.currency() !== 'USD') {
+            <span class="text-muted-foreground font-normal">≈ {{ validTrigger() | currency }}</span>
+          }
+        </label>
         <input hlmInput id="trade-trigger" name="triggerPrice" type="number" inputmode="decimal" min="0" step="any"
           class="h-9 tabular-nums" autocomplete="off" [attr.aria-invalid]="!!triggerError()" aria-describedby="trade-trigger-help"
           [ngModel]="triggerPrice()" (ngModelChange)="setTriggerPrice($event)" />
@@ -511,6 +574,20 @@
     </div>
   </dl>
 
+  @if (!advanced() && simulationMode()) {
+    <div class="border-primary/30 bg-primary/5 rounded-lg border p-3 text-sm" role="status">
+      <p class="font-medium">Simulation mode</p>
+      <p class="text-muted-foreground mt-1">This will calculate a hypothetical result only. No order will be sent and no account data will change.</p>
+      <div class="mt-3 flex flex-col gap-1.5">
+        <label hlmLabel for="simulation-balance">Starting simulated cash</label>
+        <input hlmInput id="simulation-balance" name="simulationBalance" type="number" min="0" step="0.01"
+          class="h-9 max-w-xs tabular-nums" placeholder="Uses account cash"
+          [ngModel]="simulationBalance()" (ngModelChange)="setSimulationBalance($event)" />
+        <p class="text-muted-foreground text-xs">Defaults to this account's current cash. This value is only used for the preview.</p>
+      </div>
+    </div>
+  }
+
   @if (warning()) {
     <div hlmAlert class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
       <ng-icon name="lucideTriangleAlert" />
@@ -534,6 +611,9 @@
     @if (submitting()) {
       <ng-icon name="lucideLoaderCircle" class="animate-spin" />
       Sending order…
+    } @else if (!advanced() && simulationMode()) {
+      <ng-icon name="lucideFlaskConical" />
+      Simulate {{ side() === 'BUY' ? 'buy' : 'sell' }}
     } @else if (isMarket()) {
       {{ side() === 'BUY' ? 'Buy' : 'Sell' }}
       {{ validQuantity() != null ? (validQuantity() | number: '1.0-2') : '' }}
@@ -545,6 +625,23 @@
       @if (validTrigger() != null) { at {{ validTrigger() | currency }} }
     }
   </button>
+
+  @if (!advanced() && simulationResult(); as result) {
+    <div class="border-primary/30 bg-primary/5 rounded-lg border p-4 text-sm" role="status" aria-live="polite">
+      <div class="flex items-center justify-between gap-2">
+        <h3 class="font-medium">Hypothetical outcome</h3>
+        <button hlmBtn type="button" size="sm" variant="ghost" (click)="clearSimulation()">Clear</button>
+      </div>
+      <p class="text-muted-foreground mt-1">
+        {{ result.side === 'BUY' ? 'Buying' : 'Selling' }} {{ result.quantity | number: '1.0-2' }} {{ result.ticker }}
+        at {{ result.price | currency }} would move {{ result.total | currency }}.
+      </p>
+      <dl class="mt-3 grid gap-2 sm:grid-cols-2">
+        <div class="flex justify-between gap-3"><dt class="text-muted-foreground">Cash after</dt><dd class="font-medium tabular-nums">{{ result.cashAfter | currency }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-muted-foreground">{{ result.ticker }} after</dt><dd class="font-medium tabular-nums">{{ result.holdingsAfter | number: '1.0-2' }}</dd></div>
+      </dl>
+    </div>
+  }
 </ng-template>
 
 <!-- A working order filled, moved or canceled -->
@@ -573,7 +670,7 @@
         Order #{{ o.orderId }} · {{ orderLabel(o) }} {{ o.quantity | number: '1.0-2' }} {{ o.ticker }}
         @if (o.triggerPrice != null) { at {{ o.triggerPrice | currency }} }
       </p>
-      <ol [class]="advanced ? 'grid gap-3 sm:grid-cols-3' : 'flex flex-col gap-4'" aria-live="polite">
+      <ol [class]="advanced() ? 'grid gap-3 sm:grid-cols-3' : 'flex flex-col gap-4'" aria-live="polite">
         @for (step of steps(); track step.title) {
           <li class="flex gap-2.5">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-sm"
@@ -615,7 +712,7 @@
           @case ('WORKING') {
             <p class="text-muted-foreground text-sm">
               Waiting for your price.
-              {{ advanced ? 'Drag its line on the chart to move it, or cancel it from Working orders.' : 'You can move or cancel it in the advanced view.' }}
+              {{ advanced() ? 'Drag its line on the chart to move it, or cancel it from Working orders.' : 'You can move or cancel it in the advanced view.' }}
             </p>
           }
           @case ('CANCELED') {
@@ -639,13 +736,13 @@
             <ng-icon name="lucideHistory" />
             View in history
           </a>
-          @if (o.orderStatus === 'FILLED' && !advanced) {
+          @if (o.orderStatus === 'FILLED' && !advanced()) {
             <a hlmBtn variant="ghost" size="sm" routerLink="/dashboard">See portfolio</a>
           }
         </span>
       </div>
     </div>
-  } @else if (advanced) {
+  } @else if (advanced()) {
     <p class="text-muted-foreground text-sm">
       Your next order's progress shows here: submitted, checked (accepted, working or rejected), then filled at the
       live price or once your price is reached.
@@ -661,8 +758,8 @@
 
 <!-- Today's orders; one opens in the tracker -->
 <ng-template #todayList>
-  <ul [class]="advanced ? 'grid gap-x-6 gap-y-0.5 md:grid-cols-2' : 'flex flex-col gap-1'">
-    @for (o of advanced ? todaysOrders() : todaysOrders().slice(0, 6); track o.orderId) {
+  <ul [class]="advanced() ? 'grid gap-x-6 gap-y-0.5 md:grid-cols-2' : 'flex flex-col gap-1'">
+    @for (o of advanced() ? todaysOrders() : todaysOrders().slice(0, 6); track o.orderId) {
       <li>
         <button type="button" class="hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm"
           [class.bg-muted]="o.orderId === trackedOrderId()" (click)="track(o)">

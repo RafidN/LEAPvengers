@@ -21,6 +21,8 @@ describe('chart geometry', () => {
     expect(priceStep(g)).toBe(0.1);
     expect(priceStep({ ...g, min: 80_000, max: 82_000 })).toBe(10);
     expect(priceStep({ ...g, min: 1.12, max: 1.125 })).toBe(0.0001);
+    // A $68 stock over a narrow range still snaps to whole cents
+    expect(priceStep({ ...g, min: 67.9, max: 68.4 })).toBe(0.01);
   });
 
   it('rounds without floating-point dust', () => {

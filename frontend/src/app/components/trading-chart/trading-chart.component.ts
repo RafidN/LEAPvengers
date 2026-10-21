@@ -5,7 +5,8 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideMoveVertical, lucidePlus, lucideX } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../chart-theme';
+import { CHART_PROVIDERS, chartPalette } from '../chart-theme';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
 import { PricePoint } from '../price-chart/price-chart.component';
 import {
   ChartGeometry, OrderKind, OrderSide, decimalsOf, orderName, ordersAt, priceStep, priceToY, snap, waitsAt, yToPrice
@@ -189,6 +190,7 @@ interface Drag {
 })
 export class TradingChartComponent {
   protected readonly theme = inject(ThemeService).theme;
+  private readonly currency = inject(DisplayCurrencyService);
   private readonly frame = viewChild.required<ElementRef<HTMLElement>>('frame');
   private readonly confirmDialog = viewChild.required<ElementRef<HTMLDialogElement>>('moveDialog');
 
@@ -311,7 +313,7 @@ export class TradingChartComponent {
   });
 
   protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const points = this.points();
     const up = points.length < 2 || points[points.length - 1].value >= points[0].value;
     return {
@@ -330,7 +332,7 @@ export class TradingChartComponent {
   });
 
   protected readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
-    const palette = CHART_PALETTES[this.theme()];
+    const palette = chartPalette(this.theme());
     const values = [...this.points().map(p => p.value), ...this.rangeExtras()];
     const low = Math.min(...values);
     const high = Math.max(...values);
@@ -373,12 +375,13 @@ export class TradingChartComponent {
     return priceToY(price, g);
   }
 
-  /** $77,670.00, or more decimals where the chart snaps finer than a cent (FX). */
+  /**
+   * A price in the display currency chosen in Settings, like the rest of the site: $77,670.00, or more decimals
+   * where the chart snaps finer than a cent (FX). Prices themselves, and the orders placed, stay in US dollars.
+   */
   protected format(price: number): string {
     const decimals = Math.max(2, decimalsOf(this.step()));
-    return price.toLocaleString('en-US', {
-      style: 'currency', currency: 'USD', minimumFractionDigits: decimals, maximumFractionDigits: decimals
-    });
+    return this.currency.format(price, `1.${decimals}-${decimals}`);
   }
 
   protected quantity(value: number): string {

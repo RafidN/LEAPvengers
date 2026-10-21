@@ -1,11 +1,12 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, combineLatest, debounceTime, distinctUntilChanged, interval, of, startWith, switchMap } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeftRight, lucideSearch } from '@ng-icons/lucide';
+import { lucideArrowLeftRight, lucideSearch, lucideShieldAlert } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
@@ -18,16 +19,18 @@ import { HistoryPeriod, HistoryService } from '../../services/history.service';
 import { InstrumentSearchService, PriceQuoteResult, WATCHLIST } from '../../services/instrument-search.service';
 import { PRICE_REFRESH_MS } from '../../services/instrument.service';
 import { AuthService } from '../../services/auth.service';
+import { PreferencesService } from '../../services/preferences.service';
+import { DecimalPipe } from '@angular/common';
 
 /** Search instruments and chart their price history; below, today's top movers and market news. */
 @Component({
   selector: 'app-markets',
   templateUrl: './markets.component.html',
   imports: [
-    CurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent, RouterLink, MarketMoversComponent, MarketNewsComponent,
-    HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
+    DisplayCurrencyPipe, PercentPipe, FormsModule, NgIcon, PriceChartComponent, RouterLink, MarketMoversComponent, MarketNewsComponent,
+    HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports, DecimalPipe
   ],
-  providers: [provideIcons({ lucideArrowLeftRight, lucideSearch })]
+  providers: [provideIcons({ lucideArrowLeftRight, lucideSearch, lucideShieldAlert })]
 })
 export class MarketsComponent {
   private readonly instruments = inject(InstrumentSearchService);
@@ -42,6 +45,7 @@ export class MarketsComponent {
 
   /** Markets is open to every role, but only Traders can place orders. */
   protected readonly canTrade = inject(AuthService).getRole() === 'TRADER';
+  protected readonly preferences = inject(PreferencesService);
 
   protected readonly query = signal('');
   protected readonly results = signal<PriceQuoteResult[]>([]);
@@ -49,6 +53,7 @@ export class MarketsComponent {
   protected readonly period = signal<HistoryPeriod>('7d');
   protected readonly points = signal<PricePoint[]>([]);
   protected readonly chartLoading = signal(true);
+  protected readonly riskSnapshotExpanded = signal(true);
 
   protected readonly selectedQuote = computed(() => this.results().find(q => q.ticker === this.selected()));
 
@@ -61,6 +66,34 @@ export class MarketsComponent {
     const first = points[0].value;
     const last = points[points.length - 1].value;
     return { amount: last - first, ratio: (last - first) / first };
+  });
+
+  protected readonly riskAssessment = computed(() => {
+    const values = this.points().map(point => point.value).filter(value => Number.isFinite(value) && value > 0);
+    if (values.length < 3) {
+      return null;
+    }
+
+    const returns = values.slice(1).map((value, index) => value / values[index] - 1);
+    const averageReturn = returns.reduce((total, value) => total + value, 0) / returns.length;
+    const variance = returns.reduce((total, value) => total + (value - averageReturn) ** 2, 0) / returns.length;
+    const volatility = Math.sqrt(variance) * 100;
+    let peak = values[0];
+    let maxDrawdown = 0;
+    for (const value of values) {
+      peak = Math.max(peak, value);
+      maxDrawdown = Math.max(maxDrawdown, (peak - value) / peak * 100);
+    }
+
+    const first = values[0];
+    const last = values[values.length - 1];
+    const momentum = (last / first - 1) * 100;
+    const riskScore = Math.round(Math.min(100, volatility * 3 + maxDrawdown * 0.8));
+    const successEstimate = Math.round(Math.max(5, Math.min(95, 50 + momentum * 1.5 - riskScore * 0.2)));
+    const riskLabel = riskScore >= 70 ? 'High' : riskScore >= 40 ? 'Medium' : 'Lower';
+    const dataConfidence = values.length >= 30 ? 'Moderate' : 'Limited';
+
+    return { volatility, maxDrawdown, momentum, riskScore, riskLabel, successEstimate, dataConfidence, observations: values.length };
   });
 
   constructor() {

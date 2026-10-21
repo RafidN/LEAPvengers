@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -28,7 +29,7 @@ const STATUS_META: Record<string, { label: string; variant: 'default' | 'seconda
   selector: 'app-audit',
   templateUrl: './audit.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, FormsModule, NgIcon,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports, HlmTableImports
   ],
   providers: [provideIcons({

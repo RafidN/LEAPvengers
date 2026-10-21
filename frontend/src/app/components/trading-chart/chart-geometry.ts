@@ -29,13 +29,14 @@ export function yToPrice(y: number, g: ChartGeometry): number {
 }
 
 /**
- * How finely a dragged price snaps: about a pixel's worth of the visible range, as a round number, and never finer
- * than the 4 decimal places prices are stored to. Bitcoin snaps to $10, a $150 stock to a cent, EUR/USD to 0.0001.
+ * How finely a dragged price snaps: about a pixel's worth of the visible range, as a round number. Never finer than a
+ * cent for prices of $10 and up, nor than the 4 decimal places prices are stored to below that. Bitcoin snaps to $10,
+ * a $150 stock to a cent, EUR/USD to 0.0001.
  */
 export function priceStep(g: ChartGeometry): number {
   const perPixel = (g.max - g.min) / Math.max(g.bottom - g.top, 1);
   const step = 10 ** Math.floor(Math.log10(Math.max(perPixel, 1e-9)));
-  return Math.max(step, 0.0001);
+  return Math.max(step, g.min >= 10 ? 0.01 : 0.0001);
 }
 
 /** price rounded to the nearest step, without floating-point dust (e.g. 1.1213 rather than 1.12130000001). */

@@ -39,7 +39,7 @@ public class OrderRecoveryService {
     public OrderRecoveryService(OrderRepository orderRepository, OrderService orderService,
                                 OrderExecutionService orderExecutionService,
                                 @Value("${leap.trading.order-delay:PT0.5S}") Duration orderDelay,
-                                @Value("${leap.trading.recovery-grace:PT5S}") Duration grace) {
+                                @Value("${leap.trading.recovery-grace:PT1.5S}") Duration grace) {
         this(orderRepository, orderService, orderExecutionService, orderDelay, grace, Clock.systemDefaultZone());
     }
 

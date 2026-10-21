@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { DecimalPipe, PercentPipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
@@ -12,7 +13,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 import { ClientSegment, ClientSegmentResult, ClientSegmentService } from '../../services/client-segment.service';
 import { InstrumentInsightsResult, InstrumentInsightsService } from '../../services/instrument-insights.service';
 import { ThemeService } from '../../services/theme.service';
-import { CHART_PALETTES, CHART_PROVIDERS } from '../../components/chart-theme';
+import { chartPalette, CHART_PROVIDERS } from '../../components/chart-theme';
 
 interface SegmentSummary {
   segment: ClientSegment;
@@ -30,7 +31,7 @@ interface SegmentSummary {
   providers: [CHART_PROVIDERS],
   templateUrl: './insights.component.html',
   imports: [
-    CurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,
+    DisplayCurrencyPipe, DecimalPipe, PercentPipe, BaseChartDirective,
     HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmTableImports
   ]
 })
@@ -75,7 +76,7 @@ export class InsightsComponent {
       .slice(0, 5));
 
   protected readonly theme = inject(ThemeService).theme;
-  private readonly palette = computed(() => CHART_PALETTES[this.theme()]);
+  private readonly palette = computed(() => chartPalette(this.theme()));
 
   // One series, one hue: no legend needed, the card title names it; the table beside it is the table view
   protected readonly chartData = computed<ChartConfiguration<'bar'>['data']>(() => ({

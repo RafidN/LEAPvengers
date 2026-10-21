@@ -52,7 +52,7 @@ export type DisputeReason = 'WRONG_PRICE' | 'SHOULD_HAVE_FILLED' | 'NOT_PLACED_B
 
 /** What a client can say went wrong, in their words. Kept in step with DisputeService.REASONS. */
 export const DISPUTE_REASONS: { value: DisputeReason; label: string }[] = [
-  { value: 'SHOULD_HAVE_FILLED', label: 'My order should have gone through' },
+  { value: 'SHOULD_HAVE_FILLED', label: 'Trade not executed as expected' },
   { value: 'WRONG_PRICE', label: 'The price was wrong' },
   { value: 'NOT_PLACED_BY_ME', label: "I didn't place this order" },
   { value: 'OTHER', label: 'Something else' }

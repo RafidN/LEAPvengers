@@ -1,6 +1,7 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
+import { DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
+import { DisplayCurrencyPipe } from '../../shared/display-currency.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,9 +11,10 @@ import {
 } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideCircleCheck,
-  lucideCircleSlash, lucideCircleX, lucideClock, lucideChevronDown, lucideChevronUp, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
-  lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
+  lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideChevronDown,
+  lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideFlaskConical, lucideHistory,
+  lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucidePanelRightClose, lucidePanelRightOpen,
+  lucideRotateCcw, lucideTriangleAlert, lucideX
 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
@@ -28,6 +30,8 @@ import { AccountPortfolio, AccountResponse, AccountService } from '../../service
 import { HistoryPeriod, HistoryService, OrderHistoryResult, OrderKind, OrderStatus } from '../../services/history.service';
 import { Instrument, InstrumentService, PRICE_REFRESH_MS, Quote } from '../../services/instrument.service';
 import { formatMoney, formatQuantity } from '../../services/format';
+import { DisplayCurrencyService } from '../../services/display-currency.service';
+import { PreferencesService } from '../../services/preferences.service';
 import {
   FINAL_STATUSES, OrderEvent, OrderRejection, OrderRequest, OrderService, OrderSide
 } from '../../services/order.service';
@@ -73,6 +77,17 @@ interface WorkingNotice {
   text: string;
 }
 
+/** What a simulated order would have done, in the simple view's simulation mode; nothing is sent. */
+interface SimulationResult {
+  side: OrderSide;
+  ticker: string;
+  quantity: number;
+  price: number;
+  total: number;
+  cashAfter: number;
+  holdingsAfter: number;
+}
+
 /**
  * A quote younger than this (plus the market's data delay) counts as live; while a market is open the quote
  * generator writes its latest trade price every 3 seconds.
@@ -99,13 +114,16 @@ type BottomTab = 'working' | 'status' | 'today';
 const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches;
 
 /**
- * The Trade page, in two views (data.view on the route):
+ * The Trade page, in two views that follow the Easy / Advanced mode (PreferencesService, set in Settings or with the
+ * page's view toggle):
  *
- * Simple (/trade, the default): a plain ticket for beginners to buy or sell at the live price, with the order
- * tracker and today's orders beside it. Limit and stop orders placed elsewhere are listed but managed in advanced.
+ * Simple (Easy, the default): a plain ticket for beginners to buy or sell at the live price, with trading terms
+ * explained, a simulator that shows an order's outcome without sending it, and the order tracker and today's orders
+ * beside it. Limit and stop orders placed in the advanced view are listed but managed there.
  *
- * Advanced (/trade/advanced): a full-window trading screen. The chart fills the page, the order ticket is a panel on the right (over the chart
- * on small screens) and working orders, the order tracker and today's orders are tabs in a drawer under the chart.
+ * Advanced: a full-window trading screen (the route's data.fullBleed). The chart fills the page, the order ticket is a
+ * panel on the right (over the chart on small screens) and working orders, the order tracker and today's orders are
+ * tabs in a drawer under the chart.
  * A market order fills at the live price; a limit or stop order waits as WORKING until the price reaches it. Limit
  * and stop orders can be set up in the ticket or on the chart, where working orders are lines that can be dragged to
  * a new price or canceled. The tracker follows the latest order through Submitted, Accepted or Working, and Filled
@@ -115,14 +133,15 @@ const isWide = () => typeof window === 'undefined' || window.matchMedia('(min-wi
   selector: 'app-trade',
   templateUrl: './trade.component.html',
   imports: [
-    CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe, FormsModule, RouterLink, NgIcon,
+    DisplayCurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, TitleCasePipe, FormsModule, RouterLink, NgIcon,
     TradingChartComponent, HlmAlertImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmComboboxImports,
     HlmInputImports, HlmLabelImports
   ],
   providers: [provideIcons({
     lucideArrowDown, lucideArrowLeftRight, lucideArrowUp, lucideBan, lucideChartCandlestick, lucideChevronDown,
-    lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideHistory, lucideHourglass, lucideLoaderCircle, lucideMousePointerClick,
-    lucidePanelRightClose, lucidePanelRightOpen, lucideRotateCcw, lucideTriangleAlert, lucideX
+    lucideChevronUp, lucideCircleCheck, lucideCircleSlash, lucideCircleX, lucideClock, lucideFlaskConical, lucideHistory,
+    lucideHourglass, lucideLoaderCircle, lucideMousePointerClick, lucidePanelRightClose, lucidePanelRightOpen,
+    lucideRotateCcw, lucideTriangleAlert, lucideX
   })]
 })
 export class TradeComponent {
@@ -130,12 +149,14 @@ export class TradeComponent {
   private readonly instrumentService = inject(InstrumentService);
   private readonly orderService = inject(OrderService);
   private readonly historyService = inject(HistoryService);
+  protected readonly preferences = inject(PreferencesService);
+  private readonly currency = inject(DisplayCurrencyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly quantityInput = viewChild<ElementRef<HTMLInputElement>>('quantityInput');
 
-  /** The full-window chart with limit and stop orders, rather than the simple market-order ticket. */
-  protected readonly advanced = this.route.snapshot.data['view'] === 'advanced';
+  /** The full-window chart with limit and stop orders (Advanced mode), rather than the simple market-order ticket. */
+  protected readonly advanced = computed(() => this.preferences.mode() === 'advanced');
 
   // ---- Order ticket ----
   protected readonly accounts = signal<AccountResponse[]>([]);
@@ -163,6 +184,13 @@ export class TradeComponent {
   protected readonly quantity = signal<number | null>(null);
   /** The limit or stop price, for LIMIT and STOP orders. */
   protected readonly triggerPrice = signal<number | null>(null);
+
+  // ---- Simple view: trading terms and the simulator ----
+  /** In simulation mode the order button shows what the order would do, and sends nothing. */
+  protected readonly simulationMode = signal(false);
+  protected readonly termsExpanded = signal(true);
+  protected readonly simulationBalance = signal<number | null>(null);
+  protected readonly simulationResult = signal<SimulationResult | null>(null);
 
   protected readonly loading = signal(true);
   protected readonly loadError = signal('');
@@ -226,8 +254,6 @@ export class TradeComponent {
   protected readonly instrument = computed(() =>
     this.instruments().find(i => i.instrumentId === this.instrumentId()) ?? null);
 
-  /** The instrument and side to keep when switching between the simple and advanced views. */
-  protected readonly viewParams = computed(() => ({ ticker: this.instrument()?.ticker ?? null, side: this.side() }));
 
   protected readonly cash = computed(() => this.portfolio()?.balance ?? 0);
   /** Cash the account's working buy orders could spend, so not free for another order. */
@@ -302,7 +328,7 @@ export class TradeComponent {
     }
     const name = orderName(this.side(), this.kind() as ChartOrderKind).toLowerCase();
     return `A ${name} waits for the price to ${waitsForFall ? 'fall' : 'rise'} to it, so set it `
-      + `${waitsForFall ? 'below' : 'above'} the current ${formatMoney(market)}.`;
+      + `${waitsForFall ? 'below' : 'above'} the current ${this.usd(market)}.`;
   });
 
   /** The other kind, which waits on the side of the market the price is on now. */
@@ -314,7 +340,7 @@ export class TradeComponent {
     if (p == null) {
       return '';
     }
-    const at = formatMoney(p);
+    const at = this.usd(p);
     const buy = this.side() === 'BUY';
     if (this.kind() === 'LIMIT') {
       return buy
@@ -334,7 +360,7 @@ export class TradeComponent {
     }
     if (this.side() === 'BUY' && (this.estimate() ?? 0) > this.availableCash()) {
       return this.heldCash() > 0
-        ? `This costs more than the ${formatMoney(Math.max(this.availableCash(), 0))} available (some cash is held for working orders), so it will be rejected.`
+        ? `This costs more than the ${this.money(Math.max(this.availableCash(), 0))} available (some cash is held for working orders), so it will be rejected.`
         : 'This costs more than the cash in this account, so it will be rejected.';
     }
     if (this.side() === 'SELL' && q > this.owned()) {
@@ -544,8 +570,8 @@ export class TradeComponent {
 
     // Price history for the chart. An instrument with no trades today (a closed stock market) shows the week.
     let fellBackFor: string | null = null;
-    combineLatest([toObservable(this.instrument), toObservable(this.chartPeriod)]).pipe(
-      filter(([instrument]) => this.advanced && instrument != null),
+    combineLatest([toObservable(this.instrument), toObservable(this.chartPeriod), toObservable(this.advanced)]).pipe(
+      filter(([instrument, , advanced]) => advanced && instrument != null),
       switchMap(([instrument, period]) => {
         this.chartLoading.set(true);
         return this.historyService.getPriceHistory(instrument!.ticker, period).pipe(
@@ -683,12 +709,45 @@ export class TradeComponent {
     if (!this.canSubmit() || !instrument || accountId == null || quantity == null) {
       return;
     }
+    if (!this.advanced() && this.simulationMode()) {
+      this.simulate(instrument.ticker, quantity);
+      return;
+    }
     const request: OrderRequest = { accountId, ticker: instrument.ticker, orderType: this.side(), quantity };
     if (!this.isMarket()) {
       request.orderKind = this.kind();
       request.triggerPrice = this.validTrigger()!;
     }
     this.send(request);
+  }
+
+  protected simulate(ticker: string, quantity: number): void {
+    const price = this.quote()?.price;
+    if (price == null) {
+      return;
+    }
+    const startingCash = this.simulationBalance() ?? this.cash();
+    const simulatedCashAfter = this.side() === 'BUY'
+      ? startingCash - quantity * price
+      : startingCash + quantity * price;
+    this.simulationResult.set({
+      side: this.side(),
+      ticker,
+      quantity,
+      price,
+      total: quantity * price,
+      cashAfter: simulatedCashAfter,
+      holdingsAfter: this.ownedAfter()
+    });
+  }
+
+  protected setSimulationBalance(value: number | null): void {
+    this.simulationBalance.set(value);
+    this.clearSimulation();
+  }
+
+  protected clearSimulation(): void {
+    this.simulationResult.set(null);
   }
 
   /** Sends the last order again, e.g. after it failed because the price moved. */
@@ -714,6 +773,22 @@ export class TradeComponent {
     return this.bottomTab() === tab && this.bottomOpen()
       ? `${base} border-primary text-foreground`
       : `${base} border-transparent text-muted-foreground hover:text-foreground`;
+  }
+
+  /**
+   * Switches between the simple and advanced views by setting the Easy / Advanced mode, so Settings and the next
+   * visit agree. The instrument, side and quantity carry over. The simple view only places market orders, so a limit
+   * or stop order being set up is dropped; the advanced view has no simulator.
+   */
+  protected setView(mode: 'easy' | 'advanced'): void {
+    if (mode === 'easy') {
+      this.discardDraft();
+    } else {
+      this.simulationMode.set(false);
+      this.clearSimulation();
+      this.panelOpen.set(isWide());
+    }
+    this.preferences.setMode(mode);
   }
 
   protected togglePanel(): void {
@@ -752,7 +827,7 @@ export class TradeComponent {
       next: moved => {
         this.setBusy(order.orderId, false);
         this.workingNotice.set({
-          tone: 'ok', text: `Moved your ${orderName(order.side, order.kind).toLowerCase()} to ${formatMoney(price)} (now order #${moved.orderId}).`
+          tone: 'ok', text: `Moved your ${orderName(order.side, order.kind).toLowerCase()} to ${this.money(price)} (now order #${moved.orderId}).`
         });
         this.workingOrders.update(orders => [...orders.filter(o => o.orderId !== order.orderId), moved]);
         this.seenWorking?.add(moved.orderId);
@@ -914,7 +989,7 @@ export class TradeComponent {
         this.workingNotice.set({
           tone: 'ok',
           text: filled.map(o => `Your ${this.orderLabel(o).toLowerCase()} for ${formatQuantity(o.quantity)} ${o.ticker} `
-            + (o.executionPrice != null ? `filled at ${formatMoney(o.executionPrice)}.` : 'was triggered and is filling.')).join(' ')
+            + (o.executionPrice != null ? `filled at ${this.money(o.executionPrice)}.` : 'was triggered and is filling.')).join(' ')
         });
       } else if (other) {
         this.workingNotice.set({
@@ -955,7 +1030,7 @@ export class TradeComponent {
 
   private describeOrder(order: OrderHistoryResult): string {
     return `${this.orderLabel(order).toLowerCase()} ${formatQuantity(order.quantity)} ${order.ticker}`
-      + (order.triggerPrice != null ? ` at ${formatMoney(order.triggerPrice)}` : '');
+      + (order.triggerPrice != null ? ` at ${this.money(order.triggerPrice)}` : '');
   }
 
   private errorText(error: HttpErrorResponse): string {
@@ -974,7 +1049,16 @@ export class TradeComponent {
     this.accountService.getPortfolio(id).subscribe({ next: p => this.portfolio.set(p), error: () => {} });
   }
 
+  /** In the display currency chosen in Settings, like every amount on the site. */
   private money(value: number): string {
-    return formatMoney(value);
+    return this.currency.format(value);
+  }
+
+  /**
+   * A limit or stop price as entered: in US dollars, the currency orders are placed in, with the display currency
+   * beside it when that is another, e.g. "$82,430.25 (≈ €75,836.83)".
+   */
+  protected usd(value: number): string {
+    return this.preferences.currency() === 'USD' ? formatMoney(value) : `${formatMoney(value)} (≈ ${this.currency.format(value)})`;
   }
 }
