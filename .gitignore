@@ -32,8 +32,12 @@ postman/
 backend/target/
 *.class
 
-# Node/Angular build output
-frontend/node_modules/
+# Node/Angular build output. node_modules is ignored wherever it is, and the frontend is the only npm project: an
+# npm install run from the repository root instead of frontend/ creates these files there, and they must never be
+# committed
+node_modules/
+/package.json
+/package-lock.json
 frontend/dist/
 frontend/.angular/
 frontend/.cache/

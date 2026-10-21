@@ -35,6 +35,41 @@ export interface ActivityReportQuery {
   segment?: string;
 }
 
+export interface ReportDateRangeQuery {
+  from: string;
+  to: string;
+}
+
+export interface OrderHealthStatusCount {
+  status: 'SUBMITTED' | 'ACCEPTED' | 'FILLED' | 'REJECTED' | 'FAILED';
+  count: number;
+}
+
+export interface OrderHealthDailyRate {
+  date: string;
+  totalOrders: number;
+  filledOrders: number;
+  rejectedOrders: number;
+  failedOrders: number;
+  successRate: number;
+  failureRate: number;
+}
+
+export interface OrderHealthReport {
+  from: string;
+  to: string;
+  totalOrders: number;
+  submittedOrders: number;
+  acceptedOrders: number;
+  filledOrders: number;
+  rejectedOrders: number;
+  failedOrders: number;
+  successRate: number;
+  failureRate: number;
+  statusCounts: OrderHealthStatusCount[];
+  dailyRates: OrderHealthDailyRate[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -47,5 +82,11 @@ export class ReportingService {
       params['segment'] = query.segment;
     }
     return this.http.get<ActivityReport>('/api/internal/reports/activity', { params });
+  }
+
+  getOrderHealth(query: ReportDateRangeQuery): Observable<OrderHealthReport> {
+    return this.http.get<OrderHealthReport>('/api/internal/reports/order-health', {
+      params: { from: query.from, to: query.to }
+    });
   }
 }

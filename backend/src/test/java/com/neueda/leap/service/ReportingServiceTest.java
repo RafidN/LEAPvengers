@@ -3,6 +3,10 @@ package com.neueda.leap.service;
 import com.neueda.leap.exception.InvalidInputException;
 import com.neueda.leap.model.dto.ActivityReportResponse;
 import com.neueda.leap.model.dto.ActivityReportRow;
+import com.neueda.leap.model.dto.OrderStatusCountByDateProjection;
+import com.neueda.leap.model.dto.OrderHealthReportResponse;
+import com.neueda.leap.model.dto.OrderStatusCountProjection;
+import com.neueda.leap.repository.OrderRepository;
 import com.neueda.leap.repository.ReportingLoadRunRepository;
 import com.neueda.leap.repository.TradeActivityRepository;
 import com.neueda.leap.repository.TradeActivityRepository.DailyClientActivity;
@@ -27,15 +31,17 @@ class ReportingServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 15);   // a Thursday
 
     private TradeActivityRepository tradeActivityRepository;
+    private OrderRepository orderRepository;
     private ReportingService service;
 
     @BeforeEach
     void setUp() {
         tradeActivityRepository = mock(TradeActivityRepository.class);
+        orderRepository = mock(OrderRepository.class);
         ReportingLoadRunRepository loadRuns = mock(ReportingLoadRunRepository.class);
         when(loadRuns.findTopByOrderByFinishedAtDesc()).thenReturn(Optional.empty());
         Clock clock = Clock.fixed(TODAY.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
-        service = new ReportingService(tradeActivityRepository, loadRuns, clock);
+        service = new ReportingService(tradeActivityRepository, orderRepository, loadRuns, clock);
     }
 
     private static DailyClientActivity day(LocalDate date, int clientId, long trades, long buys, String notional) {
@@ -106,5 +112,81 @@ class ReportingServiceTest {
         assertThrows(InvalidInputException.class, () -> service.getActivity(TODAY, TODAY.minusDays(1), "day", null));
         assertThrows(InvalidInputException.class, () -> service.getActivity(TODAY.minusYears(4), TODAY, "day", null));
         assertThrows(InvalidInputException.class, () -> service.getActivity(null, null, "hour", null));
+    }
+
+    @Test
+    void orderHealthDefaultsToLast30DaysAndComputesRates() {
+        when(orderRepository.countByStatusBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of(
+                row("SUBMITTED", 2),
+                row("ACCEPTED", 3),
+                row("FILLED", 10),
+                row("REJECTED", 4),
+                row("FAILED", 1)
+        ));
+        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of(
+            rowByDate(TODAY.minusDays(1), "FILLED", 2),
+            rowByDate(TODAY.minusDays(1), "REJECTED", 1),
+            rowByDate(TODAY, "FAILED", 1)
+        ));
+
+        OrderHealthReportResponse report = service.getOrderHealth(null, null);
+
+        assertEquals(TODAY.minusDays(29), report.getFrom());
+        assertEquals(TODAY, report.getTo());
+        assertEquals(20, report.getTotalOrders());
+        assertEquals(10, report.getFilledOrders());
+        assertEquals(5, report.getRejectedOrders() + report.getFailedOrders());
+        assertEquals(new BigDecimal("0.5000"), report.getSuccessRate());
+        assertEquals(new BigDecimal("0.2500"), report.getFailureRate());
+        assertEquals(30, report.getDailyRates().size());
+        assertEquals(new BigDecimal("0.6667"), report.getDailyRates().get(28).getSuccessRate());
+        assertEquals(new BigDecimal("1.0000"), report.getDailyRates().get(29).getFailureRate());
+    }
+
+    @Test
+    void orderHealthReturnsZeroRatesWhenNoOrders() {
+        when(orderRepository.countByStatusBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of());
+        when(orderRepository.countByStatusByDateBetween(TODAY.minusDays(29), TODAY)).thenReturn(List.of());
+
+        OrderHealthReportResponse report = service.getOrderHealth(null, null);
+
+        assertEquals(0, report.getTotalOrders());
+        assertEquals(BigDecimal.ZERO, report.getSuccessRate());
+        assertEquals(BigDecimal.ZERO, report.getFailureRate());
+        assertEquals(30, report.getDailyRates().size());
+        assertEquals(BigDecimal.ZERO, report.getDailyRates().get(0).getSuccessRate());
+    }
+
+    private static OrderStatusCountProjection row(String status, long count) {
+        return new OrderStatusCountProjection() {
+            @Override
+            public String getOrderStatus() {
+                return status;
+            }
+
+            @Override
+            public Long getCount() {
+                return count;
+            }
+        };
+    }
+
+    private static OrderStatusCountByDateProjection rowByDate(LocalDate date, String status, long count) {
+        return new OrderStatusCountByDateProjection() {
+            @Override
+            public LocalDate getOrderDate() {
+                return date;
+            }
+
+            @Override
+            public String getOrderStatus() {
+                return status;
+            }
+
+            @Override
+            public Long getCount() {
+                return count;
+            }
+        };
     }
 }

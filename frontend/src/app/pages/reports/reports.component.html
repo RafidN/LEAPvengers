@@ -58,6 +58,59 @@
   </div>
 }
 
+@if (orderHealthError()) {
+  <div hlmAlert variant="destructive" class="mb-6" role="alert">
+    <p hlmAlertDescription>{{ orderHealthError() }}</p>
+  </div>
+}
+
+@if (orderHealth(); as health) {
+  <section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6" aria-label="Order health">
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Total orders</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.totalOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Filled</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.filledOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Rejected</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.rejectedOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Failed</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failedOrders | number }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Success rate</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.successRate | percent: '1.0-2' }}</p>
+    </div>
+    <div hlmCard>
+      <p hlmCardHeader class="text-muted-foreground text-sm">Failure rate</p>
+      <p hlmCardContent class="text-3xl font-semibold tracking-tight">{{ health.failureRate | percent: '1.0-2' }}</p>
+    </div>
+  </section>
+
+  <section hlmCard class="mb-6" aria-label="Order health trend">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>Order health trend</h2>
+      <p hlmCardDescription>{{ orderHealthTrendLabel() }}</p>
+    </div>
+    <div hlmCardContent>
+      @if ((orderHealthTrendData().labels?.length ?? 0) > 1) {
+        <div class="relative h-56 w-full">
+          <canvas baseChart type="line" [data]="orderHealthTrendData()" [options]="orderHealthTrendOptions()"></canvas>
+        </div>
+      } @else {
+        <div class="text-muted-foreground flex h-48 items-center justify-center rounded-lg border border-dashed text-sm">
+          Not enough daily points to show a trend.
+        </div>
+      }
+    </div>
+  </section>
+}
+
 @if (report(); as r) {
   <!-- Totals for the whole range -->
   <section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Totals">
@@ -109,7 +162,7 @@
       <div hlmCardContent>
         <div hlmTableContainer class="max-h-[28rem] overflow-y-auto">
           <table hlmTable>
-            <thead hlmTableHeader>
+            <thead hlmTableHeader class="bg-card sticky top-0 z-10">
               <tr hlmTableRow>
                 <th hlmTableHead>{{ grouping().column }}</th>
                 <th hlmTableHead class="text-right">Trades</th>
