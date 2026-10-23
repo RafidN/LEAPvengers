@@ -80,7 +80,7 @@ export class PreferencesService {
       return DEFAULT_PREFERENCES;
     }
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<StoredPreferences>;
+      const stored = JSON.parse(localStorage.getItem(this.storageKey()) ?? '{}') as Partial<StoredPreferences>;
       return {
         newsAlerts: typeof stored.newsAlerts === 'boolean' ? stored.newsAlerts : DEFAULT_PREFERENCES.newsAlerts,
         advancedMode: typeof stored.advancedMode === 'boolean' ? stored.advancedMode : DEFAULT_PREFERENCES.advancedMode,
@@ -102,7 +102,7 @@ export class PreferencesService {
       return;
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      localStorage.setItem(this.storageKey(), JSON.stringify({
         newsAlerts: this.newsAlerts(),
         advancedMode: this.advancedMode(),
         language: this.language(),
@@ -114,6 +114,11 @@ export class PreferencesService {
     } catch {
       // Preferences still apply for this visit if storage is unavailable.
     }
+  }
+
+  private storageKey(): string {
+    const username = localStorage.getItem('username');
+    return username ? `${STORAGE_KEY}:${username}` : STORAGE_KEY;
   }
 
   private isLanguage(value: unknown): value is Language {

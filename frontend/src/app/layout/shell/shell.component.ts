@@ -111,7 +111,7 @@ export class ShellComponent {
   });
 
   protected get firstName(): string {
-    return this.preferences.displayName() || this.authService.getFirstName() || this.authService.getUsername() || '';
+    return this.authService.getFirstName() || this.authService.getUsername() || this.preferences.displayName() || '';
   }
 
   protected get profileIconName(): string {
