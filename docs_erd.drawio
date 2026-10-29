@@ -1,0 +1,156 @@
+<mxfile host="app.diagrams.net" modified="2026-10-29T00:00:00.000Z" agent="copilot" version="24.7.17" type="device">
+  <diagram id="LEAPvengers-ERD" name="LEAPvengers ERD">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- CORE TABLES -->
+        <mxCell id="clients" value="&lt;b&gt;clients&lt;/b&gt;&lt;hr/&gt;PK client_id&lt;br/&gt;first_name&lt;br/&gt;last_name&lt;br/&gt;email (UQ)&lt;br/&gt;segment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="230" height="170" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="users" value="&lt;b&gt;users&lt;/b&gt;&lt;hr/&gt;PK user_id&lt;br/&gt;FK client_id (nullable)&lt;br/&gt;username (UQ)&lt;br/&gt;first_name&lt;br/&gt;last_name&lt;br/&gt;password&lt;br/&gt;role&lt;br/&gt;is_active&lt;br/&gt;created_at&lt;br/&gt;updated_at" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="50" width="280" height="250" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="accounts" value="&lt;b&gt;accounts&lt;/b&gt;&lt;hr/&gt;PK account_id&lt;br/&gt;FK client_id&lt;br/&gt;opened_date&lt;br/&gt;balance" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="230" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="instruments" value="&lt;b&gt;instruments&lt;/b&gt;&lt;hr/&gt;PK instrument_id&lt;br/&gt;ticker (UQ)&lt;br/&gt;instrument_name&lt;br/&gt;asset_class&lt;br/&gt;market&lt;br/&gt;tradable&lt;br/&gt;quote_delay_minutes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="650" y="80" width="280" height="210" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="holdings" value="&lt;b&gt;holdings&lt;/b&gt;&lt;hr/&gt;PK holding_id&lt;br/&gt;FK account_id&lt;br/&gt;FK instrument_id&lt;br/&gt;quantity&lt;br/&gt;as_of_date&lt;br/&gt;UQ(account_id, instrument_id)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="330" y="340" width="270" height="190" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="orders" value="&lt;b&gt;orders&lt;/b&gt;&lt;hr/&gt;PK order_id&lt;br/&gt;FK account_id&lt;br/&gt;FK instrument_id&lt;br/&gt;order_type&lt;br/&gt;quantity&lt;br/&gt;price&lt;br/&gt;order_date&lt;br/&gt;order_status&lt;br/&gt;rejection_reason&lt;br/&gt;execution_price&lt;br/&gt;submitted_at&lt;br/&gt;executed_at&lt;br/&gt;order_kind&lt;br/&gt;trigger_price&lt;br/&gt;triggered_at" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="650" y="340" width="310" height="300" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="order_events" value="&lt;b&gt;order_events&lt;/b&gt;&lt;hr/&gt;PK event_id&lt;br/&gt;FK order_id&lt;br/&gt;FK created_by (users.user_id)&lt;br/&gt;from_status&lt;br/&gt;to_status&lt;br/&gt;created_at&lt;br/&gt;details&lt;br/&gt;quote_price&lt;br/&gt;quote_time&lt;br/&gt;quote_source" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="360" width="300" height="230" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cash_tx" value="&lt;b&gt;cash_transactions&lt;/b&gt;&lt;hr/&gt;PK cash_transaction_id&lt;br/&gt;FK account_id&lt;br/&gt;txn_type&lt;br/&gt;amount&lt;br/&gt;txn_date&lt;br/&gt;FK order_id (nullable)&lt;br/&gt;created_at" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="280" height="210" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="order_disputes" value="&lt;b&gt;order_disputes&lt;/b&gt;&lt;hr/&gt;PK dispute_id&lt;br/&gt;FK order_id&lt;br/&gt;FK raised_by&lt;br/&gt;reason&lt;br/&gt;message&lt;br/&gt;status&lt;br/&gt;created_at&lt;br/&gt;resolution&lt;br/&gt;FK resolved_by (nullable)&lt;br/&gt;resolved_at (nullable)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="620" width="300" height="250" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="price_quotes" value="&lt;b&gt;price_quotes&lt;/b&gt;&lt;hr/&gt;PK price_quote_id&lt;br/&gt;FK instrument_id&lt;br/&gt;price&lt;br/&gt;volume&lt;br/&gt;quote_timestamp&lt;br/&gt;fetched_at&lt;br/&gt;source&lt;br/&gt;UQ(instrument_id, quote_timestamp)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="650" y="680" width="300" height="220" as="geometry"/>
+        </mxCell>
+
+        <!-- MATERIALIZED VIEWS -->
+        <mxCell id="latest_price_quotes" value="&lt;b&gt;latest_price_quotes&lt;/b&gt; (materialized view)&lt;hr/&gt;PK/FK instrument_id&lt;br/&gt;price&lt;br/&gt;quote_timestamp&lt;br/&gt;source" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="120" width="300" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="account_valuations" value="&lt;b&gt;account_valuations&lt;/b&gt; (materialized view)&lt;hr/&gt;PK/FK account_id&lt;br/&gt;total_value" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="300" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- REPORTING SCHEMA -->
+        <mxCell id="report_trade_activity" value="&lt;b&gt;reporting.trade_activity&lt;/b&gt;&lt;hr/&gt;PK order_id&lt;br/&gt;executed_at&lt;br/&gt;trade_date&lt;br/&gt;client_id (logical ref)&lt;br/&gt;client_segment&lt;br/&gt;instrument_id (logical ref)&lt;br/&gt;ticker&lt;br/&gt;asset_class&lt;br/&gt;market&lt;br/&gt;side&lt;br/&gt;quantity&lt;br/&gt;price&lt;br/&gt;notional&lt;br/&gt;loaded_at" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="500" width="340" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="report_load_runs" value="&lt;b&gt;reporting.load_runs&lt;/b&gt;&lt;hr/&gt;PK run_id&lt;br/&gt;started_at&lt;br/&gt;finished_at&lt;br/&gt;rows_loaded" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="820" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- PHYSICAL FK EDGES -->
+        <mxCell id="e1" value="client_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="accounts" target="clients">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e2" value="client_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="users" target="clients">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e3" value="account_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="holdings" target="accounts">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e4" value="instrument_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="holdings" target="instruments">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e5" value="account_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="orders" target="accounts">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e6" value="instrument_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="orders" target="instruments">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e7" value="order_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="order_events" target="orders">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e8" value="created_by" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="order_events" target="users">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e9" value="account_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="cash_tx" target="accounts">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e10" value="order_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="cash_tx" target="orders">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e11" value="order_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="order_disputes" target="orders">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e12" value="raised_by" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="order_disputes" target="users">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e13" value="resolved_by" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="order_disputes" target="users">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e14" value="instrument_id" style="endArrow=block;endFill=1;html=1;rounded=0;strokeWidth=1.5;" edge="1" parent="1" source="price_quotes" target="instruments">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- VIEW / LOGICAL EDGES -->
+        <mxCell id="e15" value="MV source" style="dashed=1;endArrow=open;html=1;strokeColor=#666666;" edge="1" parent="1" source="price_quotes" target="latest_price_quotes">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e16" value="MV source" style="dashed=1;endArrow=open;html=1;strokeColor=#666666;" edge="1" parent="1" source="holdings" target="account_valuations">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e17" value="MV source" style="dashed=1;endArrow=open;html=1;strokeColor=#666666;" edge="1" parent="1" source="latest_price_quotes" target="account_valuations">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e18" value="logical lineage" style="dashed=1;endArrow=open;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="orders" target="report_trade_activity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e19" value="logical lineage" style="dashed=1;endArrow=open;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="clients" target="report_trade_activity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e20" value="logical lineage" style="dashed=1;endArrow=open;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="instruments" target="report_trade_activity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e21" value="batch load" style="dashed=1;endArrow=open;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="report_load_runs" target="report_trade_activity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
